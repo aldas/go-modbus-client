@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+if [[ -z "$(which golint)" ]]; then
+	echo "golint not found, executing: go get github.com/golang/lint/golint"
+	go get github.com/golang/lint/golint
+fi
+
+STAGED_GO_FILES=$(git diff --cached --name-only | grep ".go$")
+
+if [[ "$STAGED_GO_FILES" = "" ]]; then
+  exit 0
+fi
+
+# can not check only changed files as if it references structs etc in same package
+# but in different file it reports that as 'route.go:18:11: undefined: Service'
+go vet ./...
+if [[ $? != 0 ]]; then
+  printf "go vet FAILED\n"
+  exit 1
+fi
+
+PASS=true
+
+for FILE in ${STAGED_GO_FILES}
+do
+  if [[ ! -f ${FILE} ]]; then
+    continue
+  fi
+
+  golint -set_exit_status ${FILE}
+  if [[ $? != 0 ]]; then
+    PASS=false
+  fi
+done
+
+if ! ${PASS}; then
+  printf "COMMIT FAILED\n"
+  exit 1
+else
+  printf "COMMIT SUCCEEDED\n"
+fi
+
+exit 0
