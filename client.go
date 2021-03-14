@@ -37,9 +37,10 @@ var ErrPacketTooLong = errors.New("received more bytes than valid Modbus packet 
 type Client struct {
 	timeNow func() time.Time
 
-	dialContext         func(ctx context.Context, network, addr string) (net.Conn, error)
-	writeTimeout        time.Duration
-	readTimeout         time.Duration
+	writeTimeout time.Duration
+	readTimeout  time.Duration
+
+	dialContextFunc     func(ctx context.Context, address string) (net.Conn, error)
 	asProtocolErrorFunc func(data []byte) error
 	parseResponseFunc   func(data []byte) (packet.Response, error)
 
@@ -63,52 +64,115 @@ func defaultClient() *Client {
 		writeTimeout: defaultWriteTimeout,
 		readTimeout:  defaultReadTimeout,
 
-		dialContext: (&net.Dialer{
-			// Timeout is the maximum amount of time a dial will wait for a connect to complete.
-			Timeout: defaultConnectTimeout,
-			// KeepAlive specifies the interval between keep-alive probes for an active network connection.
-			KeepAlive: 15 * time.Second,
-		}).DialContext,
-		// TCP is out default protocol
+		dialContextFunc: dialContext,
+		// TCP is our default protocol
 		asProtocolErrorFunc: packet.AsTCPErrorPacket,
 		parseResponseFunc:   packet.ParseTCPResponse,
 	}
 }
 
 // NewTCPClient creates new instance of Modbus Client for Modbus TCP protocol
-func NewTCPClient() *Client {
-	return defaultClient()
+func NewTCPClient(opts ...ClientOptionFunc) *Client {
+	client := defaultClient()
+	if opts != nil {
+		for _, o := range opts {
+			o(client)
+		}
+	}
+	return client
 }
 
 // NewRTUClient creates new instance of Modbus Client for Modbus RTU protocol
-func NewRTUClient() *Client {
+func NewRTUClient(opts ...ClientOptionFunc) *Client {
 	client := defaultClient()
 	client.asProtocolErrorFunc = packet.AsRTUErrorPacket
 	client.parseResponseFunc = packet.ParseRTUResponse
 	// TODO: add CRC/noCRC check option
+
+	if opts != nil {
+		for _, o := range opts {
+			o(client)
+		}
+	}
 	return client
 }
 
 // NewClient creates new instance of Modbus Client with given options
 func NewClient(opts ...ClientOptionFunc) *Client {
-	result := defaultClient()
+	client := defaultClient()
 	if opts != nil {
 		for _, o := range opts {
-			o(result)
+			o(client)
 		}
 	}
-	return result
+	return client
 }
 
 // ClientOptionFunc is options type for NewClient function
 type ClientOptionFunc func(c *Client)
+
+// WithProtocolErrorFunc is option to provide custom function for parsing error packet
+func WithProtocolErrorFunc(errorFunc func(data []byte) error) func(c *Client) {
+	return func(c *Client) {
+		c.asProtocolErrorFunc = errorFunc
+	}
+}
+
+// WithParseResponseFunc is option to provide custom function for parsing protocol packet
+func WithParseResponseFunc(parseFunc func(data []byte) (packet.Response, error)) func(c *Client) {
+	return func(c *Client) {
+		c.parseResponseFunc = parseFunc
+	}
+}
+
+// WithDialContextFunc is option to provide custom function for creating new connection
+func WithDialContextFunc(dialContextFunc func(ctx context.Context, address string) (net.Conn, error)) func(c *Client) {
+	return func(c *Client) {
+		c.dialContextFunc = dialContextFunc
+	}
+}
+
+// WithTimeouts is option to for setting writing packet or reading packet timeouts
+func WithTimeouts(writeTimeout time.Duration, readTimeout time.Duration) func(c *Client) {
+	return func(c *Client) {
+		c.writeTimeout = writeTimeout
+		c.readTimeout = readTimeout
+	}
+}
+
+// WithLogger is option to set logger in client
+func WithLogger(logger ClientLogger) func(c *Client) {
+	return func(c *Client) {
+		c.logger = logger
+	}
+}
 
 // Connect opens network connection to Client to server. Context lifetime is only meant for this call.
 func (c *Client) Connect(ctx context.Context, address string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// TODO: extract network/address to extractor function that is changeable for the client instance
+	conn, err := c.dialContextFunc(ctx, address)
+	if err != nil {
+		return err
+	}
+	c.conn = conn
+	c.address = address
+	return nil
+}
+
+func dialContext(ctx context.Context, address string) (net.Conn, error) {
+	dialer := &net.Dialer{
+		// Timeout is the maximum amount of time a dial will wait for a connect to complete.
+		Timeout: defaultConnectTimeout,
+		// KeepAlive specifies the interval between keep-alive probes for an active network connection.
+		KeepAlive: 15 * time.Second,
+	}
+	network, addr := addressExtractor(address)
+	return dialer.DialContext(ctx, network, addr)
+}
+
+func addressExtractor(address string) (string, string) {
 	network := "tcp"
 	addr := address
 	if strings.HasPrefix(addr, "tcp4://") {
@@ -118,13 +182,7 @@ func (c *Client) Connect(ctx context.Context, address string) error {
 		network = "tcp6"
 		addr = strings.TrimPrefix(addr, "tcp6://")
 	}
-	conn, err := c.dialContext(ctx, network, addr)
-	if err != nil {
-		return err
-	}
-	c.conn = conn
-	c.address = address
-	return nil
+	return network, addr
 }
 
 // Close closes network connection to Modbus server

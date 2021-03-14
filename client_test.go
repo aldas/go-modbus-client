@@ -499,9 +499,69 @@ func TestClient_Connect(t *testing.T) {
 		whenAddress        string
 		whenDialContextErr error
 
+		expectAddr  string
+		expectError string
+	}{
+		{
+			name:        "ok, tcp is default",
+			whenAddress: ":502",
+			expectAddr:  ":502",
+		},
+		{
+			name:        "ok, domain name, tcp is default",
+			whenAddress: "cool.test.com:502",
+			expectAddr:  "cool.test.com:502",
+		},
+		{
+			name:        "ok, with specific tcp4",
+			whenAddress: "tcp4://192.168.0.1:502",
+			expectAddr:  "tcp4://192.168.0.1:502",
+		},
+		{
+			name:        "ok, with specific tcp6",
+			whenAddress: "tcp6://::1:502",
+			expectAddr:  "tcp6://::1:502",
+		},
+		{
+			name:               "nok, dialContext error",
+			whenAddress:        "localhost:502",
+			whenDialContextErr: errors.New("dialContext error"),
+			expectAddr:         "localhost:502",
+			expectError:        "dialContext error",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			conn := new(netConnMock)
+
+			client := NewTCPClient()
+			client.dialContextFunc = func(_ context.Context, addr string) (net.Conn, error) {
+				assert.Equal(t, tc.expectAddr, addr)
+
+				return new(netConnMock), tc.whenDialContextErr
+			}
+
+			err := client.Connect(context.Background(), tc.whenAddress)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, client.conn)
+				assert.Equal(t, tc.whenAddress, client.address)
+			}
+			conn.AssertExpectations(t)
+		})
+	}
+}
+
+func TestAddressExtractor(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenAddress string
+
 		expectNetwork string
 		expectAddr    string
-		expectError   string
 	}{
 		{
 			name:          "ok, tcp is default",
@@ -527,37 +587,14 @@ func TestClient_Connect(t *testing.T) {
 			expectNetwork: "tcp6",
 			expectAddr:    "::1:502",
 		},
-		{
-			name:               "nok, dialContext error",
-			whenAddress:        "localhost:502",
-			whenDialContextErr: errors.New("dialContext error"),
-			expectNetwork:      "tcp",
-			expectAddr:         "localhost:502",
-			expectError:        "dialContext error",
-		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			conn := new(netConnMock)
+			network, addr := addressExtractor(tc.whenAddress)
 
-			client := NewTCPClient()
-			client.dialContext = func(_ context.Context, network, addr string) (net.Conn, error) {
-				assert.Equal(t, tc.expectNetwork, network)
-				assert.Equal(t, tc.expectAddr, addr)
-
-				return new(netConnMock), tc.whenDialContextErr
-			}
-
-			err := client.Connect(context.Background(), tc.whenAddress)
-			if tc.expectError != "" {
-				assert.EqualError(t, err, tc.expectError)
-			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, client.conn)
-				assert.Equal(t, tc.whenAddress, client.address)
-			}
-			conn.AssertExpectations(t)
+			assert.Equal(t, network, tc.expectNetwork)
+			assert.Equal(t, addr, tc.expectAddr)
 		})
 	}
 }
