@@ -27,6 +27,32 @@ go install github.com/aldas/go-modbus-client
 
 ### Low level packets
 
+```go
+client := modbus.NewTCPClient()
+if err := client.Connect(context.Background(), "localhost:5020"); err != nil {
+    return err
+}
+defer client.Close()
+startAddress := uint16(10)
+req, err := packet.NewReadHoldingRegistersRequestTCP(0, startAddress, 9)
+if err != nil {
+    return err
+}
+
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+resp, err := client.Do(ctx, req)
+if err != nil {
+    return err
+}
+
+registers, err := resp.(*packet.ReadHoldingRegistersResponseTCP).AsRegisters(startAddress)
+if err != nil {
+    return err
+}
+uint32Var, err := registers.Uint32(17) // extract uint32 value from register 17
+```
+
 ### Builder to group fields to packets
 
 ## Changelog
