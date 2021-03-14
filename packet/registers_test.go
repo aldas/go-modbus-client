@@ -141,6 +141,12 @@ func TestRegisters_Byte(t *testing.T) {
 			expect:           0x1,
 		},
 		{
+			name:             "ok, high byte, first register",
+			whenAddress:      1,
+			whenFromHighByte: true,
+			expect:           255,
+		},
+		{
 			name:             "ok, low byte, last register",
 			whenAddress:      3,
 			whenFromHighByte: true,
@@ -167,7 +173,7 @@ func TestRegisters_Byte(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
 				endAddress:   4,
-				data:         []byte{0x0, 0x1, 0xCA, 0xFE, 0x3, 0x0},
+				data:         []byte{0xff, 0x1, 0xCA, 0xFE, 0x3, 0x0},
 			}
 
 			result, err := r.Byte(tc.whenAddress, tc.whenFromHighByte)
@@ -209,6 +215,12 @@ func TestRegisters_Int8(t *testing.T) {
 			expect:           1,
 		},
 		{
+			name:             "ok, high byte, first register",
+			whenAddress:      1,
+			whenFromHighByte: true,
+			expect:           -1,
+		},
+		{
 			name:             "ok, low byte, last register",
 			whenAddress:      3,
 			whenFromHighByte: true,
@@ -235,7 +247,7 @@ func TestRegisters_Int8(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
 				endAddress:   4,
-				data:         []byte{0x0, 0x1, 0b10000001, 0b01000001, 0x3, 0x0},
+				data:         []byte{0xff, 0x1, 0b10000001, 0b01000001, 0x3, 0x0},
 			}
 
 			result, err := r.Int8(tc.whenAddress, tc.whenFromHighByte)
