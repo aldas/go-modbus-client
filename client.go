@@ -239,7 +239,7 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 		default:
 		}
 
-		_ = c.conn.SetReadDeadline(c.timeNow().Add(500 * time.Microsecond)) // 0.5ms timeout for read per iteration
+		_ = c.conn.SetReadDeadline(c.timeNow().Add(500 * time.Microsecond)) // max 0.5ms block time for read per iteration
 		n, err := c.conn.Read(tmp[:tcpPacketMaxLen])
 		if c.logger != nil {
 			c.logger.AfterEachRead(tmp[:n], n, err)
@@ -252,7 +252,6 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 			return nil, err
 		}
 		total += n
-		// TODO: log trace bytes as hex
 		if total > tcpPacketMaxLen {
 			// TODO: call flush
 			return nil, ErrPacketTooLong
