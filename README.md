@@ -17,10 +17,11 @@ go install github.com/aldas/go-modbus-client
 * FC5 - Write Single Coil
 * FC6 - Write Single Register
 
-## Goal
+## Goals
 
-* Packets separate from Client
+* Packets separate from Client implementation
 * Client (TCP/RTU) separated from Modbus packets
+* Convenience methods to convert register data to different data types (with endianess/word order)
 * Builders to group fields into request batches
 
 ## Examples
@@ -30,25 +31,25 @@ go install github.com/aldas/go-modbus-client
 ```go
 client := modbus.NewTCPClient()
 if err := client.Connect(context.Background(), "localhost:5020"); err != nil {
-    return err
+return err
 }
 defer client.Close()
 startAddress := uint16(10)
 req, err := packet.NewReadHoldingRegistersRequestTCP(0, startAddress, 9)
 if err != nil {
-    return err
+return err
 }
 
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 defer cancel()
 resp, err := client.Do(ctx, req)
 if err != nil {
-    return err
+return err
 }
 
 registers, err := resp.(*packet.ReadHoldingRegistersResponseTCP).AsRegisters(startAddress)
 if err != nil {
-    return err
+return err
 }
 uint32Var, err := registers.Uint32(17) // extract uint32 value from register 17
 ```

@@ -28,35 +28,43 @@ import (
 //      Big Endian Low Word First (BADC) = 0x02010403 <-- used by WAGO 750-XXX to send modbus packets over tcp/udp
 //
 const (
+	useDefaultByteOrder ByteOrder = 0
 	// BigEndian system stores the most significant byte of a word at the smallest memory address and the least
-	// significant byte at the largest
-	BigEndian = 1
-	// LittleEndian - little-endian system, in contrast, stores the least-significant byte at the smallest address.
-	LittleEndian = 2
+	// significant byte at the largest. By Modbus spec BigEndian is the order how bytes are transferred over the wire.
+	BigEndian ByteOrder = 1
+	// LittleEndian - little-endian system stores the least-significant byte at the smallest address.
+	LittleEndian ByteOrder = 2
 
 	// Double words (word=register) (32bit types) consist of two 16bit words. Different PLCs send double words
-	// differently over wire. So 0xDCBA can be sent low word (0xBA) first 0xBADC or high word (0xDC) first 0xDCBA.
-	// High word first on true big/little endian and does not have separate flag.
-	LowWordFirst = 4
+	// differently over the wire. So 0xDCBA can be sent low word (0xBA) first 0xBADC or high word (0xDC) first 0xDCBA.
+	LowWordFirst ByteOrder = 4
+
+	// HighWordFirst reads data as words/register are ordered from left to right. High word (0xDC) is sent first.
+	// Meaning PLCs little endian value 0xABCD is sent as each byte swapped and each 2 byte pair (word/register) is swapped 0xDCBA
+	HighWordFirst ByteOrder = 8
 
 	// When bytes for little endian are in 'ABCD' order then Big Endian Low Word First is in 'BADC' order
 	// This mean that high word (BA) is first and low word (DC) for double word is last and bytes in words are in big endian order.
 	BigEndianLowWordFirst = BigEndian | LowWordFirst // this is default endian+word order we use
 
 	// BigEndianHighWordFirst is big-endian with high word first
-	BigEndianHighWordFirst = BigEndian
+	BigEndianHighWordFirst = BigEndian | HighWordFirst
 
 	// LittleEndianLowWordFirst is little-endian with low word first
 	LittleEndianLowWordFirst = LittleEndian | LowWordFirst
 	// LittleEndianHighWordFirst is little-endian with high word first
-	LittleEndianHighWordFirst = LittleEndian
+	LittleEndianHighWordFirst = LittleEndian | HighWordFirst
 )
+
+// ByteOrder determines how bytes are ordered in data
+type ByteOrder uint8
 
 // Registers provides more convenient access to data returned by register response
 type Registers struct {
-	startAddress uint16
-	endAddress   uint16 // end address is not addressable. endAddress-1 is last addressable register (2 bytes)
-	data         []byte
+	defaultByteOrder ByteOrder
+	startAddress     uint16
+	endAddress       uint16 // end address is not addressable. endAddress-1 is last addressable register (2 bytes)
+	data             []byte
 }
 
 // NewRegisters creates new instance of Registers
@@ -69,10 +77,17 @@ func NewRegisters(data []byte, startAddress uint16) (*Registers, error) {
 		return nil, errors.New("data length must be odd number of bytes as 1 register is 2 bytes")
 	}
 	return &Registers{
-		startAddress: startAddress,
-		endAddress:   startAddress + uint16(dataLen/2),
-		data:         data,
+		defaultByteOrder: BigEndianHighWordFirst,
+		startAddress:     startAddress,
+		endAddress:       startAddress + uint16(dataLen/2),
+		data:             data,
 	}, nil
+}
+
+// WithByteOrder sets byte order as default byte order in Registers
+func (r *Registers) WithByteOrder(byteOrder ByteOrder) *Registers {
+	r.defaultByteOrder = byteOrder
+	return r
 }
 
 func (r Registers) register(address uint16) ([]byte, error) {
@@ -83,11 +98,10 @@ func (r Registers) register(address uint16) ([]byte, error) {
 		return nil, errors.New("address over startAddress+quantity bounds")
 	}
 	startIndex := (address - r.startAddress) * 2
-	endIndex := startIndex + 2
-	return r.data[startIndex:endIndex], nil
+	return r.data[startIndex : startIndex+2], nil
 }
 
-func (r Registers) doubleRegister(address uint16) ([]byte, error) {
+func (r Registers) doubleRegister(address uint16, byteOrder ByteOrder) ([]byte, error) {
 	if address < r.startAddress {
 		return nil, errors.New("address under startAddress bounds")
 	}
@@ -95,11 +109,20 @@ func (r Registers) doubleRegister(address uint16) ([]byte, error) {
 		return nil, errors.New("address over startAddress+quantity bounds")
 	}
 	startIndex := (address - r.startAddress) * 2
-	endIndex := startIndex + 4
-	return r.data[startIndex:endIndex], nil
+	if byteOrder&LowWordFirst != 0 {
+		// reverse words/registers order (low word first)
+		return []byte{
+			r.data[startIndex+2],
+			r.data[startIndex+3],
+
+			r.data[startIndex],
+			r.data[startIndex+1],
+		}, nil
+	}
+	return r.data[startIndex : startIndex+4], nil
 }
 
-func (r Registers) quadRegister(address uint16) ([]byte, error) {
+func (r Registers) quadRegister(address uint16, byteOrder ByteOrder) ([]byte, error) {
 	if address < r.startAddress {
 		return nil, errors.New("address under startAddress bounds")
 	}
@@ -107,8 +130,23 @@ func (r Registers) quadRegister(address uint16) ([]byte, error) {
 		return nil, errors.New("address over startAddress+quantity bounds")
 	}
 	startIndex := (address - r.startAddress) * 2
-	endIndex := startIndex + 8
-	return r.data[startIndex:endIndex], nil
+	if byteOrder&LowWordFirst != 0 {
+		// reverse words/registers order (low word first)
+		return []byte{
+			r.data[startIndex+6],
+			r.data[startIndex+7],
+
+			r.data[startIndex+4],
+			r.data[startIndex+5],
+
+			r.data[startIndex+2],
+			r.data[startIndex+3],
+
+			r.data[startIndex],
+			r.data[startIndex+1],
+		}, nil
+	}
+	return r.data[startIndex : startIndex+8], nil
 }
 
 // Bit checks if N-th bit is set in register. NB: Bits are counted from 0 and right to left.
@@ -164,6 +202,9 @@ func (r Registers) Uint16(address uint16) (uint16, error) {
 	if err != nil {
 		return 0, err
 	}
+	if r.defaultByteOrder&LittleEndian != 0 {
+		return binary.LittleEndian.Uint16(b), nil
+	}
 	return binary.BigEndian.Uint16(b), nil
 }
 
@@ -173,62 +214,183 @@ func (r Registers) Int16(address uint16) (int16, error) {
 	if err != nil {
 		return 0, err
 	}
+	if r.defaultByteOrder&LittleEndian != 0 {
+		return int16(binary.LittleEndian.Uint16(b)), nil
+	}
 	return int16(binary.BigEndian.Uint16(b)), nil
 }
 
 // Uint32 returns register data as uint32 from given address. NB: Uint32 size is 2 registers (32bits, 4 bytes).
 func (r Registers) Uint32(address uint16) (uint32, error) {
-	b, err := r.doubleRegister(address)
+	b, err := r.doubleRegister(address, r.defaultByteOrder)
 	if err != nil {
 		return 0, err
+	}
+	if r.defaultByteOrder&LittleEndian != 0 {
+		return binary.LittleEndian.Uint32(b), nil
+	}
+	return binary.BigEndian.Uint32(b), nil
+}
+
+// Uint32WithByteOrder returns register data as uint32 from given address with given byte order. NB: uint32 size is 2 registers (32bits, 4 bytes).
+func (r Registers) Uint32WithByteOrder(address uint16, byteOrder ByteOrder) (uint32, error) {
+	if byteOrder == useDefaultByteOrder {
+		byteOrder = r.defaultByteOrder
+	}
+	b, err := r.doubleRegister(address, byteOrder)
+	if err != nil {
+		return 0, err
+	}
+	if byteOrder&LittleEndian != 0 {
+		return binary.LittleEndian.Uint32(b), nil
 	}
 	return binary.BigEndian.Uint32(b), nil
 }
 
 // Int32 returns register data as int32 from given address. NB: Int32 size is 2 registers (32bits, 4 bytes).
 func (r Registers) Int32(address uint16) (int32, error) {
-	b, err := r.doubleRegister(address)
+	b, err := r.doubleRegister(address, r.defaultByteOrder)
 	if err != nil {
 		return 0, err
+	}
+	if r.defaultByteOrder&LittleEndian != 0 {
+		return int32(binary.LittleEndian.Uint32(b)), nil
+	}
+	return int32(binary.BigEndian.Uint32(b)), nil
+}
+
+// Int32WithByteOrder returns register data as int32 from given address with given byte order. NB: int32 size is 2 registers (32bits, 4 bytes).
+func (r Registers) Int32WithByteOrder(address uint16, byteOrder ByteOrder) (int32, error) {
+	if byteOrder == useDefaultByteOrder {
+		byteOrder = r.defaultByteOrder
+	}
+	b, err := r.doubleRegister(address, byteOrder)
+	if err != nil {
+		return 0, err
+	}
+	if byteOrder&LittleEndian != 0 {
+		return int32(binary.LittleEndian.Uint32(b)), nil
 	}
 	return int32(binary.BigEndian.Uint32(b)), nil
 }
 
 // Uint64 returns register data as uint64 from given address. NB: Uint64 size is 4 registers (64bits, 8 bytes).
 func (r Registers) Uint64(address uint16) (uint64, error) {
-	b, err := r.quadRegister(address)
+	b, err := r.quadRegister(address, r.defaultByteOrder)
 	if err != nil {
 		return 0, err
+	}
+	if r.defaultByteOrder&LittleEndian != 0 {
+		return binary.LittleEndian.Uint64(b), nil
+	}
+	return binary.BigEndian.Uint64(b), nil
+}
+
+// Uint64WithByteOrder returns register data as uint64 from given address with given byte order. NB: uint64 size is 4 registers (64bits, 8 bytes).
+func (r Registers) Uint64WithByteOrder(address uint16, byteOrder ByteOrder) (uint64, error) {
+	if byteOrder == useDefaultByteOrder {
+		byteOrder = r.defaultByteOrder
+	}
+	b, err := r.quadRegister(address, byteOrder)
+	if err != nil {
+		return 0, err
+	}
+	if byteOrder&LittleEndian != 0 {
+		return binary.LittleEndian.Uint64(b), nil
 	}
 	return binary.BigEndian.Uint64(b), nil
 }
 
 // Int64 returns register data as int64 from given address. NB: Int64 size is 4 registers (64bits, 8 bytes).
 func (r Registers) Int64(address uint16) (int64, error) {
-	b, err := r.quadRegister(address)
+	b, err := r.quadRegister(address, r.defaultByteOrder)
 	if err != nil {
 		return 0, err
+	}
+	if r.defaultByteOrder&LittleEndian != 0 {
+		return int64(binary.LittleEndian.Uint64(b)), nil
+	}
+	return int64(binary.BigEndian.Uint64(b)), nil
+}
+
+// Int64WithByteOrder returns register data as int64 from given address with given byte order. NB: int64 size is 4 registers (64bits, 8 bytes).
+func (r Registers) Int64WithByteOrder(address uint16, byteOrder ByteOrder) (int64, error) {
+	if byteOrder == useDefaultByteOrder {
+		byteOrder = r.defaultByteOrder
+	}
+	b, err := r.quadRegister(address, byteOrder)
+	if err != nil {
+		return 0, err
+	}
+	if byteOrder&LittleEndian != 0 {
+		return int64(binary.LittleEndian.Uint64(b)), nil
 	}
 	return int64(binary.BigEndian.Uint64(b)), nil
 }
 
 // Float32 returns register data as float32 from given address. NB: Float32 size is 2 registers (32bits, 4 bytes).
 func (r Registers) Float32(address uint16) (float32, error) {
-	b, err := r.doubleRegister(address)
+	b, err := r.doubleRegister(address, r.defaultByteOrder)
 	if err != nil {
 		return 0, err
 	}
-	u := binary.BigEndian.Uint32(b)
+	var u uint32
+	if r.defaultByteOrder&LittleEndian != 0 {
+		u = binary.LittleEndian.Uint32(b)
+	} else {
+		u = binary.BigEndian.Uint32(b)
+	}
+	return math.Float32frombits(u), nil
+}
+
+// Float32WithByteOrder returns register data as float32 from given address with given byte order. NB: float32 size is 2 registers (32bits, 4 bytes).
+func (r Registers) Float32WithByteOrder(address uint16, byteOrder ByteOrder) (float32, error) {
+	if byteOrder == useDefaultByteOrder {
+		byteOrder = r.defaultByteOrder
+	}
+	b, err := r.doubleRegister(address, byteOrder)
+	if err != nil {
+		return 0, err
+	}
+	var u uint32
+	if byteOrder&LittleEndian != 0 {
+		u = binary.LittleEndian.Uint32(b)
+	} else {
+		u = binary.BigEndian.Uint32(b)
+	}
 	return math.Float32frombits(u), nil
 }
 
 // Float64 returns register data as float64 from given address. NB: Float64 size is 4 registers (64bits, 8 bytes).
 func (r Registers) Float64(address uint16) (float64, error) {
-	b, err := r.quadRegister(address)
+	b, err := r.quadRegister(address, r.defaultByteOrder)
 	if err != nil {
 		return 0, err
 	}
-	u := binary.BigEndian.Uint64(b)
+	var u uint64
+	if r.defaultByteOrder&LittleEndian != 0 {
+		u = binary.LittleEndian.Uint64(b)
+	} else {
+		u = binary.BigEndian.Uint64(b)
+	}
+	return math.Float64frombits(u), nil
+}
+
+// Float64WithByteOrder returns register data as float64 from given address with given byte order. NB: Float64 size is 4 registers (64bits, 8 bytes).
+func (r Registers) Float64WithByteOrder(address uint16, byteOrder ByteOrder) (float64, error) {
+	if byteOrder == useDefaultByteOrder {
+		byteOrder = r.defaultByteOrder
+	}
+	b, err := r.quadRegister(address, byteOrder)
+	if err != nil {
+		return 0, err
+	}
+	var u uint64
+	if byteOrder&LittleEndian != 0 {
+		u = binary.LittleEndian.Uint64(b)
+	} else {
+		u = binary.BigEndian.Uint64(b)
+	}
 	return math.Float64frombits(u), nil
 }
 
@@ -252,12 +414,15 @@ func (r Registers) String(address uint16, length uint16) (string, error) {
 	// TODO: clean these loops up to single for loop
 
 	rawBytes := r.data[startIndex:endIndex]
-	for i := 1; i < len(rawBytes); i++ {
-		// data is in BIG ENDIAN format in register (register is 2 bytes). so every to 2 bytes needs to be switched
-		if i%2 != 0 {
-			previous := rawBytes[i-1]
-			rawBytes[i-1] = rawBytes[i]
-			rawBytes[i] = previous
+	if r.defaultByteOrder&BigEndian != 0 {
+		for i := 1; i < len(rawBytes); i++ {
+			// data is in BIG ENDIAN format in register (register is 2 bytes). so every 2 bytes needs to have their bytes swapped
+			// to get little endian order
+			if i%2 != 0 {
+				previous := rawBytes[i-1]
+				rawBytes[i-1] = rawBytes[i]
+				rawBytes[i] = previous
+			}
 		}
 	}
 

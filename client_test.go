@@ -106,6 +106,36 @@ func exampleFC1Response() packet.Response {
 	}
 }
 
+type mockLogger struct {
+	mock.Mock
+}
+
+func (l *mockLogger) BeforeWrite(toWrite []byte) {
+	l.Called(toWrite)
+}
+
+func (l *mockLogger) AfterEachRead(received []byte, n int, err error) {
+	l.Called(received, n, err)
+}
+
+func (l *mockLogger) BeforeParse(received []byte) {
+	l.Called(received)
+}
+
+func TestWithOptions(t *testing.T) {
+	client := NewClient(
+		WithProtocolErrorFunc(packet.AsRTUErrorPacket),
+		WithParseResponseFunc(packet.ParseRTUResponse),
+		WithTimeouts(99*time.Second, 98*time.Second),
+		WithLogger(new(mockLogger)),
+	)
+	assert.NotNil(t, client.asProtocolErrorFunc)
+	assert.NotNil(t, client.parseResponseFunc)
+	assert.Equal(t, 99*time.Second, client.writeTimeout)
+	assert.Equal(t, 98*time.Second, client.readTimeout)
+	assert.Equal(t, new(mockLogger), client.logger)
+}
+
 func TestClient_Do_receivePacketWith1Read(t *testing.T) {
 	exampleNow := time.Unix(1615662935, 0).In(time.UTC) // 2021-03-13T19:15:35+00:00
 
@@ -123,7 +153,12 @@ func TestClient_Do_receivePacketWith1Read(t *testing.T) {
 			copy(b, []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1, 0x2, 0x0, 0x1})
 		}).Once()
 
-	client := NewTCPClient()
+	logger := new(mockLogger)
+	logger.On("BeforeWrite", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x6, 0x1, 0x1, 0x0, 0xc8, 0x0, 0x9}).Once()
+	logger.On("AfterEachRead", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1, 0x2, 0x0, 0x1}, 11, nil).Once()
+	logger.On("BeforeParse", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1, 0x2, 0x0, 0x1}).Once()
+
+	client := NewTCPClient(WithLogger(logger))
 	client.conn = conn
 	client.timeNow = func() time.Time {
 		return exampleNow
@@ -135,6 +170,7 @@ func TestClient_Do_receivePacketWith1Read(t *testing.T) {
 	assert.NoError(t, err)
 
 	conn.AssertExpectations(t)
+	logger.AssertExpectations(t)
 }
 
 func TestClientRTU_Do_receivePacketWith1Read(t *testing.T) {

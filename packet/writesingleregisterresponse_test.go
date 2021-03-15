@@ -250,9 +250,10 @@ func TestWriteSingleRegisterResponse_AsRegisters(t *testing.T) {
 			given:                   func(r *WriteSingleRegisterResponse) {},
 			whenRequestStartAddress: 1,
 			expect: &Registers{
-				startAddress: 1,
-				endAddress:   2,
-				data:         []byte{0x1, 0x2},
+				defaultByteOrder: BigEndianHighWordFirst,
+				startAddress:     1,
+				endAddress:       2,
+				data:             []byte{0x1, 0x2},
 			},
 		},
 	}

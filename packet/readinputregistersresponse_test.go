@@ -250,9 +250,10 @@ func TestReadInputRegistersResponse_AsRegisters(t *testing.T) {
 			given:                   func(r *ReadInputRegistersResponse) {},
 			whenRequestStartAddress: 1,
 			expect: &Registers{
-				startAddress: 1,
-				endAddress:   2,
-				data:         []byte{0x0, 0x1},
+				defaultByteOrder: BigEndianHighWordFirst,
+				startAddress:     1,
+				endAddress:       2,
+				data:             []byte{0x0, 0x1},
 			},
 		},
 	}

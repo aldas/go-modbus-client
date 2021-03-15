@@ -18,9 +18,10 @@ func TestRegisters_NewRegisters(t *testing.T) {
 			whenData:         []byte{0x1, 0x2},
 			whenStartAddress: 1,
 			expect: &Registers{
-				startAddress: 1,
-				endAddress:   2,
-				data:         []byte{0x1, 0x2},
+				defaultByteOrder: BigEndianHighWordFirst,
+				startAddress:     1,
+				endAddress:       2,
+				data:             []byte{0x1, 0x2},
 			},
 		},
 		{
@@ -51,6 +52,18 @@ func TestRegisters_NewRegisters(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRegisters_WithByteOrder(t *testing.T) {
+	r, err := NewRegisters([]byte{0x0, 0x0, 0x0, 0x1}, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, BigEndianHighWordFirst, r.defaultByteOrder)
+
+	r = r.WithByteOrder(BigEndian)
+	assert.Equal(t, BigEndian, r.defaultByteOrder)
+
+	r.WithByteOrder(LittleEndian)
+	assert.Equal(t, LittleEndian, r.defaultByteOrder)
 }
 
 func TestRegisters_Bit(t *testing.T) {
@@ -264,16 +277,23 @@ func TestRegisters_Int8(t *testing.T) {
 
 func TestRegisters_Uint16(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		given       *Registers
-		whenAddress uint16
-		expect      uint16
-		expectError string
+		name                 string
+		given                *Registers
+		whenAddress          uint16
+		whenDefaultByteOrder ByteOrder
+		expect               uint16
+		expectError          string
 	}{
 		{
 			name:        "ok, second register",
 			whenAddress: 2,
-			expect:      32767,
+			expect:      32767, // 0x7fff
+		},
+		{
+			name:                 "ok, second register as LE",
+			whenAddress:          2,
+			whenDefaultByteOrder: LittleEndian,
+			expect:               0xff7f,
 		},
 		{
 			name:        "ok, first register",
@@ -302,12 +322,16 @@ func TestRegisters_Uint16(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
-				startAddress: 1,
-				endAddress:   4,
-				data:         []byte{0xff, 0xff, 0x7f, 0xff, 0x0, 0x1},
+				defaultByteOrder: BigEndianHighWordFirst,
+				startAddress:     1,
+				endAddress:       4,
+				data:             []byte{0xff, 0xff, 0x7f, 0xff, 0x0, 0x1},
 			}
 			if tc.given != nil {
 				r = *tc.given
+			}
+			if tc.whenDefaultByteOrder != 0 {
+				r.WithByteOrder(tc.whenDefaultByteOrder)
 			}
 
 			result, err := r.Uint16(tc.whenAddress)
@@ -324,16 +348,23 @@ func TestRegisters_Uint16(t *testing.T) {
 
 func TestRegisters_Int16(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		given       *Registers
-		whenAddress uint16
-		expect      int16
-		expectError string
+		name                 string
+		given                *Registers
+		whenAddress          uint16
+		whenDefaultByteOrder ByteOrder
+		expect               int16
+		expectError          string
 	}{
 		{
 			name:        "ok, second register",
 			whenAddress: 2,
-			expect:      32767,
+			expect:      32767, // 0x7fff
+		},
+		{
+			name:                 "ok, second register as LE",
+			whenAddress:          2,
+			whenDefaultByteOrder: LittleEndian,
+			expect:               -129, // 0xff7f
 		},
 		{
 			name:        "ok, first register",
@@ -369,6 +400,9 @@ func TestRegisters_Int16(t *testing.T) {
 			if tc.given != nil {
 				r = *tc.given
 			}
+			if tc.whenDefaultByteOrder != 0 {
+				r.WithByteOrder(tc.whenDefaultByteOrder)
+			}
 
 			result, err := r.Int16(tc.whenAddress)
 
@@ -384,16 +418,23 @@ func TestRegisters_Int16(t *testing.T) {
 
 func TestRegisters_Uint32(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		given       *Registers
-		whenAddress uint16
-		expect      uint32
-		expectError string
+		name                 string
+		given                *Registers
+		whenAddress          uint16
+		whenDefaultByteOrder ByteOrder
+		expect               uint32
+		expectError          string
 	}{
 		{
 			name:        "ok, second register",
 			whenAddress: 2,
-			expect:      2147483647,
+			expect:      2147483647, // 0x7fffffff
+		},
+		{
+			name:                 "ok, second register LE",
+			whenAddress:          2,
+			whenDefaultByteOrder: LittleEndian,
+			expect:               4294967167, // 0xffffff7f
 		},
 		{
 			name:        "ok, first register",
@@ -424,6 +465,9 @@ func TestRegisters_Uint32(t *testing.T) {
 			if tc.given != nil {
 				r = *tc.given
 			}
+			if tc.whenDefaultByteOrder != 0 {
+				r.WithByteOrder(tc.whenDefaultByteOrder)
+			}
 
 			result, err := r.Uint32(tc.whenAddress)
 
@@ -437,18 +481,127 @@ func TestRegisters_Uint32(t *testing.T) {
 	}
 }
 
+func TestRegisters_Uint32WithByteOrder(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		givenBytes    []byte
+		whenAddress   uint16
+		whenByteOrder ByteOrder
+		expect        uint32
+		expectError   string
+	}{
+		{
+			name:          "ok, BE = 1",
+			givenBytes:    []byte{0x0, 0x0, 0x0, 0x1},
+			whenByteOrder: BigEndian,
+			expect:        1,
+		},
+		{
+			name:          "ok, LE = 1",
+			givenBytes:    []byte{0x1, 0x0, 0x0, 0x0},
+			whenByteOrder: LittleEndian,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE high word",
+			givenBytes:    []byte{0x7f, 0xff, 0xff, 0xff},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        2147483647,
+		},
+		{
+			name:          "ok, BE low word",
+			givenBytes:    []byte{0x7f, 0xff, 0xff, 0xff},
+			whenByteOrder: BigEndianLowWordFirst,
+			expect:        0xffff7fff,
+		},
+		{
+			name:          "ok, BE low word = 1",
+			givenBytes:    []byte{0x0, 0x1, 0x0, 0x0},
+			whenByteOrder: BigEndianLowWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE high word = 1",
+			givenBytes:    []byte{0x0, 0x0, 0x0, 0x1},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE low word = -2147483648",
+			givenBytes:    []byte{0x0, 0x0, 0x80, 0x0},
+			whenByteOrder: BigEndianLowWordFirst,
+			expect:        2147483648,
+		},
+		{
+			name:          "ok, BE high word = -2147483648",
+			givenBytes:    []byte{0x80, 0x0, 0x0, 0x0},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        2147483648,
+		},
+		{
+			name:          "ok, useDefaultByteOrder = BE high word = -2147483648",
+			givenBytes:    []byte{0x80, 0x0, 0x0, 0x0},
+			whenByteOrder: useDefaultByteOrder,
+			expect:        2147483648,
+		},
+		{
+			name:          "ok, LE low word = 1",
+			givenBytes:    []byte{0x0, 0x0, 0x1, 0x0},
+			whenByteOrder: LittleEndianLowWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, LE high word = 1",
+			givenBytes:    []byte{0x1, 0x0, 0x0, 0x0},
+			whenByteOrder: LittleEndianHighWordFirst,
+			expect:        1,
+		},
+		{
+			name:        "nok, address over end",
+			whenAddress: 2,
+			expect:      0,
+			expectError: "address over startAddress+quantity bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := Registers{
+				startAddress: 0,
+				endAddress:   2,
+				data:         tc.givenBytes,
+			}
+			result, err := r.Uint32WithByteOrder(tc.whenAddress, tc.whenByteOrder)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestRegisters_Int32(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		given       *Registers
-		whenAddress uint16
-		expect      int32
-		expectError string
+		name                 string
+		given                *Registers
+		whenAddress          uint16
+		whenDefaultByteOrder ByteOrder
+		expect               int32
+		expectError          string
 	}{
 		{
 			name:        "ok, second register",
 			whenAddress: 2,
-			expect:      2147483647,
+			expect:      2147483647, // 0x7fffffff
+		},
+		{
+			name:                 "ok, second register LE",
+			whenAddress:          2,
+			whenDefaultByteOrder: LittleEndian,
+			expect:               -129, // 0xffffff7f
 		},
 		{
 			name:        "ok, first register",
@@ -479,6 +632,9 @@ func TestRegisters_Int32(t *testing.T) {
 			if tc.given != nil {
 				r = *tc.given
 			}
+			if tc.whenDefaultByteOrder != 0 {
+				r.WithByteOrder(tc.whenDefaultByteOrder)
+			}
 
 			result, err := r.Int32(tc.whenAddress)
 
@@ -492,18 +648,127 @@ func TestRegisters_Int32(t *testing.T) {
 	}
 }
 
-func TestRegisters_Uint64(t *testing.T) {
+func TestRegisters_Int32WithByteOrder(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		given       *Registers
-		whenAddress uint16
-		expect      uint64
-		expectError string
+		name          string
+		givenBytes    []byte
+		whenAddress   uint16
+		whenByteOrder ByteOrder
+		expect        int32
+		expectError   string
 	}{
 		{
-			name:        "ok, second register",
+			name:          "ok, BE = 1",
+			givenBytes:    []byte{0x0, 0x0, 0x0, 0x1},
+			whenByteOrder: BigEndian,
+			expect:        1,
+		},
+		{
+			name:          "ok, LE = 1",
+			givenBytes:    []byte{0x1, 0x0, 0x0, 0x0},
+			whenByteOrder: LittleEndian,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE high word",
+			givenBytes:    []byte{0x7f, 0xff, 0xff, 0xff},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        2147483647,
+		},
+		{
+			name:          "ok, BE low word",
+			givenBytes:    []byte{0x7f, 0xff, 0xff, 0xff},
+			whenByteOrder: BigEndianLowWordFirst,
+			expect:        -32769,
+		},
+		{
+			name:          "ok, BE low word = 1",
+			givenBytes:    []byte{0x0, 0x1, 0x0, 0x0},
+			whenByteOrder: BigEndianLowWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE high word = 1",
+			givenBytes:    []byte{0x0, 0x0, 0x0, 0x1},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE low word = -2147483648",
+			givenBytes:    []byte{0x0, 0x0, 0x80, 0x0},
+			whenByteOrder: BigEndianLowWordFirst,
+			expect:        -2147483648,
+		},
+		{
+			name:          "ok, BE high word = -2147483648",
+			givenBytes:    []byte{0x80, 0x0, 0x0, 0x0},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        -2147483648,
+		},
+		{
+			name:          "ok, useDefaultByteOrder = BE high word = -2147483648",
+			givenBytes:    []byte{0x80, 0x0, 0x0, 0x0},
+			whenByteOrder: useDefaultByteOrder,
+			expect:        -2147483648,
+		},
+		{
+			name:          "ok, LE low word = 1",
+			givenBytes:    []byte{0x0, 0x0, 0x1, 0x0},
+			whenByteOrder: LittleEndianLowWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, LE high word = 1",
+			givenBytes:    []byte{0x1, 0x0, 0x0, 0x0},
+			whenByteOrder: LittleEndianHighWordFirst,
+			expect:        1,
+		},
+		{
+			name:        "nok, address over end",
+			whenAddress: 2,
+			expect:      0,
+			expectError: "address over startAddress+quantity bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := Registers{
+				startAddress: 0,
+				endAddress:   2,
+				data:         tc.givenBytes,
+			}
+			result, err := r.Int32WithByteOrder(tc.whenAddress, tc.whenByteOrder)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestRegisters_Uint64(t *testing.T) {
+	var testCases = []struct {
+		name                 string
+		given                *Registers
+		whenAddress          uint16
+		whenDefaultByteOrder ByteOrder
+		expect               uint64
+		expectError          string
+	}{
+		{
+			name:        "ok, first register",
 			whenAddress: 1,
 			expect:      1,
+		},
+		{
+			name:                 "ok, first register LE",
+			whenAddress:          1,
+			whenDefaultByteOrder: LittleEndian,
+			expect:               0x100000000000000,
 		},
 		{
 			name:        "ok, offset register",
@@ -540,6 +805,9 @@ func TestRegisters_Uint64(t *testing.T) {
 			if tc.given != nil {
 				r = *tc.given
 			}
+			if tc.whenDefaultByteOrder != 0 {
+				r.WithByteOrder(tc.whenDefaultByteOrder)
+			}
 
 			result, err := r.Uint64(tc.whenAddress)
 
@@ -553,18 +821,116 @@ func TestRegisters_Uint64(t *testing.T) {
 	}
 }
 
-func TestRegisters_Int64(t *testing.T) {
+func TestRegisters_Uint64WithByteOrder(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		given       *Registers
-		whenAddress uint16
-		expect      int64
-		expectError string
+		name          string
+		givenBytes    []byte
+		whenAddress   uint16
+		whenByteOrder ByteOrder
+		expect        uint64
+		expectError   string
 	}{
 		{
-			name:        "ok, second register",
+			name:          "ok, useDefaultByteOrder = BE = BE high word = 1",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+			whenByteOrder: useDefaultByteOrder,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE = BE high word = 1",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+			whenByteOrder: BigEndian,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE high word = 1",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE low word = 1",
+			givenBytes:    []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			whenByteOrder: BigEndianLowWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, LE = LE high word = 1",
+			givenBytes:    []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			whenByteOrder: LittleEndian,
+			expect:        1,
+		},
+		{
+			name:          "ok, LE high word = 1",
+			givenBytes:    []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			whenByteOrder: LittleEndianHighWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, LE low word = 1",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00},
+			whenByteOrder: LittleEndianLowWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE high word 2147483647",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        2147483647,
+		},
+		{
+			name:          "ok, BE high word 72623859790382856",
+			givenBytes:    []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        72623859790382856,
+		},
+		{
+			name:        "nok, address over end",
+			whenAddress: 10,
+			expect:      0,
+			expectError: "address over startAddress+quantity bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := Registers{
+				defaultByteOrder: BigEndianHighWordFirst,
+				startAddress:     0,
+				endAddress:       9,
+				data:             tc.givenBytes,
+			}
+			result, err := r.Uint64WithByteOrder(tc.whenAddress, tc.whenByteOrder)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestRegisters_Int64(t *testing.T) {
+	var testCases = []struct {
+		name                 string
+		given                *Registers
+		whenAddress          uint16
+		whenDefaultByteOrder ByteOrder
+		expect               int64
+		expectError          string
+	}{
+		{
+			name:        "ok, first register",
 			whenAddress: 1,
 			expect:      1,
+		},
+		{
+			name:                 "ok, first register LE",
+			whenAddress:          1,
+			whenDefaultByteOrder: LittleEndian,
+			expect:               72057594037927936, // 0x100000000000000
 		},
 		{
 			name:        "ok, offset register",
@@ -601,6 +967,9 @@ func TestRegisters_Int64(t *testing.T) {
 			if tc.given != nil {
 				r = *tc.given
 			}
+			if tc.whenDefaultByteOrder != 0 {
+				r.WithByteOrder(tc.whenDefaultByteOrder)
+			}
 
 			result, err := r.Int64(tc.whenAddress)
 
@@ -614,18 +983,129 @@ func TestRegisters_Int64(t *testing.T) {
 	}
 }
 
+func TestRegisters_Int64WithByteOrder(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		givenBytes    []byte
+		whenAddress   uint16
+		whenByteOrder ByteOrder
+		expect        int64
+		expectError   string
+	}{
+		{
+			name:          "ok, useDefaultByteOrder = BE = BE high word = 1",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+			whenByteOrder: useDefaultByteOrder,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE = BE high word = 1",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+			whenByteOrder: BigEndian,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE = BE high word = -9223372036854775808",
+			givenBytes:    []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			whenByteOrder: BigEndian,
+			expect:        -9223372036854775808,
+		},
+		{
+			name:          "ok, BE high word = 1",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE low word = 1",
+			givenBytes:    []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			whenByteOrder: BigEndianLowWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, LE = LE high word = 1",
+			givenBytes:    []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			whenByteOrder: LittleEndian,
+			expect:        1,
+		},
+		{
+			name:          "ok, LE = LE high word = -9223372036854775808",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80},
+			whenByteOrder: LittleEndian,
+			expect:        -9223372036854775808,
+		},
+		{
+			name:          "ok, LE high word = 1",
+			givenBytes:    []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			whenByteOrder: LittleEndianHighWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, LE low word = 1",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00},
+			whenByteOrder: LittleEndianLowWordFirst,
+			expect:        1,
+		},
+		{
+			name:          "ok, BE high word 2147483647",
+			givenBytes:    []byte{0x00, 0x00, 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        2147483647,
+		},
+		{
+			name:          "ok, BE high word 72623859790382856",
+			givenBytes:    []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        72623859790382856,
+		},
+		{
+			name:        "nok, address over end",
+			whenAddress: 10,
+			expect:      0,
+			expectError: "address over startAddress+quantity bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := Registers{
+				defaultByteOrder: BigEndianHighWordFirst,
+				startAddress:     0,
+				endAddress:       9,
+				data:             tc.givenBytes,
+			}
+			result, err := r.Int64WithByteOrder(tc.whenAddress, tc.whenByteOrder)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestRegisters_Float32(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		given       *Registers
-		whenAddress uint16
-		expect      float32
-		expectError string
+		name                 string
+		given                *Registers
+		whenAddress          uint16
+		whenDefaultByteOrder ByteOrder
+		expect               float32
+		expectError          string
 	}{
 		{
 			name:        "ok, second register",
 			whenAddress: 1,
-			expect:      1.85,
+			expect:      1.85, // 0x3f, 0xec, 0xcc, 0xcd
+		},
+		{
+			name:                 "ok, second register LE",
+			given:                &Registers{startAddress: 1, endAddress: 5, data: []byte{0xcd, 0xcc, 0xec, 0x3f}},
+			whenAddress:          1,
+			whenDefaultByteOrder: LittleEndian,
+			expect:               1.85,
 		},
 		{
 			name:        "ok, offset register",
@@ -662,6 +1142,9 @@ func TestRegisters_Float32(t *testing.T) {
 			if tc.given != nil {
 				r = *tc.given
 			}
+			if tc.whenDefaultByteOrder != 0 {
+				r.WithByteOrder(tc.whenDefaultByteOrder)
+			}
 
 			result, err := r.Float32(tc.whenAddress)
 
@@ -675,18 +1158,105 @@ func TestRegisters_Float32(t *testing.T) {
 	}
 }
 
+func TestRegisters_Float32WithByteOrder(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		givenBytes    []byte
+		whenAddress   uint16
+		whenByteOrder ByteOrder
+		expect        float32
+		expectError   string
+	}{
+		{
+			name:          "ok, useDefaultByteOrder = BE = BE high word = 1.85",
+			givenBytes:    []byte{0x3f, 0xec, 0xcc, 0xcd},
+			whenByteOrder: useDefaultByteOrder,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, BE = BE high word = 1.85",
+			givenBytes:    []byte{0x3f, 0xec, 0xcc, 0xcd},
+			whenByteOrder: BigEndian,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, BE high word = 1.85",
+			givenBytes:    []byte{0x3f, 0xec, 0xcc, 0xcd},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, BE low word = 1.85",
+			givenBytes:    []byte{0xcc, 0xcd, 0x3f, 0xec},
+			whenByteOrder: BigEndianLowWordFirst,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, LE = LE high word = 1.85",
+			givenBytes:    []byte{0xcd, 0xcc, 0xec, 0x3f},
+			whenByteOrder: LittleEndian,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, LE high word = 1.85",
+			givenBytes:    []byte{0xcd, 0xcc, 0xec, 0x3f},
+			whenByteOrder: LittleEndianHighWordFirst,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, LE low word = 1.85",
+			givenBytes:    []byte{0xec, 0x3f, 0xcd, 0xcc},
+			whenByteOrder: LittleEndianLowWordFirst,
+			expect:        1.85,
+		},
+		{
+			name:        "nok, address over end",
+			whenAddress: 5,
+			expect:      0,
+			expectError: "address over startAddress+quantity bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := Registers{
+				defaultByteOrder: BigEndianHighWordFirst,
+				startAddress:     0,
+				endAddress:       5,
+				data:             tc.givenBytes,
+			}
+			result, err := r.Float32WithByteOrder(tc.whenAddress, tc.whenByteOrder)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestRegisters_Float64(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		given       *Registers
-		whenAddress uint16
-		expect      float64
-		expectError string
+		name                 string
+		given                *Registers
+		whenAddress          uint16
+		whenDefaultByteOrder ByteOrder
+		expect               float64
+		expectError          string
 	}{
 		{
 			name:        "ok, second register",
 			whenAddress: 1,
 			expect:      1.85, // 0x3f, 0xfd, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9a
+		},
+		{
+			name:                 "ok, second register LE",
+			whenAddress:          1,
+			given:                &Registers{startAddress: 1, endAddress: 5, data: []byte{0x9a, 0x99, 0x99, 0x99, 0x99, 0x99, 0xfd, 0x3f}},
+			whenDefaultByteOrder: LittleEndian,
+			expect:               1.85,
 		},
 		{
 			name:        "ok, offset register",
@@ -723,6 +1293,9 @@ func TestRegisters_Float64(t *testing.T) {
 			if tc.given != nil {
 				r = *tc.given
 			}
+			if tc.whenDefaultByteOrder != 0 {
+				r.WithByteOrder(tc.whenDefaultByteOrder)
+			}
 
 			result, err := r.Float64(tc.whenAddress)
 
@@ -736,14 +1309,94 @@ func TestRegisters_Float64(t *testing.T) {
 	}
 }
 
+func TestRegisters_Float64WithByteOrder(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		givenBytes    []byte
+		whenAddress   uint16
+		whenByteOrder ByteOrder
+		expect        float64
+		expectError   string
+	}{
+		{
+			name:          "ok, useDefaultByteOrder = BE = BE high word = 1.85",
+			givenBytes:    []byte{0x3f, 0xfd, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9a},
+			whenByteOrder: useDefaultByteOrder,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, BE = BE high word = 1.85",
+			givenBytes:    []byte{0x3f, 0xfd, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9a},
+			whenByteOrder: BigEndian,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, BE high word = 1.85",
+			givenBytes:    []byte{0x3f, 0xfd, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9a},
+			whenByteOrder: BigEndianHighWordFirst,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, BE low word = 1.85",
+			givenBytes:    []byte{0x99, 0x9a, 0x99, 0x99, 0x99, 0x99, 0x3f, 0xfd},
+			whenByteOrder: BigEndianLowWordFirst,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, LE = LE high word = 1.85",
+			givenBytes:    []byte{0x9a, 0x99, 0x99, 0x99, 0x99, 0x99, 0xfd, 0x3f},
+			whenByteOrder: LittleEndian,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, LE high word = 1.85",
+			givenBytes:    []byte{0x9a, 0x99, 0x99, 0x99, 0x99, 0x99, 0xfd, 0x3f},
+			whenByteOrder: LittleEndianHighWordFirst,
+			expect:        1.85,
+		},
+		{
+			name:          "ok, LE low word = 1.85",
+			givenBytes:    []byte{0xfd, 0x3f, 0x99, 0x99, 0x99, 0x99, 0x9a, 0x99},
+			whenByteOrder: LittleEndianLowWordFirst,
+			expect:        1.85,
+		},
+		{
+			name:        "nok, address over end",
+			whenAddress: 10,
+			expect:      0,
+			expectError: "address over startAddress+quantity bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := Registers{
+				defaultByteOrder: BigEndianHighWordFirst,
+				startAddress:     0,
+				endAddress:       9,
+				data:             tc.givenBytes,
+			}
+			result, err := r.Float64WithByteOrder(tc.whenAddress, tc.whenByteOrder)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestRegisters_string(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		given       Registers
-		address     uint16
-		length      uint16
-		expected    string
-		expectedErr string
+		name                 string
+		given                Registers
+		whenDefaultByteOrder ByteOrder
+		address              uint16
+		length               uint16
+		expected             string
+		expectedErr          string
 	}{
 		{
 			name:     "BigEndian: string, string is in the middle of data",
@@ -758,6 +1411,14 @@ func TestRegisters_string(t *testing.T) {
 			address:  1,
 			length:   3, // 3 bytes = 2 registers
 			expected: "SVC",
+		},
+		{
+			name:                 "LittleEndian: string, string is in the end of data, odd length",
+			given:                Registers{data: []byte{0x0, 0x0, 0x53, 0x56, 0x43, 0x83}},
+			whenDefaultByteOrder: LittleEndian,
+			address:              1,
+			length:               3, // 3 bytes = 2 registers
+			expected:             "SVC",
 		},
 		{
 			name:     "BigEndian: string, string is in the end of data",
@@ -786,7 +1447,13 @@ func TestRegisters_string(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := tc.given.String(tc.address, tc.length)
+			r := tc.given
+			r.defaultByteOrder = BigEndianHighWordFirst
+			if tc.whenDefaultByteOrder != 0 {
+				r.WithByteOrder(tc.whenDefaultByteOrder)
+			}
+
+			result, err := r.String(tc.address, tc.length)
 
 			if err != nil || tc.expectedErr != "" {
 				assert.EqualError(t, err, tc.expectedErr)

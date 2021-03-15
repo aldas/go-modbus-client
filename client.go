@@ -280,8 +280,3 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 	copy(result, received[:total])
 	return result, nil
 }
-
-func (c *Client) flush() error {
-	// fixme: implement and use when returning error from .do()
-	return nil
-}
