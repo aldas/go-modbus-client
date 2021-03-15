@@ -115,6 +115,39 @@ func TestParseTCPResponse(t *testing.T) {
 			},
 		},
 		{
+			name:     "ok, WriteMultipleCoilsResponseTCP (fc15)",
+			whenData: []byte{0x81, 0x80, 0x0, 0x0, 0x0, 0x6, 0x3, 0xf, 0x0, 0x2, 0x0, 0x1},
+			expect: &WriteMultipleCoilsResponseTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 33152,
+					ProtocolID:    0,
+					Length:        6,
+				},
+				WriteMultipleCoilsResponse: WriteMultipleCoilsResponse{
+					UnitID:       3,
+					StartAddress: 2,
+					CoilCount:    1,
+				},
+			},
+		},
+		{
+			name:     "ok, WriteMultipleRegistersResponseTCP (fc16)",
+			whenData: []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x6, 0x1, 0x10, 0x0, 0x2, 0x0, 0x1},
+			expect: &WriteMultipleRegistersResponseTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 0x1234,
+					ProtocolID:    0,
+					Length:        6,
+				},
+				WriteMultipleRegistersResponse: WriteMultipleRegistersResponse{
+					UnitID: 1,
+					// +1 function code
+					StartAddress:  2,
+					RegisterCount: 1,
+				},
+			},
+		},
+		{
 			name:        "ok, ErrorResponseTCP (code=3)",
 			whenData:    []byte{0x4, 0xdd, 0x0, 0x0, 0x0, 0x3, 0x1, 0x82, 0x3},
 			expect:      nil,
@@ -218,6 +251,29 @@ func TestParseRTUResponse(t *testing.T) {
 					UnitID:  1,
 					Address: 2,
 					Data:    [2]byte{0x1, 0x2},
+				},
+			},
+		},
+		{
+			name:     "ok, WriteMultipleCoilsResponseRTU (fc15)",
+			whenData: []byte{0x1, 0xf, 0x0, 0x2, 0x0, 0x1, 0xc7, 0x56},
+			expect: &WriteMultipleCoilsResponseRTU{
+				WriteMultipleCoilsResponse: WriteMultipleCoilsResponse{
+					UnitID:       1,
+					StartAddress: 2,
+					CoilCount:    1,
+				},
+			},
+		},
+		{
+			name:     "ok, WriteMultipleRegistersResponseRTU (fc16)",
+			whenData: []byte{0x1, 0x10, 0x0, 0x2, 0x0, 0x1, 0x6, 0xb8},
+			expect: &WriteMultipleRegistersResponseRTU{
+				WriteMultipleRegistersResponse: WriteMultipleRegistersResponse{
+					UnitID: 1,
+					// +1 function code
+					StartAddress:  2,
+					RegisterCount: 1,
 				},
 			},
 		},

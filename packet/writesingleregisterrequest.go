@@ -36,10 +36,12 @@ type WriteSingleRegisterRequestRTU struct {
 type WriteSingleRegisterRequest struct {
 	UnitID  uint8
 	Address uint16
-	Data    [2]byte
+	// Data must be in BigEndian byte order for server to interpret them correctly. We send them as is.
+	Data [2]byte
 }
 
 // NewWriteSingleRegisterRequestTCP creates new instance of Write Single Register TCP request
+// NB: byte slice for `data` must be in BigEndian byte order for server to interpret them correctly
 func NewWriteSingleRegisterRequestTCP(unitID uint8, address uint16, data []byte) (*WriteSingleRegisterRequestTCP, error) {
 	w := &WriteSingleRegisterRequestTCP{
 		MBAPHeader: MBAPHeader{
@@ -72,6 +74,7 @@ func (r WriteSingleRegisterRequestTCP) ExpectedResponseLength() int {
 }
 
 // NewWriteSingleRegisterRequestRTU creates new instance of Write Single Register RTU request
+// NB: byte slice for `data` must be in BigEndian byte order for server to interpret them correctly
 func NewWriteSingleRegisterRequestRTU(unitID uint8, address uint16, data []byte) (*WriteSingleRegisterRequestRTU, error) {
 	w := &WriteSingleRegisterRequestRTU{
 		WriteSingleRegisterRequest: WriteSingleRegisterRequest{

@@ -16,13 +16,15 @@ go install github.com/aldas/go-modbus-client
 * FC4 - Read Input Registers
 * FC5 - Write Single Coil
 * FC6 - Write Single Register
+* FC15 - Write Multiple Coils
+* FC16 - Write Multiple Registers
 
 ## Goals
 
 * Packets separate from Client implementation
 * Client (TCP/RTU) separated from Modbus packets
 * Convenience methods to convert register data to different data types (with endianess/word order)
-* Builders to group fields into request batches
+* Builders to group multiple fields into request batches
 
 ## Examples
 
