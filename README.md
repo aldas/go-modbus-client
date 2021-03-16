@@ -18,6 +18,7 @@ go install github.com/aldas/go-modbus-client
 * FC6 - Write Single Register
 * FC15 - Write Multiple Coils
 * FC16 - Write Multiple Registers
+* FC23 - Read / Write Multiple Registers
 
 ## Goals
 

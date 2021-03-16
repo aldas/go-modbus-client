@@ -40,6 +40,8 @@ func ParseTCPResponse(data []byte) (Response, error) {
 		return ParseWriteMultipleCoilsResponseTCP(data)
 	case FunctionWriteMultipleRegisters: // 0x10
 		return ParseWriteMultipleRegistersResponseTCP(data)
+	case FunctionReadWriteMultipleRegisters: // 0x17
+		return ParseReadWriteMultipleRegistersResponseTCP(data)
 	default:
 		return nil, fmt.Errorf("unknown function code parsed: %v", functionCode)
 	}
@@ -72,6 +74,8 @@ func ParseRTUResponse(data []byte) (Response, error) {
 		return ParseWriteMultipleCoilsResponseRTU(data)
 	case FunctionWriteMultipleRegisters: // 0x10
 		return ParseWriteMultipleRegistersResponseRTU(data)
+	case FunctionReadWriteMultipleRegisters: // 0x17
+		return ParseReadWriteMultipleRegistersResponseRTU(data)
 	default:
 		return nil, fmt.Errorf("unknown function code parsed: %v", functionCode)
 	}

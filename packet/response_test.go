@@ -148,6 +148,22 @@ func TestParseTCPResponse(t *testing.T) {
 			},
 		},
 		{
+			name:     "ok, ReadWriteMultipleRegistersResponseTCP (fc23)",
+			whenData: []byte{0x81, 0x80, 0x00, 0x00, 0x00, 0x05, 0x03, 0x17, 0x02, 0xCD, 0x6B},
+			expect: &ReadWriteMultipleRegistersResponseTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 33152,
+					ProtocolID:    0,
+					Length:        5,
+				},
+				ReadWriteMultipleRegistersResponse: ReadWriteMultipleRegistersResponse{
+					UnitID:          3,
+					RegisterByteLen: 2,
+					Data:            []byte{0xcd, 0x6b},
+				},
+			},
+		},
+		{
 			name:        "ok, ErrorResponseTCP (code=3)",
 			whenData:    []byte{0x4, 0xdd, 0x0, 0x0, 0x0, 0x3, 0x1, 0x82, 0x3},
 			expect:      nil,
@@ -274,6 +290,17 @@ func TestParseRTUResponse(t *testing.T) {
 					// +1 function code
 					StartAddress:  2,
 					RegisterCount: 1,
+				},
+			},
+		},
+		{
+			name:     "ok, ReadWriteMultipleRegistersResponseRTU (fc23)",
+			whenData: []byte{0x10, 0x17, 0x2, 0x1, 0x2, 0xe, 0xd3},
+			expect: &ReadWriteMultipleRegistersResponseRTU{
+				ReadWriteMultipleRegistersResponse: ReadWriteMultipleRegistersResponse{
+					UnitID:          16,
+					RegisterByteLen: 2,
+					Data:            []byte{0x1, 0x2},
 				},
 			},
 		},
