@@ -74,7 +74,7 @@ func ParseWriteSingleCoilResponseTCP(data []byte) (*WriteSingleCoilResponseTCP, 
 		WriteSingleCoilResponse: WriteSingleCoilResponse{
 			UnitID:       data[6],
 			StartAddress: binary.BigEndian.Uint16(data[8:10]),
-			CoilState:    binary.BigEndian.Uint16(data[10:12]) == writeCoilOn, // FIXME: validate?
+			CoilState:    binary.BigEndian.Uint16(data[10:12]) == writeCoilOn,
 		},
 	}, nil
 }
@@ -96,13 +96,12 @@ func ParseWriteSingleCoilResponseRTU(data []byte) (*WriteSingleCoilResponseRTU, 
 	if dLen > 8 {
 		return nil, errors.New("received data length too long to be valid packet")
 	}
-	// FIXME: check CRC
 	return &WriteSingleCoilResponseRTU{
 		WriteSingleCoilResponse: WriteSingleCoilResponse{
 			UnitID: data[0],
 			// data[1] function code
 			StartAddress: binary.BigEndian.Uint16(data[2:4]),
-			CoilState:    binary.BigEndian.Uint16(data[4:6]) == writeCoilOn, // FIXME: validate?
+			CoilState:    binary.BigEndian.Uint16(data[4:6]) == writeCoilOn,
 		},
 	}, nil
 }

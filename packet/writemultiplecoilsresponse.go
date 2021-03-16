@@ -88,7 +88,6 @@ func ParseWriteMultipleCoilsResponseRTU(data []byte) (*WriteMultipleCoilsRespons
 	if dLen > 8 {
 		return nil, errors.New("received data length too long to be valid packet")
 	}
-	// FIXME: check CRC
 	return &WriteMultipleCoilsResponseRTU{
 		WriteMultipleCoilsResponse: WriteMultipleCoilsResponse{
 			UnitID: data[0],

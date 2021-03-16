@@ -92,7 +92,6 @@ func ParseReadDiscreteInputsResponseRTU(data []byte) (*ReadDiscreteInputsRespons
 	if dLen != 3+int(byteLen)+2 {
 		return nil, errors.New("received data length does not match byte len in packet")
 	}
-	// FIXME: check CRC
 	return &ReadDiscreteInputsResponseRTU{
 		ReadDiscreteInputsResponse: ReadDiscreteInputsResponse{
 			UnitID: data[0],

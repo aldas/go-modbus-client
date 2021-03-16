@@ -202,7 +202,7 @@ func TestClientRTU_Do_receivePacketWith1Read(t *testing.T) {
 		Return(7, nil).
 		Run(func(args mock.Arguments) {
 			b := args.Get(0).([]byte)
-			copy(b, []byte{0x10, 0x1, 0x2, 0x1, 0x2, 0xec, 0xd2})
+			copy(b, []byte{0x10, 0x1, 0x2, 0x1, 0x2, 0xae, 0xc5})
 		}).Once()
 
 	client := NewRTUClient()

@@ -178,7 +178,6 @@ func AsRTUErrorPacket(data []byte) error {
 	}
 	errorFunctionCode := data[1] & functionCodeErrorBitmask
 	if errorFunctionCode != 0 {
-		// FIXME: check if CRC is valid
 		return &ErrorResponseRTU{
 			UnitID:   data[0],
 			Function: data[1] - functionCodeErrorBitmask,

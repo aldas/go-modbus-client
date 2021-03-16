@@ -337,3 +337,49 @@ func TestParseRTUResponse(t *testing.T) {
 		})
 	}
 }
+
+func TestParseRTUResponseWithCRC(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenData    []byte
+		expect      Response
+		expectError string
+	}{
+		{
+			name:     "ok, ReadCoilsResponseRTU (fc01)",
+			whenData: []byte{0x10, 0x1, 0x2, 0x1, 0x2, 0xae, 0xc5},
+			expect: &ReadCoilsResponseRTU{
+				ReadCoilsResponse: ReadCoilsResponse{
+					UnitID:          16,
+					CoilsByteLength: 2,
+					Data:            []byte{0x1, 0x2},
+				},
+			},
+		},
+		{
+			name:        "nok, invalid CRC ReadCoilsResponseRTU (fc01)",
+			whenData:    []byte{0x10, 0x1, 0x2, 0x1, 0x2, 0xff, 0xff},
+			expect:      nil,
+			expectError: "packet CRC is invalid",
+		},
+		{
+			name:        "nok, packet too short",
+			whenData:    []byte{0x1, 0x82, 0x3, 0xa1},
+			expect:      nil,
+			expectError: "data is too short to be a Modbus RTU packet",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseRTUResponseWithCRC(tc.whenData)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

@@ -92,7 +92,6 @@ func ParseReadCoilsResponseRTU(data []byte) (*ReadCoilsResponseRTU, error) {
 	if dLen != 3+int(byteLen)+2 {
 		return nil, errors.New("received data length does not match byte len in packet")
 	}
-	// FIXME: check CRC
 	return &ReadCoilsResponseRTU{
 		ReadCoilsResponse: ReadCoilsResponse{
 			UnitID: data[0],

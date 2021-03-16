@@ -92,7 +92,6 @@ func ParseReadHoldingRegistersResponseRTU(data []byte) (*ReadHoldingRegistersRes
 	if dLen != 3+int(byteLen)+2 {
 		return nil, errors.New("received data length does not match byte len in packet")
 	}
-	// FIXME: check CRC
 	return &ReadHoldingRegistersResponseRTU{
 		ReadHoldingRegistersResponse: ReadHoldingRegistersResponse{
 			UnitID: data[0],

@@ -86,8 +86,7 @@ func NewTCPClient(opts ...ClientOptionFunc) *Client {
 func NewRTUClient(opts ...ClientOptionFunc) *Client {
 	client := defaultClient()
 	client.asProtocolErrorFunc = packet.AsRTUErrorPacket
-	client.parseResponseFunc = packet.ParseRTUResponse
-	// TODO: add CRC/noCRC check option
+	client.parseResponseFunc = packet.ParseRTUResponseWithCRC
 
 	if opts != nil {
 		for _, o := range opts {

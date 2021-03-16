@@ -88,7 +88,6 @@ func ParseWriteMultipleRegistersResponseRTU(data []byte) (*WriteMultipleRegister
 	if dLen > 8 {
 		return nil, errors.New("received data length too long to be valid packet")
 	}
-	// FIXME: check CRC
 	return &WriteMultipleRegistersResponseRTU{
 		WriteMultipleRegistersResponse: WriteMultipleRegistersResponse{
 			UnitID: data[0],

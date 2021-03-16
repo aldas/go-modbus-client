@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 )
@@ -45,6 +46,20 @@ func ParseTCPResponse(data []byte) (Response, error) {
 	default:
 		return nil, fmt.Errorf("unknown function code parsed: %v", functionCode)
 	}
+}
+
+// ParseRTUResponseWithCRC checks packet CRC and parses given bytes into modbus RTU response packet or into ErrorResponseRTU or returns error
+func ParseRTUResponseWithCRC(data []byte) (Response, error) {
+	dataLen := len(data)
+	if dataLen < 5 {
+		return nil, errors.New("data is too short to be a Modbus RTU packet")
+	}
+	packetCRC := binary.BigEndian.Uint16(data[dataLen-2:])
+	actualCRC := CRC16(data[:dataLen-2])
+	if packetCRC != actualCRC {
+		return nil, errors.New("packet CRC is invalid")
+	}
+	return ParseRTUResponse(data)
 }
 
 // ParseRTUResponse parses given bytes into modbus RTU response packet or into ErrorResponseRTU or returns error
