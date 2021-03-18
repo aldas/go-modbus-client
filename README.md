@@ -42,7 +42,7 @@ requests, _ := b.Add(b.Int64(18).UnitID(0).Name("test_do")).
     Add(b.Int64(18).Name("alarm_do_1").UnitID(0)).
     ReadHoldingRegistersTCP() // split added fields into multiple requests with suitable quantity size
 
-client := modbus.NewClient()
+client := modbus.NewTCPClient()
 if err := client.Connect(context.Background(), "localhost:5020"); err != nil {
     return err
 }
@@ -51,8 +51,8 @@ for _, req := range requests {
     if err != nil {
         return err
     }
-    // extract response as packet.Registers instance to have access to convenience methods to extracting registers
-    // as different data types
+    // extract response as packet.Registers instance to have access to convenience methods to 
+    // extracting registers as different data types
     registers, _ := resp.(*packet.ReadHoldingRegistersResponseTCP).AsRegisters(req.StartAddress())
     alarmDo1, _ := registers.Int64(18)
     fmt.Printf("int64 @ address 18: %v", alarmDo1)
@@ -62,32 +62,40 @@ for _, req := range requests {
 ### Low level packets
 
 ```go
-client := modbus.NewTCPClient()
+client := modbus.NewTCPClient(modbus.WithTimeouts(10*time.Second, 10*time.Second))
 if err := client.Connect(context.Background(), "localhost:5020"); err != nil {
-return err
+    return err
 }
 defer client.Close()
 startAddress := uint16(10)
 req, err := packet.NewReadHoldingRegistersRequestTCP(0, startAddress, 9)
 if err != nil {
-return err
+    return err
 }
 
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 defer cancel()
 resp, err := client.Do(ctx, req)
 if err != nil {
-return err
+    return err
 }
 
 registers, err := resp.(*packet.ReadHoldingRegistersResponseTCP).AsRegisters(startAddress)
 if err != nil {
-return err
+    return err
 }
 uint32Var, err := registers.Uint32(17) // extract uint32 value from register 17
 ```
 
 ### Builder to group fields to packets
+
+```go
+b := modbus.NewRequestBuilder("localhost:5020", 1)
+
+requests, _ := b.Add(b.Int64(18).UnitID(0).Name("test_do")).
+   Add(b.Int64(18).Name("alarm_do_1").UnitID(0)).
+   ReadHoldingRegistersTCP() // split added fields into multiple requests with suitable quantity size
+```
 
 ## Changelog
 
