@@ -87,6 +87,18 @@ if err != nil {
 uint32Var, err := registers.Uint32(17) // extract uint32 value from register 17
 ```
 
+To create single TCP packet use following methods. Use `RTU` suffix to create RTU packets.
+```go
+	req, err := packet.NewReadCoilsRequestTCP(0, 10, 9)
+	req, err := packet.NewReadDiscreteInputsRequestTCP(0, 10, 9)
+	req, err := packet.NewReadHoldingRegistersRequestTCP(0, 10, 9)
+	req, err := packet.NewReadInputRegistersRequestTCP(0, 10, 9)
+	req, err := packet.NewWriteSingleCoilRequestTCP(0, 10, true)
+	req, err := packet.NewWriteSingleRegisterRequestTCP(0, 10, []byte{0xCA, 0xFE})
+	req, err := packet.NewWriteMultipleCoilsRequestTCP(0, 10, []bool{true, false, true})
+	req, err := packet.NewWriteMultipleRegistersRequestTCP(0, 10, []byte{0xCA, 0xFE, 0xBA, 0xBE})
+```
+
 ### Builder to group fields to packets
 
 ```go
