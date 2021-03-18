@@ -89,6 +89,8 @@ uint32Var, err := registers.Uint32(17) // extract uint32 value from register 17
 
 To create single TCP packet use following methods. Use `RTU` suffix to create RTU packets.
 ```go
+import "github.com/aldas/go-modbus-client/packet"
+
 req, err := packet.NewReadCoilsRequestTCP(0, 10, 9)
 req, err := packet.NewReadDiscreteInputsRequestTCP(0, 10, 9)
 req, err := packet.NewReadHoldingRegistersRequestTCP(0, 10, 9)
