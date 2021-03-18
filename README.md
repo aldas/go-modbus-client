@@ -1,6 +1,6 @@
 # Modbus TCP and RTU protocol client
 
-Modbus client (TCP/RTU) for Golang.
+Modbus client (TCP/RTU) over TCP for Golang.
 
 ## Installation
 
@@ -10,15 +10,15 @@ go install github.com/aldas/go-modbus-client
 
 ## Supported functions
 
-* FC1 - Read Coils
-* FC2 - Read Discrete Inputs
-* FC3 - Read Holding Registers
-* FC4 - Read Input Registers
-* FC5 - Write Single Coil
-* FC6 - Write Single Register
-* FC15 - Write Multiple Coils
-* FC16 - Write Multiple Registers
-* FC23 - Read / Write Multiple Registers
+* FC1 - Read Coils ([req](packet/readcoilsrequest.go)/[resp](packet/readcoilsresponse.go))
+* FC2 - Read Discrete Inputs ([req](packet/readdiscreteinputsrequest.go)/[resp](packet/readdiscreteinputsresponse.go))
+* FC3 - Read Holding Registers ([req](packet/readholdingregistersrequest.go)/[resp](packet/readholdingregistersresponse.go))
+* FC4 - Read Input Registers ([req](packet/readinputregistersrequest.go)/[resp](packet/readinputregistersresponse.go))
+* FC5 - Write Single Coil ([req](packet/writesinglecoilrequest.go)/[resp](packet/writesinglecoilresponse.go))
+* FC6 - Write Single Register ([req](packet/writesingleregisterrequest.go)/[resp](packet/writesingleregisterresponse.go))
+* FC15 - Write Multiple Coils ([req](packet/writemultiplecoilsrequest.go)/[resp](packet/writemultiplecoilsresponse.go))
+* FC16 - Write Multiple Registers ([req](packet/writemultipleregistersrequest.go)/[resp](packet/writemultipleregistersresponse.go))
+* FC23 - Read / Write Multiple Registers ([req](packet/readwritemultipleregistersrequest.go)/[resp](packet/readwritemultipleregistersresponse.go))
 
 ## Goals
 
@@ -29,7 +29,7 @@ go install github.com/aldas/go-modbus-client
 
 ## Examples
 
-Higher level API allows you to compose register requests out of arbritary number of fields and extract those
+Higher level API allows you to compose register requests out of arbitrary number of fields and extract those
 field values from response registers with convenience methods
 
 ```go
