@@ -53,7 +53,6 @@ func NewWriteSingleCoilRequestTCP(unitID uint8, address uint16, coilState bool) 
 		MBAPHeader: MBAPHeader{
 			TransactionID: uint16(1 + rand.Intn(65534)),
 			ProtocolID:    0,
-			Length:        6,
 		},
 		WriteSingleCoilRequest: WriteSingleCoilRequest{
 			UnitID: unitID,
@@ -66,9 +65,10 @@ func NewWriteSingleCoilRequestTCP(unitID uint8, address uint16, coilState bool) 
 
 // Bytes returns WriteSingleCoilRequestTCP packet as bytes form
 func (r WriteSingleCoilRequestTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+6)
-	r.MBAPHeader.bytes(result[0:6])
-	r.WriteSingleCoilRequest.bytes(result[6:12])
+	length := uint16(6)
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.WriteSingleCoilRequest.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -94,7 +94,7 @@ func NewWriteSingleCoilRequestRTU(unitID uint8, address uint16, coilState bool) 
 func (r WriteSingleCoilRequestRTU) Bytes() []byte {
 	result := make([]byte, 6+2)
 	bytes := r.WriteSingleCoilRequest.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
 	return result
 }
 

@@ -47,7 +47,6 @@ func NewWriteSingleRegisterRequestTCP(unitID uint8, address uint16, data []byte)
 		MBAPHeader: MBAPHeader{
 			TransactionID: uint16(1 + rand.Intn(65534)),
 			ProtocolID:    0,
-			Length:        6,
 		},
 		WriteSingleRegisterRequest: WriteSingleRegisterRequest{
 			UnitID: unitID,
@@ -61,9 +60,10 @@ func NewWriteSingleRegisterRequestTCP(unitID uint8, address uint16, data []byte)
 
 // Bytes returns WriteSingleRegisterRequestTCP packet as bytes form
 func (r WriteSingleRegisterRequestTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+6)
-	r.MBAPHeader.bytes(result[0:6])
-	r.WriteSingleRegisterRequest.bytes(result[6:12])
+	length := uint16(6)
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.WriteSingleRegisterRequest.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -91,7 +91,7 @@ func NewWriteSingleRegisterRequestRTU(unitID uint8, address uint16, data []byte)
 func (r WriteSingleRegisterRequestRTU) Bytes() []byte {
 	result := make([]byte, 6+2)
 	bytes := r.WriteSingleRegisterRequest.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
 	return result
 }
 

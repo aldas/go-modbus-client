@@ -52,7 +52,6 @@ func NewReadCoilsRequestTCP(unitID uint8, startAddress uint16, quantity uint16) 
 		MBAPHeader: MBAPHeader{
 			TransactionID: uint16(1 + rand.Intn(65534)),
 			ProtocolID:    0,
-			Length:        6,
 		},
 		ReadCoilsRequest: ReadCoilsRequest{
 			UnitID: unitID,
@@ -65,9 +64,10 @@ func NewReadCoilsRequestTCP(unitID uint8, startAddress uint16, quantity uint16) 
 
 // Bytes returns ReadCoilsRequestTCP packet as bytes form
 func (r ReadCoilsRequestTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+6)
-	r.MBAPHeader.bytes(result[0:6])
-	r.ReadCoilsRequest.bytes(result[6:12])
+	length := uint16(6)
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.ReadCoilsRequest.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -98,7 +98,7 @@ func NewReadCoilsRequestRTU(unitID uint8, startAddress uint16, quantity uint16) 
 func (r ReadCoilsRequestRTU) Bytes() []byte {
 	result := make([]byte, 6+2)
 	bytes := r.ReadCoilsRequest.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
 	return result
 }
 

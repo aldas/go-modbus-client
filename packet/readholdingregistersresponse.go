@@ -41,10 +41,10 @@ type ReadHoldingRegistersResponse struct {
 
 // Bytes returns ReadHoldingRegistersResponseTCP packet as bytes form
 func (r ReadHoldingRegistersResponseTCP) Bytes() []byte {
-	dataLen := len(r.Data)
-	result := make([]byte, tcpMBAPHeaderLen+3+dataLen)
-	r.MBAPHeader.bytes(result[0:6])
-	r.ReadHoldingRegistersResponse.bytes(result[6:])
+	length := r.len()
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.ReadHoldingRegistersResponse.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -62,7 +62,6 @@ func ParseReadHoldingRegistersResponseTCP(data []byte) (*ReadHoldingRegistersRes
 		MBAPHeader: MBAPHeader{
 			TransactionID: binary.BigEndian.Uint16(data[0:2]),
 			ProtocolID:    0,
-			Length:        binary.BigEndian.Uint16(data[4:6]),
 		},
 		ReadHoldingRegistersResponse: ReadHoldingRegistersResponse{
 			UnitID: data[6],
@@ -75,10 +74,10 @@ func ParseReadHoldingRegistersResponseTCP(data []byte) (*ReadHoldingRegistersRes
 
 // Bytes returns ReadHoldingRegistersResponseRTU packet as bytes form
 func (r ReadHoldingRegistersResponseRTU) Bytes() []byte {
-	byteLen := r.RegisterByteLen
-	result := make([]byte, 3+byteLen+2)
+	length := r.len()
+	result := make([]byte, length+2)
 	bytes := r.ReadHoldingRegistersResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[3+byteLen:3+byteLen+2], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[length:length+2], CRC16(bytes[:length]))
 	return result
 }
 
@@ -107,9 +106,13 @@ func (r ReadHoldingRegistersResponse) FunctionCode() uint8 {
 	return FunctionReadHoldingRegisters
 }
 
+func (r ReadHoldingRegistersResponse) len() uint16 {
+	return 3 + uint16(r.RegisterByteLen)
+}
+
 // Bytes returns ReadHoldingRegistersResponse packet as bytes form
 func (r ReadHoldingRegistersResponse) Bytes() []byte {
-	return r.bytes(make([]byte, 3+r.RegisterByteLen))
+	return r.bytes(make([]byte, r.len()))
 }
 
 func (r ReadHoldingRegistersResponse) bytes(data []byte) []byte {

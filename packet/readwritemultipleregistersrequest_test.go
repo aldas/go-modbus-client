@@ -26,7 +26,7 @@ func TestNewReadWriteMultipleRegistersRequestTCP(t *testing.T) {
 			whenWriteQuantity:     1,
 			whenWriteData:         []byte{0x1, 0x2},
 			expect: &ReadWriteMultipleRegistersRequestTCP{
-				MBAPHeader: MBAPHeader{TransactionID: 0x1234, ProtocolID: 0, Length: 11 + 2},
+				MBAPHeader: MBAPHeader{TransactionID: 0x1234, ProtocolID: 0},
 				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
 					UnitID:            1,
 					ReadStartAddress:  200,
@@ -47,7 +47,7 @@ func TestNewReadWriteMultipleRegistersRequestTCP(t *testing.T) {
 			whenWriteQuantity:     2,
 			whenWriteData:         []byte{0x1, 0x2, 0x3, 0x4},
 			expect: &ReadWriteMultipleRegistersRequestTCP{
-				MBAPHeader: MBAPHeader{TransactionID: 0x1234, ProtocolID: 0, Length: 11 + 4},
+				MBAPHeader: MBAPHeader{TransactionID: 0x1234, ProtocolID: 0},
 				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
 					UnitID:            1,
 					ReadStartAddress:  200,
@@ -128,7 +128,7 @@ func TestReadWriteMultipleRegistersRequestTCP_Bytes(t *testing.T) {
 		{
 			name: "ok, write 1 register",
 			given: ReadWriteMultipleRegistersRequestTCP{
-				MBAPHeader: MBAPHeader{TransactionID: 0x1234, ProtocolID: 0, Length: 11 + 2},
+				MBAPHeader: MBAPHeader{TransactionID: 0x1234, ProtocolID: 0},
 				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
 					UnitID:            1,
 					ReadStartAddress:  200,
@@ -146,7 +146,7 @@ func TestReadWriteMultipleRegistersRequestTCP_Bytes(t *testing.T) {
 		{
 			name: "ok, write 2 registers",
 			given: ReadWriteMultipleRegistersRequestTCP{
-				MBAPHeader: MBAPHeader{TransactionID: 0x1234, ProtocolID: 0, Length: 11 + 4},
+				MBAPHeader: MBAPHeader{TransactionID: 0x1234, ProtocolID: 0},
 				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
 					UnitID:            1,
 					ReadStartAddress:  200,
@@ -186,7 +186,7 @@ func TestReadWriteMultipleRegistersRequestTCP_ExpectedResponseLength(t *testing.
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			example := ReadWriteMultipleRegistersRequestTCP{
-				MBAPHeader: MBAPHeader{TransactionID: 0x1234, ProtocolID: 0, Length: 11 + 2},
+				MBAPHeader: MBAPHeader{TransactionID: 0x1234, ProtocolID: 0},
 				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
 					UnitID:            1,
 					ReadStartAddress:  200,
@@ -327,7 +327,7 @@ func TestReadWriteMultipleRegistersRequestRTU_Bytes(t *testing.T) {
 					WriteData:         []byte{0x1, 0x2},
 				},
 			},
-			expect: []byte{0x1, 0x17, 0x0, 0xc8, 0x0, 0x2, 0x0, 0x64, 0x0, 0x1, 0x2, 0x1, 0x2, 0xa, 0xa},
+			expect: []byte{0x1, 0x17, 0x0, 0xc8, 0x0, 0x2, 0x0, 0x64, 0x0, 0x1, 0x2, 0x1, 0x2, 0x18, 0x18},
 		},
 		{
 			name: "ok2",
@@ -341,7 +341,7 @@ func TestReadWriteMultipleRegistersRequestRTU_Bytes(t *testing.T) {
 					WriteData:         []byte{0x1, 0x2, 0x3, 0x4},
 				},
 			},
-			expect: []byte{0x1, 0x17, 0x0, 0xc8, 0x0, 0x1, 0x0, 0x64, 0x0, 0x2, 0x4, 0x1, 0x2, 0x3, 0x4, 0x33, 0xe5},
+			expect: []byte{0x1, 0x17, 0x0, 0xc8, 0x0, 0x1, 0x0, 0x64, 0x0, 0x2, 0x4, 0x1, 0x2, 0x3, 0x4, 0x5, 0x73},
 		},
 	}
 

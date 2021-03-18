@@ -10,7 +10,6 @@ func TestNewWriteMultipleRegistersRequestTCP(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        7 + 2,
 		},
 		WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
 			UnitID:        1,
@@ -79,7 +78,6 @@ func TestWriteMultipleRegistersRequestTCP_Bytes(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        7 + 2,
 		},
 		WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
 			UnitID:        1,
@@ -135,7 +133,6 @@ func TestWriteMultipleRegistersRequestTCP_ExpectedResponseLength(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
 					UnitID:       1,
@@ -226,7 +223,7 @@ func TestWriteMultipleRegistersRequestRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *WriteMultipleRegistersRequestRTU) {},
-			expect: []byte{0x1, 0x10, 0x0, 0xc8, 0x0, 0x1, 0x2, 0x1, 0x2, 0x56, 0xd6},
+			expect: []byte{0x1, 0x10, 0x0, 0xc8, 0x0, 0x1, 0x2, 0x1, 0x2, 0x49, 0x36},
 		},
 	}
 

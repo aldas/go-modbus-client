@@ -10,7 +10,6 @@ func TestNewReadHoldingRegistersRequestTCP(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{
 			UnitID:       1,
@@ -70,7 +69,6 @@ func TestReadHoldingRegistersRequestTCP_Bytes(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{
 			UnitID:       1,
@@ -141,7 +139,6 @@ func TestReadHoldingRegistersRequestTCP_ExpectedResponseLength(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{
 					UnitID:       1,
@@ -222,7 +219,7 @@ func TestReadHoldingRegistersRequestRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *ReadHoldingRegistersRequestRTU) {},
-			expect: []byte{0x1, 0x3, 0x0, 0xc8, 0x0, 0xa, 0x15, 0x73},
+			expect: []byte{0x1, 0x3, 0x0, 0xc8, 0x0, 0xa, 0x33, 0x44},
 		},
 		{
 			name: "ok2",
@@ -231,7 +228,7 @@ func TestReadHoldingRegistersRequestRTU_Bytes(t *testing.T) {
 				r.StartAddress = 107
 				r.Quantity = 3
 			},
-			expect: []byte{0x10, 0x03, 0x00, 0x6B, 0x00, 0x03, 0xce, 0xa7},
+			expect: []byte{0x10, 0x03, 0x00, 0x6B, 0x00, 0x03, 0x56, 0x77},
 		},
 	}
 

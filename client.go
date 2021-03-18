@@ -147,6 +147,7 @@ func WithLogger(logger ClientLogger) func(c *Client) {
 }
 
 // Connect opens network connection to Client to server. Context lifetime is only meant for this call.
+// ctx is to be used for to cancel connection attempt.
 func (c *Client) Connect(ctx context.Context, address string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -195,7 +196,8 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// Do sends given Modbus request to modbus server and returns parsed Response
+// Do sends given Modbus request to modbus server and returns parsed Response.
+// ctx is to be used for to cancel connection attempt.
 func (c *Client) Do(ctx context.Context, req packet.Request) (packet.Response, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -268,7 +270,7 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 			break
 		}
 		if errors.Is(err, io.EOF) {
-			return nil, err
+			break
 		}
 	}
 	if total == 0 {

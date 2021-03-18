@@ -80,7 +80,6 @@ func NewReadWriteMultipleRegistersRequestTCP(
 		MBAPHeader: MBAPHeader{
 			TransactionID: uint16(1 + rand.Intn(65534)),
 			ProtocolID:    0,
-			Length:        11 + uint16(writeByteCount),
 		},
 		ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
 			UnitID: unitID,
@@ -97,9 +96,10 @@ func NewReadWriteMultipleRegistersRequestTCP(
 
 // Bytes returns ReadWriteMultipleRegistersRequestTCP packet as bytes form
 func (r ReadWriteMultipleRegistersRequestTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+r.Length)
-	r.MBAPHeader.bytes(result[0:6])
-	r.ReadWriteMultipleRegistersRequest.bytes(result[6 : 6+r.Length])
+	length := r.len()
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.ReadWriteMultipleRegistersRequest.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -145,10 +145,10 @@ func NewReadWriteMultipleRegistersRequestRTU(
 
 // Bytes returns ReadWriteMultipleRegistersRequestRTU packet as bytes form
 func (r ReadWriteMultipleRegistersRequestRTU) Bytes() []byte {
-	pduLen := 11 + uint16(len(r.WriteData)) + 2
+	pduLen := r.len() + 2
 	result := make([]byte, pduLen)
 	bytes := r.ReadWriteMultipleRegistersRequest.bytes(result)
-	binary.BigEndian.PutUint16(result[pduLen-2:pduLen], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[pduLen-2:pduLen], CRC16(bytes[:pduLen-2]))
 	return result
 }
 
@@ -163,9 +163,13 @@ func (r ReadWriteMultipleRegistersRequest) FunctionCode() uint8 {
 	return FunctionReadWriteMultipleRegisters
 }
 
+func (r ReadWriteMultipleRegistersRequest) len() uint16 {
+	return 11 + uint16(len(r.WriteData))
+}
+
 // Bytes returns ReadWriteMultipleRegistersRequest packet as bytes form
 func (r ReadWriteMultipleRegistersRequest) Bytes() []byte {
-	return r.bytes(make([]byte, 11+len(r.WriteData)))
+	return r.bytes(make([]byte, r.len()))
 }
 
 func (r ReadWriteMultipleRegistersRequest) bytes(bytes []byte) []byte {

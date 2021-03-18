@@ -8,6 +8,9 @@ import (
 const (
 	tcpMBAPHeaderLen         = 6
 	functionCodeErrorBitmask = uint8(128)
+
+	// MaxRegistersInReadResponse is maximum quantity of registers that can be returned by read request (fc03/fc04)
+	MaxRegistersInReadResponse = uint16(125)
 )
 
 const (
@@ -42,13 +45,12 @@ const (
 type MBAPHeader struct {
 	TransactionID uint16
 	ProtocolID    uint16
-	Length        uint16
 }
 
-func (h MBAPHeader) bytes(dst []byte) {
+func (h MBAPHeader) bytes(dst []byte, length uint16) {
 	binary.BigEndian.PutUint16(dst[0:2], h.TransactionID)
 	binary.BigEndian.PutUint16(dst[2:4], 0x0000)
-	binary.BigEndian.PutUint16(dst[4:6], h.Length)
+	binary.BigEndian.PutUint16(dst[4:6], length)
 }
 
 //// IsCompleteTCPPacket checks if packet is complete valid modbus TCP packet

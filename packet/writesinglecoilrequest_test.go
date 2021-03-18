@@ -10,7 +10,6 @@ func TestNewWriteSingleCoilRequestTCP(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		WriteSingleCoilRequest: WriteSingleCoilRequest{
 			UnitID:    1,
@@ -44,7 +43,6 @@ func TestNewWriteSingleCoilRequestTCP(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteSingleCoilRequest: WriteSingleCoilRequest{
 					UnitID:    1,
@@ -80,7 +78,6 @@ func TestWriteSingleCoilRequestTCP_Bytes(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		WriteSingleCoilRequest: WriteSingleCoilRequest{
 			UnitID:    1,
@@ -141,7 +138,6 @@ func TestWriteSingleCoilRequestTCP_ExpectedResponseLength(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteSingleCoilRequest: WriteSingleCoilRequest{
 					UnitID:    1,
@@ -227,7 +223,7 @@ func TestWriteSingleCoilRequestRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *WriteSingleCoilRequestRTU) {},
-			expect: []byte{0x1, 0x5, 0x0, 0xc8, 0xff, 0x0, 0x3, 0x5},
+			expect: []byte{0x1, 0x5, 0x0, 0xc8, 0xff, 0x0, 0xc4, 0xd},
 		},
 		{
 			name: "ok2",
@@ -236,7 +232,7 @@ func TestWriteSingleCoilRequestRTU_Bytes(t *testing.T) {
 				r.Address = 107
 				r.CoilState = false
 			},
-			expect: []byte{0x10, 0x05, 0x00, 0x6B, 0x0, 0x0, 0xce, 0x31},
+			expect: []byte{0x10, 0x05, 0x00, 0x6B, 0x0, 0x0, 0x57, 0xbf},
 		},
 	}
 

@@ -57,7 +57,7 @@ func ParseRTUResponseWithCRC(data []byte) (Response, error) {
 	packetCRC := binary.BigEndian.Uint16(data[dataLen-2:])
 	actualCRC := CRC16(data[:dataLen-2])
 	if packetCRC != actualCRC {
-		return nil, errors.New("packet CRC is invalid")
+		return nil, ErrInvalidCRC
 	}
 	return ParseRTUResponse(data)
 }

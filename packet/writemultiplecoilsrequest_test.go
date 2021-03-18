@@ -40,7 +40,6 @@ func TestNewWriteMultipleCoilsRequestTCP(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        7 + 1,
 		},
 		WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
 			UnitID:       1,
@@ -101,7 +100,6 @@ func TestWriteMultipleCoilsRequestTCP_Bytes(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        7 + 1,
 		},
 		WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
 			UnitID:       1,
@@ -125,7 +123,6 @@ func TestWriteMultipleCoilsRequestTCP_Bytes(t *testing.T) {
 			name: "ok2",
 			given: func(r *WriteMultipleCoilsRequestTCP) {
 				r.TransactionID = 1
-				r.Length = 7 + 3
 
 				r.UnitID = 16
 				r.StartAddress = 107
@@ -170,7 +167,6 @@ func TestWriteMultipleCoilsRequestTCP_ExpectedResponseLength(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
 					UnitID:       1,
@@ -253,7 +249,7 @@ func TestWriteMultipleCoilsRequestRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *WriteMultipleCoilsRequestRTU) {},
-			expect: []byte{0x1, 0xf, 0x0, 0xc8, 0x0, 0x7, 0x1, 0x55, 0xd2, 0x8d},
+			expect: []byte{0x1, 0xf, 0x0, 0xc8, 0x0, 0x7, 0x1, 0x55, 0x79, 0xef},
 		},
 		{
 			name: "ok2",
@@ -263,7 +259,7 @@ func TestWriteMultipleCoilsRequestRTU_Bytes(t *testing.T) {
 				r.CoilCount = 20
 				r.Data = []byte{0b01010101, 0b0, 0b1001}
 			},
-			expect: []byte{0x10, 0xf, 0x0, 0x6b, 0x0, 0x14, 0x3, 0x55, 0x0, 0x9, 0xe7, 0xc6},
+			expect: []byte{0x10, 0xf, 0x0, 0x6b, 0x0, 0x14, 0x3, 0x55, 0x0, 0x9, 0xf5, 0xa},
 		},
 	}
 

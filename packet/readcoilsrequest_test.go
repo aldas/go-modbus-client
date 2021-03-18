@@ -10,7 +10,6 @@ func TestNewReadCoilsRequestTCP(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		ReadCoilsRequest: ReadCoilsRequest{
 			UnitID:       1,
@@ -70,7 +69,6 @@ func TestReadCoilsRequestTCP_Bytes(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		ReadCoilsRequest: ReadCoilsRequest{
 			UnitID:       1,
@@ -146,7 +144,6 @@ func TestReadCoilsRequestTCP_ExpectedResponseLength(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				ReadCoilsRequest: ReadCoilsRequest{
 					UnitID:       1,
@@ -227,7 +224,7 @@ func TestReadCoilsRequestRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *ReadCoilsRequestRTU) {},
-			expect: []byte{0x1, 0x1, 0x0, 0xc8, 0x0, 0xa, 0xd5, 0x50},
+			expect: []byte{0x1, 0x1, 0x0, 0xc8, 0x0, 0xa, 0xf3, 0x3d},
 		},
 		{
 			name: "ok2",
@@ -236,7 +233,7 @@ func TestReadCoilsRequestRTU_Bytes(t *testing.T) {
 				r.StartAddress = 107
 				r.Quantity = 3
 			},
-			expect: []byte{0x10, 0x01, 0x00, 0x6B, 0x00, 0x03, 0xe, 0x84},
+			expect: []byte{0x10, 0x01, 0x00, 0x6B, 0x00, 0x03, 0x96, 0xe},
 		},
 	}
 

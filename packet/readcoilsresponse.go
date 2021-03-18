@@ -41,9 +41,9 @@ type ReadCoilsResponse struct {
 
 // Bytes returns ReadCoilsResponseTCP packet as bytes form
 func (r ReadCoilsResponseTCP) Bytes() []byte {
-	coilsByteLen := len(r.Data)
-	result := make([]byte, tcpMBAPHeaderLen+3+coilsByteLen)
-	r.MBAPHeader.bytes(result[0:6])
+	length := r.ReadCoilsResponse.len()
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
 	r.ReadCoilsResponse.bytes(result[6:])
 	return result
 }
@@ -62,7 +62,6 @@ func ParseReadCoilsResponseTCP(data []byte) (*ReadCoilsResponseTCP, error) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: binary.BigEndian.Uint16(data[0:2]),
 			ProtocolID:    0,
-			Length:        binary.BigEndian.Uint16(data[4:6]),
 		},
 		ReadCoilsResponse: ReadCoilsResponse{
 			UnitID: data[6],
@@ -75,10 +74,10 @@ func ParseReadCoilsResponseTCP(data []byte) (*ReadCoilsResponseTCP, error) {
 
 // Bytes returns ReadCoilsResponseRTU packet as bytes form
 func (r ReadCoilsResponseRTU) Bytes() []byte {
-	coilsByteLen := len(r.Data)
-	result := make([]byte, 3+coilsByteLen+2)
+	length := r.len()
+	result := make([]byte, length+2)
 	bytes := r.ReadCoilsResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[3+coilsByteLen:3+coilsByteLen+2], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[length:length+2], CRC16(bytes[:length]))
 	return result
 }
 
@@ -107,9 +106,13 @@ func (r ReadCoilsResponse) FunctionCode() uint8 {
 	return FunctionReadCoils
 }
 
+func (r ReadCoilsResponse) len() uint16 {
+	return 3 + uint16(len(r.Data))
+}
+
 // Bytes returns ReadCoilsResponse packet as bytes form
 func (r ReadCoilsResponse) Bytes() []byte {
-	return r.bytes(make([]byte, 3+len(r.Data)))
+	return r.bytes(make([]byte, r.len()))
 }
 
 func (r ReadCoilsResponse) bytes(data []byte) []byte {

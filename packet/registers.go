@@ -396,12 +396,12 @@ func (r Registers) Float64WithByteOrder(address uint16, byteOrder ByteOrder) (fl
 
 // String returns register data as string starting from given address to given length.
 // Data is interpreted as ASCII 0x0 (null) terminated string.
-func (r Registers) String(address uint16, length uint16) (string, error) {
+func (r Registers) String(address uint16, length uint8) (string, error) {
 	if address < r.startAddress {
 		return "", errors.New("address under startAddress bounds")
 	}
 	startIndex := (address - r.startAddress) * 2
-	endIndex := startIndex + length
+	endIndex := startIndex + uint16(length)
 	// length is bytes. but data is sent in registers (2 bytes) and in big endian format. so last character for odd size
 	// needs 1 more byte (it needs to be swapped)
 	if length%2 != 0 {

@@ -41,9 +41,10 @@ type WriteSingleRegisterResponse struct {
 
 // Bytes returns WriteSingleRegisterResponseTCP packet as bytes form
 func (r WriteSingleRegisterResponseTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+6)
-	r.MBAPHeader.bytes(result[0:6])
-	r.WriteSingleRegisterResponse.bytes(result[6:12])
+	length := uint16(6)
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.WriteSingleRegisterResponse.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -62,7 +63,6 @@ func ParseWriteSingleRegisterResponseTCP(data []byte) (*WriteSingleRegisterRespo
 		MBAPHeader: MBAPHeader{
 			TransactionID: binary.BigEndian.Uint16(data[0:2]),
 			ProtocolID:    0,
-			Length:        binary.BigEndian.Uint16(data[4:6]),
 		},
 		WriteSingleRegisterResponse: WriteSingleRegisterResponse{
 			UnitID:  data[6],
@@ -74,9 +74,9 @@ func ParseWriteSingleRegisterResponseTCP(data []byte) (*WriteSingleRegisterRespo
 
 // Bytes returns WriteSingleRegisterResponseRTU packet as bytes form
 func (r WriteSingleRegisterResponseRTU) Bytes() []byte {
-	result := make([]byte, 8)
+	result := make([]byte, 6+2)
 	bytes := r.WriteSingleRegisterResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
 	return result
 }
 

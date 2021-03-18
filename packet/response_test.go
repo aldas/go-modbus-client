@@ -19,7 +19,6 @@ func TestParseTCPResponse(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        5,
 				},
 				ReadCoilsResponse: ReadCoilsResponse{
 					UnitID: 1,
@@ -36,7 +35,6 @@ func TestParseTCPResponse(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        5,
 				},
 				ReadDiscreteInputsResponse: ReadDiscreteInputsResponse{
 					UnitID: 1,
@@ -53,7 +51,6 @@ func TestParseTCPResponse(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        5,
 				},
 				ReadHoldingRegistersResponse: ReadHoldingRegistersResponse{
 					UnitID: 1,
@@ -70,7 +67,6 @@ func TestParseTCPResponse(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        5,
 				},
 				ReadInputRegistersResponse: ReadInputRegistersResponse{
 					UnitID: 1,
@@ -87,7 +83,6 @@ func TestParseTCPResponse(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteSingleCoilResponse: WriteSingleCoilResponse{
 					UnitID: 1,
@@ -104,7 +99,6 @@ func TestParseTCPResponse(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteSingleRegisterResponse: WriteSingleRegisterResponse{
 					UnitID: 1,
@@ -121,7 +115,6 @@ func TestParseTCPResponse(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 33152,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteMultipleCoilsResponse: WriteMultipleCoilsResponse{
 					UnitID:       3,
@@ -137,7 +130,6 @@ func TestParseTCPResponse(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteMultipleRegistersResponse: WriteMultipleRegistersResponse{
 					UnitID: 1,
@@ -154,7 +146,6 @@ func TestParseTCPResponse(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 33152,
 					ProtocolID:    0,
-					Length:        5,
 				},
 				ReadWriteMultipleRegistersResponse: ReadWriteMultipleRegistersResponse{
 					UnitID:          3,
@@ -360,7 +351,7 @@ func TestParseRTUResponseWithCRC(t *testing.T) {
 			name:        "nok, invalid CRC ReadCoilsResponseRTU (fc01)",
 			whenData:    []byte{0x10, 0x1, 0x2, 0x1, 0x2, 0xff, 0xff},
 			expect:      nil,
-			expectError: "packet CRC is invalid",
+			expectError: ErrInvalidCRC.Error(),
 		},
 		{
 			name:        "nok, packet too short",

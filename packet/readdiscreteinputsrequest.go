@@ -52,7 +52,6 @@ func NewReadDiscreteInputsRequestTCP(unitID uint8, startAddress uint16, quantity
 		MBAPHeader: MBAPHeader{
 			TransactionID: uint16(1 + rand.Intn(65534)),
 			ProtocolID:    0,
-			Length:        6,
 		},
 		ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{
 			UnitID: unitID,
@@ -65,8 +64,9 @@ func NewReadDiscreteInputsRequestTCP(unitID uint8, startAddress uint16, quantity
 
 // Bytes returns ReadDiscreteInputsRequestTCP packet as bytes form
 func (r ReadDiscreteInputsRequestTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+6)
-	r.MBAPHeader.bytes(result[0:6])
+	length := uint16(6)
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
 	r.ReadDiscreteInputsRequest.bytes(result[6:12])
 	return result
 }
@@ -98,7 +98,7 @@ func NewReadDiscreteInputsRequestRTU(unitID uint8, startAddress uint16, quantity
 func (r ReadDiscreteInputsRequestRTU) Bytes() []byte {
 	result := make([]byte, 6+2)
 	bytes := r.ReadDiscreteInputsRequest.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
 	return result
 }
 

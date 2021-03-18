@@ -49,9 +49,10 @@ type WriteSingleCoilResponse struct {
 
 // Bytes returns WriteSingleCoilResponseTCP packet as bytes form
 func (r WriteSingleCoilResponseTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+6)
-	r.MBAPHeader.bytes(result[0:6])
-	r.WriteSingleCoilResponse.bytes(result[6:])
+	length := uint16(6)
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.WriteSingleCoilResponse.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -69,7 +70,6 @@ func ParseWriteSingleCoilResponseTCP(data []byte) (*WriteSingleCoilResponseTCP, 
 		MBAPHeader: MBAPHeader{
 			TransactionID: binary.BigEndian.Uint16(data[0:2]),
 			ProtocolID:    0,
-			Length:        binary.BigEndian.Uint16(data[4:6]),
 		},
 		WriteSingleCoilResponse: WriteSingleCoilResponse{
 			UnitID:       data[6],
@@ -81,9 +81,9 @@ func ParseWriteSingleCoilResponseTCP(data []byte) (*WriteSingleCoilResponseTCP, 
 
 // Bytes returns WriteSingleCoilResponseRTU packet as bytes form
 func (r WriteSingleCoilResponseRTU) Bytes() []byte {
-	result := make([]byte, 8)
+	result := make([]byte, 6+2)
 	bytes := r.WriteSingleCoilResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
 	return result
 }
 

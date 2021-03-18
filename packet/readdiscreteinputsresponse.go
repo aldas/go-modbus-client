@@ -41,9 +41,9 @@ type ReadDiscreteInputsResponse struct {
 
 // Bytes returns ReadDiscreteInputsResponseTCP packet as bytes form
 func (r ReadDiscreteInputsResponseTCP) Bytes() []byte {
-	coilsByteLen := len(r.Data)
-	result := make([]byte, tcpMBAPHeaderLen+3+coilsByteLen)
-	r.MBAPHeader.bytes(result[0:6])
+	length := r.len()
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
 	r.ReadDiscreteInputsResponse.bytes(result[6:])
 	return result
 }
@@ -62,7 +62,6 @@ func ParseReadDiscreteInputsResponseTCP(data []byte) (*ReadDiscreteInputsRespons
 		MBAPHeader: MBAPHeader{
 			TransactionID: binary.BigEndian.Uint16(data[0:2]),
 			ProtocolID:    0,
-			Length:        binary.BigEndian.Uint16(data[4:6]),
 		},
 		ReadDiscreteInputsResponse: ReadDiscreteInputsResponse{
 			UnitID: data[6],
@@ -75,10 +74,10 @@ func ParseReadDiscreteInputsResponseTCP(data []byte) (*ReadDiscreteInputsRespons
 
 // Bytes returns ReadDiscreteInputsResponseRTU packet as bytes form
 func (r ReadDiscreteInputsResponseRTU) Bytes() []byte {
-	inputsByteLen := len(r.Data)
-	result := make([]byte, 3+inputsByteLen+2)
+	length := r.len()
+	result := make([]byte, length+2)
 	bytes := r.ReadDiscreteInputsResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[3+inputsByteLen:3+inputsByteLen+2], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[length:length+2], CRC16(bytes[:length]))
 	return result
 }
 
@@ -107,9 +106,13 @@ func (r ReadDiscreteInputsResponse) FunctionCode() uint8 {
 	return FunctionReadDiscreteInputs
 }
 
+func (r ReadDiscreteInputsResponse) len() uint16 {
+	return 3 + uint16(len(r.Data))
+}
+
 // Bytes returns ReadDiscreteInputsResponse packet as bytes form
 func (r ReadDiscreteInputsResponse) Bytes() []byte {
-	return r.bytes(make([]byte, 3+len(r.Data)))
+	return r.bytes(make([]byte, r.len()))
 }
 
 func (r ReadDiscreteInputsResponse) bytes(data []byte) []byte {

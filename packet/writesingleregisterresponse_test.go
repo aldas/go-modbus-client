@@ -10,7 +10,6 @@ func TestWriteSingleRegisterResponseTCP_Bytes(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		WriteSingleRegisterResponse: WriteSingleRegisterResponse{
 			UnitID: 1,
@@ -67,7 +66,6 @@ func TestParseWriteSingleRegisterResponseTCP(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 33152,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteSingleRegisterResponse: WriteSingleRegisterResponse{
 					UnitID:  3,
@@ -164,7 +162,7 @@ func TestWriteSingleRegisterResponseRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *WriteSingleRegisterResponseRTU) {},
-			expect: []byte{0x1, 0x6, 0x0, 0x2, 0x1, 0x2, 0x3b, 0x3e},
+			expect: []byte{0x1, 0x6, 0x0, 0x2, 0x1, 0x2, 0x5b, 0xa8},
 		},
 		{
 			name: "ok2",
@@ -173,7 +171,7 @@ func TestWriteSingleRegisterResponseRTU_Bytes(t *testing.T) {
 				r.Address = 2
 				r.Data = [2]byte{0x0, 0x0}
 			},
-			expect: []byte{0x10, 0x6, 0x0, 0x2, 0x0, 0x0, 0xc7, 0x5e},
+			expect: []byte{0x10, 0x6, 0x0, 0x2, 0x0, 0x0, 0x4b, 0x2b},
 		},
 	}
 

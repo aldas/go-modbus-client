@@ -41,9 +41,10 @@ type WriteMultipleRegistersResponse struct {
 
 // Bytes returns WriteMultipleRegistersResponseTCP packet as bytes form
 func (r WriteMultipleRegistersResponseTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+6)
-	r.MBAPHeader.bytes(result[0:6])
-	r.WriteMultipleRegistersResponse.bytes(result[6:])
+	length := uint16(6)
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.WriteMultipleRegistersResponse.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -61,7 +62,6 @@ func ParseWriteMultipleRegistersResponseTCP(data []byte) (*WriteMultipleRegister
 		MBAPHeader: MBAPHeader{
 			TransactionID: binary.BigEndian.Uint16(data[0:2]),
 			ProtocolID:    0,
-			Length:        binary.BigEndian.Uint16(data[4:6]),
 		},
 		WriteMultipleRegistersResponse: WriteMultipleRegistersResponse{
 			UnitID:        data[6],
@@ -73,9 +73,9 @@ func ParseWriteMultipleRegistersResponseTCP(data []byte) (*WriteMultipleRegister
 
 // Bytes returns WriteMultipleRegistersResponseRTU packet as bytes form
 func (r WriteMultipleRegistersResponseRTU) Bytes() []byte {
-	result := make([]byte, 8)
+	result := make([]byte, 6+2)
 	bytes := r.WriteMultipleRegistersResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
 	return result
 }
 

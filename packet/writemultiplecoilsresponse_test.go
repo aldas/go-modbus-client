@@ -10,7 +10,6 @@ func TestWriteMultipleCoilsResponseTCP_Bytes(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		WriteMultipleCoilsResponse: WriteMultipleCoilsResponse{
 			UnitID: 1,
@@ -67,7 +66,6 @@ func TestParseWriteMultipleCoilsResponseTCP(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 33152,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteMultipleCoilsResponse: WriteMultipleCoilsResponse{
 					UnitID:       3,
@@ -164,7 +162,7 @@ func TestWriteMultipleCoilsResponseRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *WriteMultipleCoilsResponseRTU) {},
-			expect: []byte{0x1, 0xf, 0x0, 0x2, 0x0, 0x1, 0xc7, 0x56},
+			expect: []byte{0x1, 0xf, 0x0, 0x2, 0x0, 0x1, 0xcb, 0x35},
 		},
 		{
 			name: "ok2",
@@ -173,7 +171,7 @@ func TestWriteMultipleCoilsResponseRTU_Bytes(t *testing.T) {
 				r.StartAddress = 2
 				r.CoilCount = 2
 			},
-			expect: []byte{0x10, 0xf, 0x0, 0x2, 0x0, 0x2, 0x7, 0x66},
+			expect: []byte{0x10, 0xf, 0x0, 0x2, 0x0, 0x2, 0x8b, 0x76},
 		},
 	}
 

@@ -41,10 +41,10 @@ type ReadWriteMultipleRegistersResponse struct {
 
 // Bytes returns ReadWriteMultipleRegistersResponseTCP packet as bytes form
 func (r ReadWriteMultipleRegistersResponseTCP) Bytes() []byte {
-	dataLen := len(r.Data)
-	result := make([]byte, tcpMBAPHeaderLen+3+dataLen)
-	r.MBAPHeader.bytes(result[0:6])
-	r.ReadWriteMultipleRegistersResponse.bytes(result[6:])
+	length := r.len()
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.ReadWriteMultipleRegistersResponse.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -62,7 +62,6 @@ func ParseReadWriteMultipleRegistersResponseTCP(data []byte) (*ReadWriteMultiple
 		MBAPHeader: MBAPHeader{
 			TransactionID: binary.BigEndian.Uint16(data[0:2]),
 			ProtocolID:    0,
-			Length:        binary.BigEndian.Uint16(data[4:6]),
 		},
 		ReadWriteMultipleRegistersResponse: ReadWriteMultipleRegistersResponse{
 			UnitID: data[6],
@@ -75,10 +74,10 @@ func ParseReadWriteMultipleRegistersResponseTCP(data []byte) (*ReadWriteMultiple
 
 // Bytes returns ReadWriteMultipleRegistersResponseRTU packet as bytes form
 func (r ReadWriteMultipleRegistersResponseRTU) Bytes() []byte {
-	byteLen := r.RegisterByteLen
-	result := make([]byte, 3+byteLen+2)
+	length := r.len()
+	result := make([]byte, length+2)
 	bytes := r.ReadWriteMultipleRegistersResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[3+byteLen:3+byteLen+2], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[length:length+2], CRC16(bytes[:length]))
 	return result
 }
 
@@ -107,9 +106,13 @@ func (r ReadWriteMultipleRegistersResponse) FunctionCode() uint8 {
 	return FunctionReadWriteMultipleRegisters
 }
 
+func (r ReadWriteMultipleRegistersResponse) len() uint16 {
+	return 3 + uint16(r.RegisterByteLen)
+}
+
 // Bytes returns ReadWriteMultipleRegistersResponse packet as bytes form
 func (r ReadWriteMultipleRegistersResponse) Bytes() []byte {
-	return r.bytes(make([]byte, 3+r.RegisterByteLen))
+	return r.bytes(make([]byte, r.len()))
 }
 
 func (r ReadWriteMultipleRegistersResponse) bytes(data []byte) []byte {

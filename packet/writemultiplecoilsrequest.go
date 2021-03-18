@@ -58,7 +58,6 @@ func NewWriteMultipleCoilsRequestTCP(unitID uint8, startAddress uint16, coils []
 		MBAPHeader: MBAPHeader{
 			TransactionID: uint16(1 + rand.Intn(65534)),
 			ProtocolID:    0,
-			Length:        7 + uint16(len(coilsBytes)),
 		},
 		WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
 			UnitID: unitID,
@@ -72,9 +71,10 @@ func NewWriteMultipleCoilsRequestTCP(unitID uint8, startAddress uint16, coils []
 
 // Bytes returns WriteMultipleCoilsRequestTCP packet as bytes form
 func (r WriteMultipleCoilsRequestTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+r.Length)
-	r.MBAPHeader.bytes(result[0:6])
-	r.WriteMultipleCoilsRequest.bytes(result[6 : 6+r.Length])
+	length := r.len()
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.WriteMultipleCoilsRequest.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -106,10 +106,10 @@ func NewWriteMultipleCoilsRequestRTU(unitID uint8, startAddress uint16, coils []
 
 // Bytes returns WriteMultipleCoilsRequestRTU packet as bytes form
 func (r WriteMultipleCoilsRequestRTU) Bytes() []byte {
-	pduLen := 7 + uint16(len(r.Data)) + 2
+	pduLen := r.len() + 2
 	result := make([]byte, pduLen)
 	bytes := r.WriteMultipleCoilsRequest.bytes(result)
-	binary.BigEndian.PutUint16(result[pduLen-2:pduLen], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[pduLen-2:pduLen], CRC16(bytes[:pduLen-2]))
 	return result
 }
 
@@ -124,9 +124,13 @@ func (r WriteMultipleCoilsRequest) FunctionCode() uint8 {
 	return FunctionWriteMultipleCoils
 }
 
+func (r WriteMultipleCoilsRequest) len() uint16 {
+	return 7 + uint16(len(r.Data))
+}
+
 // Bytes returns WriteMultipleCoilsRequest packet as bytes form
 func (r WriteMultipleCoilsRequest) Bytes() []byte {
-	return r.bytes(make([]byte, 7+len(r.Data)))
+	return r.bytes(make([]byte, r.len()))
 }
 
 func (r WriteMultipleCoilsRequest) bytes(bytes []byte) []byte {

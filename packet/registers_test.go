@@ -1394,7 +1394,7 @@ func TestRegisters_string(t *testing.T) {
 		given                Registers
 		whenDefaultByteOrder ByteOrder
 		address              uint16
-		length               uint16
+		length               uint8
 		expected             string
 		expectedErr          string
 	}{

@@ -70,7 +70,6 @@ func exampleFC1Request() packet.Request {
 		MBAPHeader: packet.MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		ReadCoilsRequest: packet.ReadCoilsRequest{
 			UnitID:       1,
@@ -95,7 +94,6 @@ func exampleFC1Response() packet.Response {
 		MBAPHeader: packet.MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        5,
 		},
 		ReadCoilsResponse: packet.ReadCoilsResponse{
 			UnitID: 1,
@@ -319,7 +317,7 @@ func TestClient_Do_ReadSomeBytesWithEOF(t *testing.T) {
 	response, err := client.Do(context.Background(), exampleFC1Request())
 
 	assert.Nil(t, response)
-	assert.EqualError(t, err, io.EOF.Error())
+	assert.EqualError(t, err, "received data length too short to be valid packet")
 
 	conn.AssertExpectations(t)
 }

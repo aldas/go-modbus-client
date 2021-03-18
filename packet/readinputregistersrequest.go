@@ -42,7 +42,7 @@ type ReadInputRegistersRequest struct {
 
 // NewReadInputRegistersRequestTCP creates new instance of Read Input Registers TCP request
 func NewReadInputRegistersRequestTCP(unitID uint8, startAddress uint16, quantity uint16) (*ReadInputRegistersRequestTCP, error) {
-	if quantity == 0 || quantity > 125 {
+	if quantity == 0 || quantity > MaxRegistersInReadResponse {
 		return nil, fmt.Errorf("quantity is out of range (1-125): %v", quantity)
 	}
 
@@ -50,7 +50,6 @@ func NewReadInputRegistersRequestTCP(unitID uint8, startAddress uint16, quantity
 		MBAPHeader: MBAPHeader{
 			TransactionID: uint16(1 + rand.Intn(65534)),
 			ProtocolID:    0,
-			Length:        6,
 		},
 		ReadInputRegistersRequest: ReadInputRegistersRequest{
 			UnitID: unitID,
@@ -63,9 +62,10 @@ func NewReadInputRegistersRequestTCP(unitID uint8, startAddress uint16, quantity
 
 // Bytes returns ReadInputRegistersRequestTCP packet as bytes form
 func (r ReadInputRegistersRequestTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+6)
-	r.MBAPHeader.bytes(result[0:6])
-	r.ReadInputRegistersRequest.bytes(result[6:12])
+	length := uint16(6)
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.ReadInputRegistersRequest.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -77,7 +77,7 @@ func (r ReadInputRegistersRequestTCP) ExpectedResponseLength() int {
 
 // NewReadInputRegistersRequestRTU creates new instance of Read Input Registers RTU request
 func NewReadInputRegistersRequestRTU(unitID uint8, startAddress uint16, quantity uint16) (*ReadInputRegistersRequestRTU, error) {
-	if quantity == 0 || quantity > 125 {
+	if quantity == 0 || quantity > MaxRegistersInReadResponse {
 		return nil, fmt.Errorf("quantity is out of range (1-125): %v", quantity)
 	}
 
@@ -95,7 +95,7 @@ func NewReadInputRegistersRequestRTU(unitID uint8, startAddress uint16, quantity
 func (r ReadInputRegistersRequestRTU) Bytes() []byte {
 	result := make([]byte, 6+2)
 	bytes := r.ReadInputRegistersRequest.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
 	return result
 }
 

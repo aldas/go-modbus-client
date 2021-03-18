@@ -41,9 +41,10 @@ type WriteMultipleCoilsResponse struct {
 
 // Bytes returns WriteMultipleCoilsResponseTCP packet as bytes form
 func (r WriteMultipleCoilsResponseTCP) Bytes() []byte {
-	result := make([]byte, tcpMBAPHeaderLen+6)
-	r.MBAPHeader.bytes(result[0:6])
-	r.WriteMultipleCoilsResponse.bytes(result[6:])
+	length := uint16(6)
+	result := make([]byte, tcpMBAPHeaderLen+length)
+	r.MBAPHeader.bytes(result[0:6], length)
+	r.WriteMultipleCoilsResponse.bytes(result[6 : 6+length])
 	return result
 }
 
@@ -61,7 +62,6 @@ func ParseWriteMultipleCoilsResponseTCP(data []byte) (*WriteMultipleCoilsRespons
 		MBAPHeader: MBAPHeader{
 			TransactionID: binary.BigEndian.Uint16(data[0:2]),
 			ProtocolID:    0,
-			Length:        binary.BigEndian.Uint16(data[4:6]),
 		},
 		WriteMultipleCoilsResponse: WriteMultipleCoilsResponse{
 			UnitID:       data[6],
@@ -73,9 +73,9 @@ func ParseWriteMultipleCoilsResponseTCP(data []byte) (*WriteMultipleCoilsRespons
 
 // Bytes returns WriteMultipleCoilsResponseRTU packet as bytes form
 func (r WriteMultipleCoilsResponseRTU) Bytes() []byte {
-	result := make([]byte, 8)
+	result := make([]byte, 6+2)
 	bytes := r.WriteMultipleCoilsResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes))
+	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
 	return result
 }
 

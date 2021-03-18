@@ -10,7 +10,6 @@ func TestNewWriteSingleRegisterRequestTCP(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		WriteSingleRegisterRequest: WriteSingleRegisterRequest{
 			UnitID:  1,
@@ -44,7 +43,6 @@ func TestNewWriteSingleRegisterRequestTCP(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteSingleRegisterRequest: WriteSingleRegisterRequest{
 					UnitID:  1,
@@ -80,7 +78,6 @@ func TestWriteSingleRegisterRequestTCP_Bytes(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        6,
 		},
 		WriteSingleRegisterRequest: WriteSingleRegisterRequest{
 			UnitID:  1,
@@ -141,7 +138,6 @@ func TestWriteSingleRegisterRequestTCP_ExpectedResponseLength(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 0x1234,
 					ProtocolID:    0,
-					Length:        6,
 				},
 				WriteSingleRegisterRequest: WriteSingleRegisterRequest{
 					UnitID:  1,
@@ -227,7 +223,7 @@ func TestWriteSingleRegisterRequestRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *WriteSingleRegisterRequestRTU) {},
-			expect: []byte{0x1, 0x6, 0x0, 0xc8, 0x1, 0x2, 0x2b, 0xa6},
+			expect: []byte{0x1, 0x6, 0x0, 0xc8, 0x1, 0x2, 0x65, 0x88},
 		},
 		{
 			name: "ok2",
@@ -236,7 +232,7 @@ func TestWriteSingleRegisterRequestRTU_Bytes(t *testing.T) {
 				r.Address = 107
 				r.Data = [2]byte{0x0, 0x0}
 			},
-			expect: []byte{0x10, 0x06, 0x00, 0x6B, 0x0, 0x0, 0xce, 0x2},
+			expect: []byte{0x10, 0x06, 0x00, 0x6B, 0x0, 0x0, 0x57, 0xfb},
 		},
 	}
 

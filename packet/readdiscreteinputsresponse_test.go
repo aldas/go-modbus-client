@@ -10,7 +10,6 @@ func TestReadDiscreteInputsResponseTCP_Bytes(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        5,
 		},
 		ReadDiscreteInputsResponse: ReadDiscreteInputsResponse{
 			UnitID: 1,
@@ -67,7 +66,6 @@ func TestParseReadDiscreteInputsResponseTCP(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 33152,
 					ProtocolID:    0,
-					Length:        5,
 				},
 				ReadDiscreteInputsResponse: ReadDiscreteInputsResponse{
 					UnitID:           3,
@@ -164,7 +162,7 @@ func TestReadDiscreteInputsResponseRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *ReadDiscreteInputsResponseRTU) {},
-			expect: []byte{0x1, 0x2, 0x2, 0x0, 0x1, 0x22, 0x22},
+			expect: []byte{0x1, 0x2, 0x2, 0x0, 0x1, 0x78, 0x78},
 		},
 		{
 			name: "ok2",
@@ -173,7 +171,7 @@ func TestReadDiscreteInputsResponseRTU_Bytes(t *testing.T) {
 				r.InputsByteLength = 2
 				r.Data = []byte{0x1, 0x2}
 			},
-			expect: []byte{0x10, 0x2, 0x2, 0x1, 0x2, 0xdf, 0xd2},
+			expect: []byte{0x10, 0x2, 0x2, 0x1, 0x2, 0xea, 0xc5},
 		},
 	}
 

@@ -10,7 +10,6 @@ func TestReadWriteMultipleRegistersResponseTCP_Bytes(t *testing.T) {
 		MBAPHeader: MBAPHeader{
 			TransactionID: 0x1234,
 			ProtocolID:    0,
-			Length:        5,
 		},
 		ReadWriteMultipleRegistersResponse: ReadWriteMultipleRegistersResponse{
 			UnitID: 1,
@@ -67,7 +66,6 @@ func TestParseReadWriteMultipleRegistersResponseTCP(t *testing.T) {
 				MBAPHeader: MBAPHeader{
 					TransactionID: 33152,
 					ProtocolID:    0,
-					Length:        5,
 				},
 				ReadWriteMultipleRegistersResponse: ReadWriteMultipleRegistersResponse{
 					UnitID:          3,
@@ -164,7 +162,7 @@ func TestReadWriteMultipleRegistersResponseRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *ReadWriteMultipleRegistersResponseRTU) {},
-			expect: []byte{0x1, 0x17, 0x2, 0x0, 0x1, 0xe7, 0x20},
+			expect: []byte{0x1, 0x17, 0x2, 0x0, 0x1, 0x74, 0x7c},
 		},
 		{
 			name: "ok2",
@@ -173,7 +171,7 @@ func TestReadWriteMultipleRegistersResponseRTU_Bytes(t *testing.T) {
 				r.RegisterByteLen = 2
 				r.Data = []byte{0x1, 0x2}
 			},
-			expect: []byte{0x10, 0x17, 0x2, 0x1, 0x2, 0x1a, 0xd0},
+			expect: []byte{0x10, 0x17, 0x2, 0x1, 0x2, 0xe6, 0xc1},
 		},
 	}
 
