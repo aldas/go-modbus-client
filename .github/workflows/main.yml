@@ -20,3 +20,13 @@ jobs:
         run: |
           make init
           make check
+          go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
+
+      - name: Upload coverage to Codecov
+        if: success() && matrix.go-version == 1.16 && matrix.platform == 'ubuntu-latest'
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: coverage.coverprofile
+          flags: unittests
+          fail_ci_if_error: false
