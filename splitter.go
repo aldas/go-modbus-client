@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-// split groups (by host:port+unitID+ optimized max amount of fields for max quantity) fields into packets
+// split groups (by host:port+unitID+ "optimized" max amount of fields for max quantity) fields into packets
 func split(fields []*Field, funcType string) ([]RegisterRequest, error) {
 	byAddressUnitID := groupByAddressUnitID(fields)
 	batches := batchGrouped(byAddressUnitID)
@@ -67,6 +67,10 @@ func groupByAddressUnitID(fields []*Field) map[string]map[uint16]registerSlot {
 }
 
 func batchGrouped(grouped map[string]map[uint16]registerSlot) []requestBatch {
+	// NB: is batching/grouping algorithm is very naive. It just sorts fields by register and creates N number
+	// of requests of them by limiting quantity to MaxRegistersInReadResponse. It does not try to optimise long caps
+	// between fields
+
 	var result = make([]requestBatch, 0)
 	for _, group := range grouped {
 		groupByAddress := slotsSorter{}

@@ -2,6 +2,9 @@
 
 Modbus client (TCP/RTU) over TCP for Golang.
 
+* Modbus TCP/IP specification: http://www.modbus.org/specs.php
+* Modbus TCP/IP and RTU simpler description: http://www.simplymodbus.ca/TCP.htm
+
 ## Installation
 
 ```bash
@@ -24,7 +27,7 @@ go install github.com/aldas/go-modbus-client
 
 * Packets separate from Client implementation
 * Client (TCP/RTU) separated from Modbus packets
-* Convenience methods to convert register data to different data types (with endianess/word order)
+* Convenience methods to convert register data to/from different data types (with endianess/word order)
 * Builders to group multiple fields into request batches
 
 ## Examples
