@@ -18,6 +18,11 @@ func TestCRC16(t *testing.T) {
 		},
 		{
 			name:   "ok",
+			when:   []byte{0x01, 0x04, 0x02, 0xFF, 0xFF},
+			expect: 0x80B8,
+		},
+		{
+			name:   "ok",
 			when:   []byte{0x11, 0x03, 0x00, 0x6B, 0x00, 0x03},
 			expect: 0x8776,
 		},

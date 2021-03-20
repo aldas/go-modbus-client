@@ -109,7 +109,9 @@ func (r WriteMultipleCoilsRequestRTU) Bytes() []byte {
 	pduLen := r.len() + 2
 	result := make([]byte, pduLen)
 	bytes := r.WriteMultipleCoilsRequest.bytes(result)
-	binary.BigEndian.PutUint16(result[pduLen-2:pduLen], CRC16(bytes[:pduLen-2]))
+	crc := CRC16(bytes[:pduLen-2])
+	result[pduLen-2] = uint8(crc)
+	result[pduLen-1] = uint8(crc >> 8)
 	return result
 }
 

@@ -338,7 +338,7 @@ func TestParseRTUResponseWithCRC(t *testing.T) {
 	}{
 		{
 			name:     "ok, ReadCoilsResponseRTU (fc01)",
-			whenData: []byte{0x10, 0x1, 0x2, 0x1, 0x2, 0xae, 0xc5},
+			whenData: []byte{0x10, 0x1, 0x2, 0x1, 0x2, 0xc5, 0xae},
 			expect: &ReadCoilsResponseRTU{
 				ReadCoilsResponse: ReadCoilsResponse{
 					UnitID:          16,

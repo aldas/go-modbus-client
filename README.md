@@ -14,7 +14,7 @@ For questions use Github [Discussions](https://github.com/aldas/go-modbus-client
 ## Installation
 
 ```bash
-go install github.com/aldas/go-modbus-client
+go get github.com/aldas/go-modbus-client
 ```
 
 ## Supported functions

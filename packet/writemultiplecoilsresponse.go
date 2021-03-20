@@ -75,7 +75,9 @@ func ParseWriteMultipleCoilsResponseTCP(data []byte) (*WriteMultipleCoilsRespons
 func (r WriteMultipleCoilsResponseRTU) Bytes() []byte {
 	result := make([]byte, 6+2)
 	bytes := r.WriteMultipleCoilsResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
+	crc := CRC16(bytes[:6])
+	result[6] = uint8(crc)
+	result[7] = uint8(crc >> 8)
 	return result
 }
 

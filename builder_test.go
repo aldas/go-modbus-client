@@ -93,7 +93,7 @@ func TestBuilder_ReadHoldingRegistersRTU(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	received := <-receivedChan
-	assert.Equal(t, []byte{0x0, 0x3, 0x0, 0x12, 0x0, 0x4, 0xdd, 0xe5}, received)
+	assert.Equal(t, []byte{0x0, 0x3, 0x0, 0x12, 0x0, 0x4, 0xe5, 0xdd}, received)
 }
 
 func TestBuilder_ReadInputRegistersTCP(t *testing.T) {
@@ -180,7 +180,7 @@ func TestBuilder_ReadInputRegistersRTU(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	received := <-receivedChan
-	assert.Equal(t, []byte{0x0, 0x4, 0x0, 0x12, 0x0, 0x4, 0x1d, 0x50}, received)
+	assert.Equal(t, []byte{0x0, 0x4, 0x0, 0x12, 0x0, 0x4, 0x50, 0x1d}, received)
 }
 
 func TestField_ModbusAddress(t *testing.T) {

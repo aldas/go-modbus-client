@@ -158,12 +158,12 @@ func TestErrorResponseRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  ErrorResponseRTU{UnitID: 1, Function: 2, Code: 3},
-			expect: []byte{0x1, 0x82, 0x3, 0xa1, 0x0},
+			expect: []byte{0x1, 0x82, 0x3, 0x0, 0xa1},
 		},
 		{
 			name:   "ok2",
 			given:  ErrorResponseRTU{UnitID: 1, Function: 1, Code: 1},
-			expect: []byte{0x01, 0x81, 0x01, 0x90, 0x81},
+			expect: []byte{0x01, 0x81, 0x01, 0x81, 0x90},
 		},
 	}
 

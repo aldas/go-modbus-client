@@ -125,13 +125,13 @@ func TestWithOptions(t *testing.T) {
 		WithProtocolErrorFunc(packet.AsRTUErrorPacket),
 		WithParseResponseFunc(packet.ParseRTUResponse),
 		WithTimeouts(99*time.Second, 98*time.Second),
-		WithLogger(new(mockLogger)),
+		WithHooks(new(mockLogger)),
 	)
 	assert.NotNil(t, client.asProtocolErrorFunc)
 	assert.NotNil(t, client.parseResponseFunc)
 	assert.Equal(t, 99*time.Second, client.writeTimeout)
 	assert.Equal(t, 98*time.Second, client.readTimeout)
-	assert.Equal(t, new(mockLogger), client.logger)
+	assert.Equal(t, new(mockLogger), client.hooks)
 }
 
 func TestClient_Do_receivePacketWith1Read(t *testing.T) {
@@ -156,7 +156,7 @@ func TestClient_Do_receivePacketWith1Read(t *testing.T) {
 	logger.On("AfterEachRead", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1, 0x2, 0x0, 0x1}, 11, nil).Once()
 	logger.On("BeforeParse", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1, 0x2, 0x0, 0x1}).Once()
 
-	client := NewTCPClient(WithLogger(logger))
+	client := NewTCPClient(WithHooks(logger))
 	client.conn = conn
 	client.timeNow = func() time.Time {
 		return exampleNow
@@ -200,7 +200,7 @@ func TestClientRTU_Do_receivePacketWith1Read(t *testing.T) {
 		Return(7, nil).
 		Run(func(args mock.Arguments) {
 			b := args.Get(0).([]byte)
-			copy(b, []byte{0x10, 0x1, 0x2, 0x1, 0x2, 0xae, 0xc5})
+			copy(b, []byte{0x10, 0x1, 0x2, 0x1, 0x2, 0xc5, 0xae})
 		}).Once()
 
 	client := NewRTUClient()

@@ -83,7 +83,9 @@ func ParseWriteSingleCoilResponseTCP(data []byte) (*WriteSingleCoilResponseTCP, 
 func (r WriteSingleCoilResponseRTU) Bytes() []byte {
 	result := make([]byte, 6+2)
 	bytes := r.WriteSingleCoilResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[6:8], CRC16(bytes[:6]))
+	crc := CRC16(bytes[:6])
+	result[6] = uint8(crc)
+	result[7] = uint8(crc >> 8)
 	return result
 }
 

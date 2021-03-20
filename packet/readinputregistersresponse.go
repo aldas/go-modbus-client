@@ -74,10 +74,12 @@ func ParseReadInputRegistersResponseTCP(data []byte) (*ReadInputRegistersRespons
 
 // Bytes returns ReadInputRegistersResponseRTU packet as bytes form
 func (r ReadInputRegistersResponseRTU) Bytes() []byte {
-	length := r.len()
-	result := make([]byte, length+2)
+	length := r.len() + 2
+	result := make([]byte, length)
 	bytes := r.ReadInputRegistersResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[length:length+2], CRC16(bytes[:length]))
+	crc := CRC16(bytes[:length-2])
+	result[length-2] = uint8(crc)
+	result[length-1] = uint8(crc >> 8)
 	return result
 }
 

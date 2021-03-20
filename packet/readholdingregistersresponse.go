@@ -77,7 +77,9 @@ func (r ReadHoldingRegistersResponseRTU) Bytes() []byte {
 	length := r.len()
 	result := make([]byte, length+2)
 	bytes := r.ReadHoldingRegistersResponse.bytes(result)
-	binary.BigEndian.PutUint16(result[length:length+2], CRC16(bytes[:length]))
+	crc := CRC16(bytes[:length])
+	result[length] = uint8(crc)
+	result[length+1] = uint8(crc >> 8)
 	return result
 }
 

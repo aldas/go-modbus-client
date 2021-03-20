@@ -54,7 +54,7 @@ func ParseRTUResponseWithCRC(data []byte) (Response, error) {
 	if dataLen < 5 {
 		return nil, errors.New("data is too short to be a Modbus RTU packet")
 	}
-	packetCRC := binary.BigEndian.Uint16(data[dataLen-2:])
+	packetCRC := binary.LittleEndian.Uint16(data[dataLen-2:])
 	actualCRC := CRC16(data[:dataLen-2])
 	if packetCRC != actualCRC {
 		return nil, ErrInvalidCRC

@@ -162,7 +162,7 @@ func TestReadWriteMultipleRegistersResponseRTU_Bytes(t *testing.T) {
 		{
 			name:   "ok",
 			given:  func(r *ReadWriteMultipleRegistersResponseRTU) {},
-			expect: []byte{0x1, 0x17, 0x2, 0x0, 0x1, 0x74, 0x7c},
+			expect: []byte{0x1, 0x17, 0x2, 0x0, 0x1, 0x7c, 0x74},
 		},
 		{
 			name: "ok2",
@@ -171,7 +171,7 @@ func TestReadWriteMultipleRegistersResponseRTU_Bytes(t *testing.T) {
 				r.RegisterByteLen = 2
 				r.Data = []byte{0x1, 0x2}
 			},
-			expect: []byte{0x10, 0x17, 0x2, 0x1, 0x2, 0xe6, 0xc1},
+			expect: []byte{0x10, 0x17, 0x2, 0x1, 0x2, 0xc1, 0xe6},
 		},
 	}
 

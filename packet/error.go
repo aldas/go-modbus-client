@@ -124,7 +124,9 @@ func (re ErrorResponseRTU) Bytes() []byte {
 	result[0] = re.UnitID
 	result[1] = re.Function + functionCodeErrorBitmask
 	result[2] = re.Code
-	binary.BigEndian.PutUint16(result[3:5], CRC16(result[0:3]))
+	crc := CRC16(result[0:3])
+	result[3] = uint8(crc)
+	result[4] = uint8(crc >> 8)
 
 	return result
 }

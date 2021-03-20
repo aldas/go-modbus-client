@@ -24,10 +24,11 @@ const (
 	//   RS232 / RS485 ADU = 253 bytes + Server address (1 byte) + CRC (2 bytes) = 256 bytes.
 	//   TCP MODBUS ADU = 253 bytes + MBAP (7 bytes) = 260 bytes.
 	tcpPacketMaxLen = 7 + 253 // 2 trans id + 2 proto + 2 pdu len + 1 unit id + 253 max data len
+	rtuPacketMaxLen = 256     // 1 unit id + 253 max data len + 2 crc
 
-	defaultWriteTimeout   = 2 * time.Second
-	defaultReadTimeout    = 4 * time.Second
-	defaultConnectTimeout = 5 * time.Second
+	defaultWriteTimeout   = 1 * time.Second
+	defaultReadTimeout    = 2 * time.Second
+	defaultConnectTimeout = 1 * time.Second
 )
 
 // ErrPacketTooLong is error indicating that modbus server sent amount of data that is bigger than any modbus packet could be
@@ -46,13 +47,13 @@ type Client struct {
 
 	mu      sync.RWMutex
 	address string
-	conn    net.Conn // FIXME: maybe use `io.ReadWriteCloser` so we can use serial connection also here
-	logger  ClientLogger
+	conn    net.Conn
+	hooks   ClientHooks
 }
 
-// ClientLogger allows to log bytes send/received by client.
+// ClientHooks allows to log bytes send/received by client.
 // NB: Do not modify given slice - it is not a copy.
-type ClientLogger interface {
+type ClientHooks interface {
 	BeforeWrite(toWrite []byte)
 	AfterEachRead(received []byte, n int, err error)
 	BeforeParse(received []byte)
@@ -139,10 +140,10 @@ func WithTimeouts(writeTimeout time.Duration, readTimeout time.Duration) func(c 
 	}
 }
 
-// WithLogger is option to set logger in client
-func WithLogger(logger ClientLogger) func(c *Client) {
+// WithHooks is option to set hooks in client
+func WithHooks(logger ClientHooks) func(c *Client) {
 	return func(c *Client) {
-		c.logger = logger
+		c.hooks = logger
 	}
 }
 
@@ -213,8 +214,8 @@ func (c *Client) Do(ctx context.Context, req packet.Request) (packet.Response, e
 	if err != nil {
 		return nil, err
 	}
-	if c.logger != nil {
-		c.logger.BeforeParse(resp)
+	if c.hooks != nil {
+		c.hooks.BeforeParse(resp)
 	}
 	return c.parseResponseFunc(resp)
 }
@@ -223,15 +224,16 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 	if err := c.conn.SetWriteDeadline(c.timeNow().Add(c.writeTimeout)); err != nil {
 		return nil, err
 	}
-	if c.logger != nil {
-		c.logger.BeforeWrite(data)
+	if c.hooks != nil {
+		c.hooks.BeforeWrite(data)
 	}
 	if _, err := c.conn.Write(data); err != nil {
 		return nil, err
 	}
 
-	received := [tcpPacketMaxLen]byte{}
-	tmp := [tcpPacketMaxLen]byte{}
+	// make buffer a little bit bigger than would be valid to see problems when somehow more bytes are sent
+	const maxBytes = tcpPacketMaxLen + 10
+	received := [maxBytes]byte{}
 	total := 0
 	for {
 		select {
@@ -241,9 +243,9 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 		}
 
 		_ = c.conn.SetReadDeadline(c.timeNow().Add(500 * time.Microsecond)) // max 0.5ms block time for read per iteration
-		n, err := c.conn.Read(tmp[:tcpPacketMaxLen])
-		if c.logger != nil {
-			c.logger.AfterEachRead(tmp[:n], n, err)
+		n, err := c.conn.Read(received[total:maxBytes])
+		if c.hooks != nil {
+			c.hooks.AfterEachRead(received[total:total+n], n, err)
 		}
 		// on read errors we do not return immediately as for:
 		// os.ErrDeadlineExceeded - we set new deadline on next iteration
@@ -254,11 +256,7 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 		}
 		total += n
 		if total > tcpPacketMaxLen {
-			// TODO: call flush
 			return nil, ErrPacketTooLong
-		}
-		if n > 0 {
-			copy(received[total-n:], tmp[:n])
 		}
 		// check if we have exactly the error packet. Error packets are shorter than regulars packets
 		if errPacket := c.asProtocolErrorFunc(received[0:total]); errPacket != nil {
@@ -266,7 +264,6 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 			return nil, errPacket
 		}
 		if total >= expectedLen {
-			// TODO: call flush if needed
 			break
 		}
 		if errors.Is(err, io.EOF) {
