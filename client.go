@@ -34,12 +34,14 @@ const (
 // ErrPacketTooLong is error indicating that modbus server sent amount of data that is bigger than any modbus packet could be
 var ErrPacketTooLong = errors.New("received more bytes than valid Modbus packet size can be")
 
-// Client provides mechanisms to send requests to modbus server
+// Client provides mechanisms to send requests to modbus server over network connection
 type Client struct {
 	timeNow func() time.Time
 
+	// writeTimeout is total amount of time writing the request can take after client returns error
 	writeTimeout time.Duration
-	readTimeout  time.Duration
+	// readTimeout is total amount of time reading the response can take before client returns error
+	readTimeout time.Duration
 
 	dialContextFunc     func(ctx context.Context, address string) (net.Conn, error)
 	asProtocolErrorFunc func(data []byte) error
@@ -235,10 +237,13 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 	const maxBytes = tcpPacketMaxLen + 10
 	received := [maxBytes]byte{}
 	total := 0
+	readTimeout := time.After(c.readTimeout)
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
+		case <-readTimeout:
+			return nil, errors.New("total read timeout exceeded")
 		default:
 		}
 

@@ -4,7 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/aldas/go-modbus-client?style=flat-square)](https://goreportcard.com/report/github.com/aldas/go-modbus-client)
 [![Codecov](https://codecov.io/gh/aldas/go-modbus-client/branch/main/graph/badge.svg)](https://codecov.io/gh/aldas/go-modbus-client)
 
-Modbus client (TCP/RTU) over TCP for Golang.
+Modbus client (TCP/RTU) over TCP/Serial for Golang.
 
 * Modbus TCP/IP specification: http://www.modbus.org/specs.php
 * Modbus TCP/IP and RTU simpler description: http://www.simplymodbus.ca/TCP.htm
@@ -64,6 +64,9 @@ for _, req := range requests {
     fmt.Printf("int64 @ address 18: %v", alarmDo1)
 }
 ```
+### RTU over serial port
+
+RTU examples to interact with serial port can be found from [serial.md](serial.md)
 
 ### Low level packets
 

@@ -79,16 +79,6 @@ func exampleFC1Request() packet.Request {
 	}
 }
 
-func exampleFC1RTURequest() packet.Request {
-	return &packet.ReadCoilsRequestRTU{
-		ReadCoilsRequest: packet.ReadCoilsRequest{
-			UnitID:       1,
-			StartAddress: 200,
-			Quantity:     9,
-		},
-	}
-}
-
 func exampleFC1Response() packet.Response {
 	return &packet.ReadCoilsResponseTCP{
 		MBAPHeader: packet.MBAPHeader{
@@ -193,7 +183,7 @@ func TestClientRTU_Do_receivePacketWith1Read(t *testing.T) {
 	conn := new(netConnMock)
 
 	conn.On("SetWriteDeadline", exampleNow.Add(defaultWriteTimeout)).Once().Return(nil)
-	conn.On("Write", req.Bytes()).Once().Return(0, nil)
+	conn.On("Write", []byte{0x1, 0x1, 0x0, 0xc8, 0x0, 0x9, 0x7d, 0xf2}).Once().Return(0, nil)
 
 	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
 	conn.On("Read", mock.Anything).
