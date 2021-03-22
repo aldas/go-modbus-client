@@ -38,9 +38,9 @@ func TestNewReadDiscreteInputsRequestTCP(t *testing.T) {
 			name:             "nok, quantity too big",
 			whenUnitID:       1,
 			whenStartAddress: 200,
-			whenQuantity:     2048 + 1,
+			whenQuantity:     2000 + 1,
 			expect:           nil,
-			expectError:      "quantity is out of range (1-2048): 2049",
+			expectError:      "quantity is out of range (1-2000): 2001",
 		},
 	}
 
@@ -186,9 +186,9 @@ func TestNewReadDiscreteInputsRequestRTU(t *testing.T) {
 			name:             "nok, quantity too big",
 			whenUnitID:       1,
 			whenStartAddress: 200,
-			whenQuantity:     2048 + 1,
+			whenQuantity:     2000 + 1,
 			expect:           nil,
-			expectError:      "quantity is out of range (1-2048): 2049",
+			expectError:      "quantity is out of range (1-2000): 2001",
 		},
 	}
 

@@ -13,6 +13,27 @@ import (
 //
 // Background info: http://www.digi.com/wiki/developer/index.php/Modbus_Floating_Points (about floats but 32bit int is also double word)
 //
+// For example, if the number 2923517522 (hex: AE 41 56 52) was to be sent as a 32 bit unsigned integen then bytes that
+// are send over the wire depend on 2 factors - byte order and/or register/word order.
+//
+// Some devices store the 32bits in 2 registers/words in following order:
+// a) AE41 5652 - higher (leftmost) 16 bits (high word) in the first register and the remaining low word in the second (AE41 before 5652)
+// b) 5652 AE41 - low word in the first register and high word in the second (5652 before AE41)
+//
+// Ordered in memory (vertical table):
+// | Memory | Big E | Little E | BE Low Word First | LE Low Word First |
+// | byte 0 | AE    | 52       | 56                | 41                |
+// | byte 1 | 41    | 56       | 52                | AE                |
+// | byte 2 | 56    | 41       | AE                | 52                |
+// | byte 3 | 52    | AE       | 41                | 56                |
+//
+// Ordered in memory (horizontal table):
+// |  0 1  2 3 | Byte order      | Word order      | Name                            |
+// | AE41 5652 | high byte first | high word first | big endian (high word first)    |
+// | 5652 AE41 | high byte first | low word first  | big endian (low word first)     |
+// | 41AE 5256 | low byte first  | high word first | little endian (low word first)  |
+// | 5256 41AE | low byte first  | low word first  | little endian (high word first) |
+//
 // Example:
 // Our PLC (modbus serving) controller/computer is using little endian
 //

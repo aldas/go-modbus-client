@@ -48,9 +48,9 @@ type WriteMultipleCoilsRequest struct {
 // NewWriteMultipleCoilsRequestTCP creates new instance of Write Multiple Coils TCP request
 func NewWriteMultipleCoilsRequestTCP(unitID uint8, startAddress uint16, coils []bool) (*WriteMultipleCoilsRequestTCP, error) {
 	coilsCount := len(coils)
-	if coilsCount == 0 || coilsCount > 2048 {
-		// 2048 coils is due that coils byte len size field is 1 byte so max 256*8=2048 coils can be sent
-		return nil, fmt.Errorf("coils count is out of range (1-2048): %v", coilsCount)
+	if coilsCount == 0 || coilsCount > 1968 {
+		// 1968 coils is due that coils byte len size field is 1 byte so max 246*8=1968 coils can be sent
+		return nil, fmt.Errorf("coils count is out of range (1-1968): %v", coilsCount)
 	}
 
 	coilsBytes := CoilsToBytes(coils)
@@ -87,9 +87,9 @@ func (r WriteMultipleCoilsRequestTCP) ExpectedResponseLength() int {
 // NewWriteMultipleCoilsRequestRTU creates new instance of Write Multiple Coils RTU request
 func NewWriteMultipleCoilsRequestRTU(unitID uint8, startAddress uint16, coils []bool) (*WriteMultipleCoilsRequestRTU, error) {
 	coilsCount := len(coils)
-	if coilsCount == 0 || coilsCount > 2048 {
-		// 2048 coils is due that coils byte len size field is 1 byte so max 256*8=2048 coils can be sent
-		return nil, fmt.Errorf("coils count is out of range (1-2048): %v", coilsCount)
+	if coilsCount == 0 || coilsCount > 1968 {
+		// 1968 coils is due that coils byte len size field is 1 byte so max 246*8=1968 coils can be sent
+		return nil, fmt.Errorf("coils count is out of range (1-1968): %v", coilsCount)
 	}
 
 	coilsBytes := CoilsToBytes(coils)

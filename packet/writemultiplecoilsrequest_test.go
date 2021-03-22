@@ -71,7 +71,7 @@ func TestNewWriteMultipleCoilsRequestTCP(t *testing.T) {
 			whenStartAddress: 200,
 			whenCoils:        []bool{},
 			expect:           nil,
-			expectError:      "coils count is out of range (1-2048): 0",
+			expectError:      "coils count is out of range (1-1968): 0",
 		},
 	}
 
@@ -212,7 +212,7 @@ func TestNewWriteMultipleCoilsRequestRTU(t *testing.T) {
 			whenStartAddress: 200,
 			whenCoils:        []bool{},
 			expect:           nil,
-			expectError:      "coils count is out of range (1-2048): 0",
+			expectError:      "coils count is out of range (1-1968): 0",
 		},
 	}
 

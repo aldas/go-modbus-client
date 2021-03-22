@@ -42,9 +42,9 @@ type ReadDiscreteInputsRequest struct {
 
 // NewReadDiscreteInputsRequestTCP creates new instance of Read Discrete Inputs TCP request
 func NewReadDiscreteInputsRequestTCP(unitID uint8, startAddress uint16, quantity uint16) (*ReadDiscreteInputsRequestTCP, error) {
-	if quantity == 0 || quantity > 2048 {
-		// 2048 coils is due that in response data size field is 1 byte so max 256*8=2048 coils can be returned
-		return nil, fmt.Errorf("quantity is out of range (1-2048): %v", quantity)
+	if quantity == 0 || quantity > 2000 {
+		// 2000 coils is due that in response data size field is 1 byte so max 250*8=2000 coils can be returned
+		return nil, fmt.Errorf("quantity is out of range (1-2000): %v", quantity)
 	}
 
 	return &ReadDiscreteInputsRequestTCP{
@@ -78,9 +78,9 @@ func (r ReadDiscreteInputsRequestTCP) ExpectedResponseLength() int {
 
 // NewReadDiscreteInputsRequestRTU creates new instance of Read Discrete Inputs RTU request
 func NewReadDiscreteInputsRequestRTU(unitID uint8, startAddress uint16, quantity uint16) (*ReadDiscreteInputsRequestRTU, error) {
-	if quantity == 0 || quantity > 2048 {
-		// 2048 coils is due that in response data size field is 1 byte so max 256*8=2048 coils can be returned
-		return nil, fmt.Errorf("quantity is out of range (1-2048): %v", quantity)
+	if quantity == 0 || quantity > 2000 {
+		// 2000 coils is due that in response data size field is 1 byte so max 250*8=2000 coils can be returned
+		return nil, fmt.Errorf("quantity is out of range (1-2000): %v", quantity)
 	}
 
 	return &ReadDiscreteInputsRequestRTU{

@@ -34,13 +34,6 @@ const (
 	FunctionReadWriteMultipleRegisters = uint8(23)
 )
 
-// Modbus ASCII  ??
-
-// https://rakyll.org/style-packages/
-
-// http://www.simplymodbus.ca/FAQ.htm
-// https://en.wikipedia.org/wiki/Modbus
-
 // MBAPHeader (Modbus Application Header) is header part of modbus TCP packet. NB: this library does pack unitID into header
 type MBAPHeader struct {
 	TransactionID uint16
