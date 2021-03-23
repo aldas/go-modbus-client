@@ -2,6 +2,7 @@ package modbus
 
 import (
 	"context"
+	"errors"
 	"github.com/aldas/go-modbus-client/modbustest"
 	"github.com/aldas/go-modbus-client/packet"
 	"github.com/stretchr/testify/assert"
@@ -533,6 +534,42 @@ func TestRegisterRequest_StartAddress(t *testing.T) {
 	assert.Equal(t, uint16(100), when)
 }
 
+func TestRegisterRequest_Fields(t *testing.T) {
+	given := RegisterRequest{
+		Request:       nil,
+		serverAddress: ":502",
+		unitID:        1,
+		startAddress:  100,
+		fields: Fields{
+			{
+				ServerAddress: ":502",
+				UnitID:        1,
+				Name:          "test1",
+			},
+			{
+				ServerAddress: ":502",
+				UnitID:        1,
+				Name:          "test2",
+			},
+		},
+	}
+
+	when := given.Fields()
+	expect := Fields{
+		{
+			ServerAddress: ":502",
+			UnitID:        1,
+			Name:          "test1",
+		},
+		{
+			ServerAddress: ":502",
+			UnitID:        1,
+			Name:          "test2",
+		},
+	}
+	assert.Equal(t, expect, when)
+}
+
 func TestRegisterRequest_AsRegisters(t *testing.T) {
 	rr := RegisterRequest{
 		Request:       nil,
@@ -557,6 +594,174 @@ func TestRegisterRequest_AsRegisters(t *testing.T) {
 	value, err := registers.Uint16(102)
 	assert.NoError(t, err)
 	assert.Equal(t, uint16(1), value)
+}
+
+func TestRegisterRequest_ExtractFields(t *testing.T) {
+	var testCases = []struct {
+		name                           string
+		givenFields                    Fields
+		givenResponseData              []byte
+		whenContinueOnExtractionErrors bool
+		expect                         []FieldValue
+		expectErr                      string
+	}{
+		{
+			name: "ok",
+			givenFields: Fields{
+				{
+					UnitID:          1,
+					RegisterAddress: 21,
+					Type:            FieldTypeInt16,
+					Name:            "f1",
+				},
+				{
+					UnitID:          1,
+					RegisterAddress: 22,
+					Type:            FieldTypeBit,
+					Bit:             8,
+					Name:            "f2",
+				},
+			},
+			givenResponseData: []byte{0x0, 0x0, 0x0, 0x1, 0b00010001, 0x0},
+			expect: []FieldValue{
+				{
+					Field: Field{
+						UnitID:          1,
+						RegisterAddress: 21,
+						Type:            FieldTypeInt16,
+						Name:            "f1",
+					},
+					Value: int16(1),
+					Error: nil,
+				},
+				{
+					Field: Field{
+						UnitID:          1,
+						RegisterAddress: 22,
+						Type:            FieldTypeBit,
+						Bit:             8,
+						Name:            "f2",
+					},
+					Value: true,
+					Error: nil,
+				},
+			},
+		},
+		{
+			name: "nok, had errors, ContinueOnExtractionErrors=true",
+			givenFields: Fields{
+				{
+					UnitID:          1,
+					RegisterAddress: 21,
+					Type:            FieldTypeInt16,
+					Name:            "f1",
+				},
+				{
+					UnitID:          1,
+					RegisterAddress: 22,
+					Type:            FieldTypeFloat64,
+					Name:            "f2",
+				},
+			},
+			givenResponseData:              []byte{0x0, 0x0, 0x0, 0x1, 0b00010001, 0x0},
+			whenContinueOnExtractionErrors: true,
+			expect: []FieldValue{
+				{
+					Field: Field{
+						UnitID:          1,
+						RegisterAddress: 21,
+						Type:            FieldTypeInt16,
+						Name:            "f1",
+					},
+					Value: int16(1),
+					Error: nil,
+				},
+				{
+					Field: Field{
+						UnitID:          1,
+						RegisterAddress: 22,
+						Type:            FieldTypeFloat64,
+						Name:            "f2",
+					},
+					Value: float64(0),
+					Error: errors.New("address over startAddress+quantity bounds"),
+				},
+			},
+			expectErr: ErrorFieldExtractHadError.Error(),
+		},
+		{
+			name: "nok, had errors, ContinueOnExtractionErrors=false",
+			givenFields: Fields{
+				{
+					UnitID:          1,
+					RegisterAddress: 21,
+					Type:            FieldTypeInt16,
+					Name:            "f1",
+				},
+				{
+					UnitID:          1,
+					RegisterAddress: 22,
+					Type:            FieldTypeFloat64,
+					Name:            "f2",
+				},
+			},
+			givenResponseData:              []byte{0x0, 0x0, 0x0, 0x1, 0b00010001, 0x0},
+			whenContinueOnExtractionErrors: false,
+			expect:                         nil,
+			expectErr:                      "field extraction failed. name: f2 err: address over startAddress+quantity bounds",
+		},
+		{
+			name: "nok, error creating registers",
+			givenFields: Fields{
+				{
+					UnitID:          1,
+					RegisterAddress: 21,
+					Type:            FieldTypeInt16,
+					Name:            "f1",
+				},
+				{
+					UnitID:          1,
+					RegisterAddress: 22,
+					Type:            FieldTypeFloat64,
+					Name:            "f2",
+				},
+			},
+			givenResponseData:              []byte{0x0, 0x0, 0x0, 0x1, 0b00010001},
+			whenContinueOnExtractionErrors: false,
+			expect:                         nil,
+			expectErr:                      "data length must be odd number of bytes as 1 register is 2 bytes",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := RegisterRequest{
+				Request:       nil,
+				serverAddress: ":502",
+				unitID:        1,
+				startAddress:  20,
+				fields:        tc.givenFields,
+			}
+			response := packet.ReadHoldingRegistersResponseTCP{
+				MBAPHeader: packet.MBAPHeader{},
+				ReadHoldingRegistersResponse: packet.ReadHoldingRegistersResponse{
+					UnitID:          1,
+					RegisterByteLen: uint8(len(tc.givenResponseData)),
+					Data:            tc.givenResponseData,
+				},
+			}
+
+			fields, err := req.ExtractFields(response, tc.whenContinueOnExtractionErrors)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Len(t, fields, len(tc.expect))
+			assert.Equal(t, tc.expect, fields)
+		})
+	}
 }
 
 func TestField_registerSize(t *testing.T) {
@@ -649,6 +854,132 @@ func TestField_registerSize(t *testing.T) {
 	}
 }
 
+func TestField_ExtractFrom(t *testing.T) {
+	var testCases = []struct {
+		name              string
+		givenRegisterData []byte
+		whenType          FieldType
+		whenByteOrder     packet.ByteOrder
+		expect            interface{}
+		expectErr         string
+	}{
+		{
+			name:              "bit",
+			givenRegisterData: []byte{0x0, 0x0, 0b00010001, 0x0},
+			whenType:          FieldTypeBit,
+			expect:            true,
+		},
+		{
+			name:              "byte",
+			givenRegisterData: []byte{0x0, 0x0, 0x1, 0x0},
+			whenType:          FieldTypeByte,
+			expect:            byte(1),
+		},
+		{
+			name:              "uint8",
+			whenType:          FieldTypeUint8,
+			givenRegisterData: []byte{0x0, 0x0, 0xFF, 0x0},
+			expect:            uint8(255),
+		},
+		{
+			name:              "int8",
+			whenType:          FieldTypeInt8,
+			givenRegisterData: []byte{0x0, 0x0, 0xFF, 0x0},
+			expect:            int8(-1),
+		},
+		{
+			name:              "uint16",
+			whenType:          FieldTypeUint16,
+			givenRegisterData: []byte{0x0, 0x0, 0x0, 0xFF},
+			expect:            uint16(255),
+		},
+		{
+			name:              "int16",
+			whenType:          FieldTypeInt16,
+			givenRegisterData: []byte{0x0, 0x0, 0xFF, 0xFF},
+			expect:            int16(-1),
+		},
+		{
+			name:              "uint32",
+			whenType:          FieldTypeUint32,
+			givenRegisterData: []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x1},
+			expect:            uint32(1),
+		},
+		{
+			name:              "int32",
+			whenType:          FieldTypeInt32,
+			givenRegisterData: []byte{0x0, 0x0, 0xFF, 0xFF, 0xFF, 0xFF},
+			expect:            int32(-1),
+		},
+		{
+			name:              "uint64",
+			whenType:          FieldTypeUint64,
+			givenRegisterData: []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1},
+			expect:            uint64(1),
+		},
+		{
+			name:              "int64",
+			whenType:          FieldTypeInt64,
+			givenRegisterData: []byte{0x0, 0x0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+			expect:            int64(-1),
+		},
+		{
+			name:              "float32",
+			whenType:          FieldTypeFloat32,
+			whenByteOrder:     packet.BigEndianLowWordFirst,
+			givenRegisterData: []byte{0x0, 0x0, 0xcc, 0xcd, 0x3f, 0xec},
+			expect:            float32(1.85),
+		},
+		{
+			name:              "float64",
+			whenType:          FieldTypeFloat64,
+			whenByteOrder:     packet.BigEndianLowWordFirst,
+			givenRegisterData: []byte{0x0, 0x0, 0x99, 0x9a, 0x99, 0x99, 0x99, 0x99, 0x3f, 0xfd},
+			expect:            float64(1.85),
+		},
+		{
+			name:              "string odd size",
+			whenType:          FieldTypeString,
+			whenByteOrder:     packet.LittleEndian,
+			givenRegisterData: []byte{0x0, 0x0, 0x53, 0x56, 0x43, 0x83},
+			expect:            "SVC",
+		},
+		{
+			name:      "nok, unknown type",
+			whenType:  0,
+			expect:    nil,
+			expectErr: "extraction failure due unknown field type",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := Field{
+				ServerAddress:   ":502",
+				UnitID:          1,
+				RegisterAddress: 1,
+				Type:            tc.whenType,
+				Bit:             8,
+				FromHighByte:    true,
+				Length:          3,
+				ByteOrder:       tc.whenByteOrder,
+				Name:            "test",
+			}
+
+			registers, _ := packet.NewRegisters(tc.givenRegisterData, 0)
+
+			result, err := f.ExtractFrom(registers)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestField_Validate(t *testing.T) {
 	example := Field{
 		ServerAddress:   ":502",
@@ -674,11 +1005,6 @@ func TestField_Validate(t *testing.T) {
 			name:      "nok, server address is empty",
 			given:     func(f *Field) { f.ServerAddress = "" },
 			expectErr: "field server address can not be empty",
-		},
-		{
-			name:      "nok, register address is not set",
-			given:     func(f *Field) { f.RegisterAddress = 0 },
-			expectErr: "field register address can not be 0",
 		},
 		{
 			name:      "nok, type is not set",

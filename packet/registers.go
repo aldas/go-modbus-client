@@ -418,6 +418,15 @@ func (r Registers) Float64WithByteOrder(address uint16, byteOrder ByteOrder) (fl
 // String returns register data as string starting from given address to given length.
 // Data is interpreted as ASCII 0x0 (null) terminated string.
 func (r Registers) String(address uint16, length uint8) (string, error) {
+	return r.StringWithByteOrder(address, length, useDefaultByteOrder)
+}
+
+// StringWithByteOrder returns register data as string starting from given address to given length and byte order.
+// Data is interpreted as ASCII 0x0 (null) terminated string.
+func (r Registers) StringWithByteOrder(address uint16, length uint8, byteOrder ByteOrder) (string, error) {
+	if byteOrder == useDefaultByteOrder {
+		byteOrder = r.defaultByteOrder
+	}
 	if address < r.startAddress {
 		return "", errors.New("address under startAddress bounds")
 	}
@@ -435,7 +444,7 @@ func (r Registers) String(address uint16, length uint8) (string, error) {
 	// TODO: clean these loops up to single for loop
 
 	rawBytes := r.data[startIndex:endIndex]
-	if r.defaultByteOrder&BigEndian != 0 {
+	if byteOrder&BigEndian != 0 {
 		for i := 1; i < len(rawBytes); i++ {
 			// data is in BIG ENDIAN format in register (register is 2 bytes). so every 2 bytes needs to have their bytes swapped
 			// to get little endian order

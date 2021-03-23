@@ -22,8 +22,8 @@ func TestExternalUsage(t *testing.T) {
 			MBAPHeader: packet.MBAPHeader{TransactionID: 123, ProtocolID: 0},
 			ReadHoldingRegistersResponse: packet.ReadHoldingRegistersResponse{
 				UnitID:          0,
-				RegisterByteLen: 2,
-				Data:            []byte{0xca, 0xfe},
+				RegisterByteLen: 10,
+				Data:            []byte{0x0, 0x1, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
 			},
 		}
 		return resp.Bytes(), true
@@ -35,8 +35,8 @@ func TestExternalUsage(t *testing.T) {
 
 	b := modbus.NewRequestBuilder(addr, 1)
 
-	reqs, err := b.Add(b.Int64(18).UnitID(0).Name("test_do")).
-		Add(b.Int64(18).Name("alarm_do_1").UnitID(0)).
+	reqs, err := b.Add(b.Uint16(18).UnitID(0).Name("test_do")).
+		Add(b.Int64(19).Name("alarm_do_1").UnitID(0)).
 		ReadHoldingRegistersTCP()
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
@@ -45,10 +45,23 @@ func TestExternalUsage(t *testing.T) {
 	if err := client.Connect(context.Background(), addr); err != nil {
 		return
 	}
-	for _, req := range reqs {
-		resp, err := client.Do(context.Background(), req)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-	}
+	//for _, req := range reqs {
+	//
+	//}
+	req := reqs[0] // skip looping as we always have 1 request in this example
+	resp, err := client.Do(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	fields, err := req.ExtractFields(resp.(modbus.RegistersResponse), true)
+	assert.NotNil(t, resp)
+	assert.Len(t, fields, 2)
+
+	assert.Equal(t, uint16(1), fields[0].Value)
+	assert.Equal(t, "test_do", fields[0].Field.Name)
+
+	assert.Equal(t, int64(-1), fields[1].Value)
+	assert.Equal(t, "alarm_do_1", fields[1].Field.Name)
 }

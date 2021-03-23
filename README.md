@@ -44,7 +44,7 @@ field values from response registers with convenience methods
 ```go
 b := modbus.NewRequestBuilder("localhost:5020", 1)
 
-requests, _ := b.Add(b.Int64(18).UnitID(0).Name("test_do")).
+requests, _ := b.Add(b.Uint16(18).UnitID(0).Name("test_do")).
     Add(b.Int64(18).Name("alarm_do_1").UnitID(0)).
     ReadHoldingRegistersTCP() // split added fields into multiple requests with suitable quantity size
 
@@ -62,6 +62,11 @@ for _, req := range requests {
     registers, _ := resp.(*packet.ReadHoldingRegistersResponseTCP).AsRegisters(req.StartAddress())
     alarmDo1, _ := registers.Int64(18)
     fmt.Printf("int64 @ address 18: %v", alarmDo1)
+    
+    // or extract values to FieldValue struct
+    fields, _ := req.ExtractFields(resp.(modbus.RegistersResponse), true)
+    assert.Equal(t, uint16(1), fields[0].Value)
+    assert.Equal(t, "alarm_do_1", fields[1].Field.Name)
 }
 ```
 ### RTU over serial port

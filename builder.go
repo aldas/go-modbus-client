@@ -2,6 +2,7 @@ package modbus
 
 import (
 	"errors"
+	"fmt"
 	"github.com/aldas/go-modbus-client/packet"
 )
 
@@ -80,9 +81,6 @@ func (f Field) Validate() error {
 	if f.ServerAddress == "" {
 		return errors.New("field server address can not be empty")
 	}
-	if f.RegisterAddress == 0 {
-		return errors.New("field register address can not be 0")
-	}
 	if f.Type == 0 {
 		return errors.New("field type must be set")
 	}
@@ -96,6 +94,39 @@ func (f Field) Validate() error {
 		return errors.New("field with type string must have length set")
 	}
 	return nil
+}
+
+// ExtractFrom extracts field value from given registers data
+func (f Field) ExtractFrom(registers *packet.Registers) (interface{}, error) {
+	switch f.Type {
+	case FieldTypeBit:
+		return registers.Bit(f.RegisterAddress, f.Bit)
+	case FieldTypeByte:
+		return registers.Byte(f.RegisterAddress, f.FromHighByte)
+	case FieldTypeUint8:
+		return registers.Uint8(f.RegisterAddress, f.FromHighByte)
+	case FieldTypeInt8:
+		return registers.Int8(f.RegisterAddress, f.FromHighByte)
+	case FieldTypeUint16:
+		return registers.Uint16(f.RegisterAddress)
+	case FieldTypeInt16:
+		return registers.Int16(f.RegisterAddress)
+	case FieldTypeUint32:
+		return registers.Uint32WithByteOrder(f.RegisterAddress, f.ByteOrder)
+	case FieldTypeInt32:
+		return registers.Int32WithByteOrder(f.RegisterAddress, f.ByteOrder)
+	case FieldTypeUint64:
+		return registers.Uint64WithByteOrder(f.RegisterAddress, f.ByteOrder)
+	case FieldTypeInt64:
+		return registers.Int64WithByteOrder(f.RegisterAddress, f.ByteOrder)
+	case FieldTypeFloat32:
+		return registers.Float32WithByteOrder(f.RegisterAddress, f.ByteOrder)
+	case FieldTypeFloat64:
+		return registers.Float64WithByteOrder(f.RegisterAddress, f.ByteOrder)
+	case FieldTypeString:
+		return registers.StringWithByteOrder(f.RegisterAddress, f.Length, f.ByteOrder)
+	}
+	return nil, errors.New("extraction failure due unknown field type")
 }
 
 // BField is distinct field be requested and extracted from response
@@ -359,6 +390,11 @@ func (r RegisterRequest) StartAddress() uint16 {
 	return r.startAddress
 }
 
+// Fields returns Fields related to the request
+func (r RegisterRequest) Fields() Fields {
+	return r.fields // no copy. if you modify it - you are to blame
+}
+
 // RegistersResponse is marker interface for responses returning register data
 type RegistersResponse interface {
 	packet.Response
@@ -368,6 +404,52 @@ type RegistersResponse interface {
 // AsRegisters returns response data as Register to more convenient access
 func (r RegisterRequest) AsRegisters(response RegistersResponse) (*packet.Registers, error) {
 	return response.AsRegisters(r.startAddress)
+}
+
+// FieldValue is concrete value extracted from register data using field data type and byte order
+type FieldValue struct {
+	Field Field
+	Value interface{}
+	Error error
+}
+
+// ErrorFieldExtractHadError is returned when ExtractFields could not extract value from Field
+var ErrorFieldExtractHadError = errors.New("field extraction had an error. check FieldValue.Error for details")
+
+// ExtractFields extracts Field values from given response. When continueOnExtractionErrors is true and error occurs
+// during extraction, this method does not end but continues to extract all Fields and returns ErrorFieldExtractHadError
+// at the end. To distinguish errors check FieldValue.Error field.
+func (r RegisterRequest) ExtractFields(response RegistersResponse, continueOnExtractionErrors bool) ([]FieldValue, error) {
+	regs, err := response.AsRegisters(r.startAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	hadErrors := false
+	capacity := 0
+	if continueOnExtractionErrors {
+		capacity = len(r.fields)
+	}
+	result := make([]FieldValue, 0, capacity)
+	for _, f := range r.fields {
+		vTmp, err := f.ExtractFrom(regs)
+		if err != nil && !continueOnExtractionErrors {
+			return nil, fmt.Errorf("field extraction failed. name: %v err: %w", f.Name, err)
+		}
+		if !hadErrors && err != nil {
+			hadErrors = true
+		}
+		tmp := FieldValue{
+			Field: f,
+			Value: vTmp,
+			Error: err,
+		}
+		result = append(result, tmp)
+	}
+	if hadErrors {
+		return result, ErrorFieldExtractHadError
+	}
+	return result, nil
 }
 
 // ReadHoldingRegistersTCP combines fields into TCP Read Holding Registers (FC3) requests

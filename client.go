@@ -201,6 +201,7 @@ func (c *Client) Close() error {
 
 // Do sends given Modbus request to modbus server and returns parsed Response.
 // ctx is to be used for to cancel connection attempt.
+// On modbus exception nil is returned as response and error has value of type packet.ErrorResponseTCP or packet.ErrorResponseRTU
 func (c *Client) Do(ctx context.Context, req packet.Request) (packet.Response, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
