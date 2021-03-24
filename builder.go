@@ -368,31 +368,15 @@ func (b *Builder) String(registerAddress uint16, length uint8) *BField {
 type RegisterRequest struct {
 	packet.Request
 
-	serverAddress string
-	unitID        uint8
-	startAddress  uint16
+	// ServerAddress is modbus server address where request should be sent
+	ServerAddress string
+	// UnitID is unit identifier of modbus slave device
+	UnitID uint8
+	// StartAddress is start register address for request
+	StartAddress uint16
 
-	fields Fields
-}
-
-// ServerAddress returns modbus server address of contained request
-func (r RegisterRequest) ServerAddress() string {
-	return r.serverAddress
-}
-
-// UnitID returns UnitID of contained request
-func (r RegisterRequest) UnitID() uint8 {
-	return r.unitID
-}
-
-// StartAddress returns start Address of contained request
-func (r RegisterRequest) StartAddress() uint16 {
-	return r.startAddress
-}
-
-// Fields returns Fields related to the request
-func (r RegisterRequest) Fields() Fields {
-	return r.fields // no copy. if you modify it - you are to blame
+	// Fields is slice of field use to construct the request and to be extracted from response
+	Fields Fields
 }
 
 // RegistersResponse is marker interface for responses returning register data
@@ -403,7 +387,7 @@ type RegistersResponse interface {
 
 // AsRegisters returns response data as Register to more convenient access
 func (r RegisterRequest) AsRegisters(response RegistersResponse) (*packet.Registers, error) {
-	return response.AsRegisters(r.startAddress)
+	return response.AsRegisters(r.StartAddress)
 }
 
 // FieldValue is concrete value extracted from register data using field data type and byte order
@@ -420,7 +404,7 @@ var ErrorFieldExtractHadError = errors.New("field extraction had an error. check
 // during extraction, this method does not end but continues to extract all Fields and returns ErrorFieldExtractHadError
 // at the end. To distinguish errors check FieldValue.Error field.
 func (r RegisterRequest) ExtractFields(response RegistersResponse, continueOnExtractionErrors bool) ([]FieldValue, error) {
-	regs, err := response.AsRegisters(r.startAddress)
+	regs, err := response.AsRegisters(r.StartAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -428,10 +412,10 @@ func (r RegisterRequest) ExtractFields(response RegistersResponse, continueOnExt
 	hadErrors := false
 	capacity := 0
 	if continueOnExtractionErrors {
-		capacity = len(r.fields)
+		capacity = len(r.Fields)
 	}
 	result := make([]FieldValue, 0, capacity)
-	for _, f := range r.fields {
+	for _, f := range r.Fields {
 		vTmp, err := f.ExtractFrom(regs)
 		if err != nil && !continueOnExtractionErrors {
 			return nil, fmt.Errorf("field extraction failed. name: %v err: %w", f.Name, err)

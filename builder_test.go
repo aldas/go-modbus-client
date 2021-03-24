@@ -495,52 +495,13 @@ func TestBuilder_AddAll(t *testing.T) {
 	}
 }
 
-func TestRegisterRequest_ServerAddress(t *testing.T) {
-	given := RegisterRequest{
-		Request:       nil,
-		serverAddress: ":502",
-		unitID:        1,
-		startAddress:  100,
-		fields:        nil,
-	}
-
-	when := given.ServerAddress()
-	assert.Equal(t, ":502", when)
-}
-
-func TestRegisterRequest_UnitID(t *testing.T) {
-	given := RegisterRequest{
-		Request:       nil,
-		serverAddress: ":502",
-		unitID:        1,
-		startAddress:  100,
-		fields:        nil,
-	}
-
-	when := given.UnitID()
-	assert.Equal(t, uint8(1), when)
-}
-
-func TestRegisterRequest_StartAddress(t *testing.T) {
-	given := RegisterRequest{
-		Request:       nil,
-		serverAddress: ":502",
-		unitID:        1,
-		startAddress:  100,
-		fields:        nil,
-	}
-
-	when := given.StartAddress()
-	assert.Equal(t, uint16(100), when)
-}
-
 func TestRegisterRequest_Fields(t *testing.T) {
 	given := RegisterRequest{
 		Request:       nil,
-		serverAddress: ":502",
-		unitID:        1,
-		startAddress:  100,
-		fields: Fields{
+		ServerAddress: ":502",
+		UnitID:        1,
+		StartAddress:  100,
+		Fields: Fields{
 			{
 				ServerAddress: ":502",
 				UnitID:        1,
@@ -554,7 +515,6 @@ func TestRegisterRequest_Fields(t *testing.T) {
 		},
 	}
 
-	when := given.Fields()
 	expect := Fields{
 		{
 			ServerAddress: ":502",
@@ -567,16 +527,16 @@ func TestRegisterRequest_Fields(t *testing.T) {
 			Name:          "test2",
 		},
 	}
-	assert.Equal(t, expect, when)
+	assert.Equal(t, expect, given.Fields)
 }
 
 func TestRegisterRequest_AsRegisters(t *testing.T) {
 	rr := RegisterRequest{
 		Request:       nil,
-		serverAddress: ":502",
-		unitID:        1,
-		startAddress:  100,
-		fields:        nil,
+		ServerAddress: ":502",
+		UnitID:        1,
+		StartAddress:  100,
+		Fields:        nil,
 	}
 
 	resp := packet.ReadHoldingRegistersResponseTCP{
@@ -737,10 +697,10 @@ func TestRegisterRequest_ExtractFields(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			req := RegisterRequest{
 				Request:       nil,
-				serverAddress: ":502",
-				unitID:        1,
-				startAddress:  20,
-				fields:        tc.givenFields,
+				ServerAddress: ":502",
+				UnitID:        1,
+				StartAddress:  20,
+				Fields:        tc.givenFields,
 			}
 			response := packet.ReadHoldingRegistersResponseTCP{
 				MBAPHeader: packet.MBAPHeader{},

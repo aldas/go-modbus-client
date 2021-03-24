@@ -34,10 +34,10 @@ func split(fields []Field, funcType string) ([]RegisterRequest, error) {
 		result[i] = RegisterRequest{
 			Request: req,
 
-			serverAddress: b.Address,
-			unitID:        b.UnitID,
-			startAddress:  b.StartAddress,
-			fields:        b.fields,
+			ServerAddress: b.Address,
+			UnitID:        b.UnitID,
+			StartAddress:  b.StartAddress,
+			Fields:        b.fields,
 		}
 	}
 	return result, nil

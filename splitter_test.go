@@ -38,10 +38,10 @@ func TestSplit_single(t *testing.T) {
 	pReq, _ := packet.NewReadHoldingRegistersRequestTCP(0, 1, 1)
 	pReq.TransactionID = 123
 	expect := RegisterRequest{
-		serverAddress: ":502",
-		startAddress:  1,
+		ServerAddress: ":502",
+		StartAddress:  1,
 		Request:       pReq,
-		fields: []Field{
+		Fields: []Field{
 			{
 				ServerAddress: ":502", UnitID: 0,
 				RegisterAddress: 1, Type: FieldTypeInt8,
@@ -113,7 +113,7 @@ func TestSplit_to2batches(t *testing.T) {
 	firstBatch := batched[0]
 	firstBatch.Request.(*packet.ReadHoldingRegistersRequestTCP).TransactionID = 123
 	assert.Equal(t, expect, firstBatch.Request)
-	assert.Len(t, firstBatch.fields, 1)
+	assert.Len(t, firstBatch.Fields, 1)
 
 	expect2, _ := packet.NewReadHoldingRegistersRequestTCP(0, 119, 8)
 	expect2.TransactionID = 124
@@ -121,5 +121,5 @@ func TestSplit_to2batches(t *testing.T) {
 	secondBatch := batched[1]
 	secondBatch.Request.(*packet.ReadHoldingRegistersRequestTCP).TransactionID = 124
 	assert.Equal(t, expect2, secondBatch.Request)
-	assert.Len(t, secondBatch.fields, 3)
+	assert.Len(t, secondBatch.Fields, 3)
 }
