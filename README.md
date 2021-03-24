@@ -59,7 +59,7 @@ for _, req := range requests {
     }
     // extract response as packet.Registers instance to have access to convenience methods to 
     // extracting registers as different data types
-    registers, _ := resp.(*packet.ReadHoldingRegistersResponseTCP).AsRegisters(req.StartAddress())
+    registers, _ := resp.(*packet.ReadHoldingRegistersResponseTCP).AsRegisters(req.StartAddress)
     alarmDo1, _ := registers.Int64(18)
     fmt.Printf("int64 @ address 18: %v", alarmDo1)
     
