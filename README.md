@@ -1,7 +1,8 @@
 # Modbus TCP and RTU protocol client
 
 [![License](https://img.shields.io/github/license/aldas/go-modbus-client)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/aldas/go-modbus-client?style=flat-square)](https://goreportcard.com/report/github.com/aldas/go-modbus-client)
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg)](https://pkg.go.dev/github.com/aldas/go-modbus-client)
+[![Go Report Card](https://goreportcard.com/badge/github.com/aldas/go-modbus-client)](https://goreportcard.com/report/github.com/aldas/go-modbus-client)
 [![Codecov](https://codecov.io/gh/aldas/go-modbus-client/branch/main/graph/badge.svg)](https://codecov.io/gh/aldas/go-modbus-client)
 
 Modbus client (TCP/RTU) over TCP/Serial for Golang.
