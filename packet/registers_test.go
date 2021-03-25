@@ -66,6 +66,137 @@ func TestRegisters_WithByteOrder(t *testing.T) {
 	assert.Equal(t, LittleEndian, r.defaultByteOrder)
 }
 
+func TestRegisters_Register(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenAddress uint16
+		expectError string
+		expect      []byte
+	}{
+		{
+			name:        "ok",
+			whenAddress: 2,
+			expect:      []byte{0x0, 0x1},
+		},
+		{
+			name:        "nok, address out of bound",
+			whenAddress: 3,
+			expect:      nil,
+			expectError: "address over startAddress+quantity bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r, _ := NewRegisters([]byte{0x0, 0x2, 0x0, 0x1}, 1)
+
+			result, err := r.Register(tc.whenAddress)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+
+				result[0] = 0xFF // should not change original slice
+				assert.Equal(t, []byte{0x0, 0x2, 0x0, 0x1}, r.data)
+			}
+		})
+	}
+}
+
+func TestRegisters_DoubleRegister(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		whenAddress   uint16
+		whenByteOrder ByteOrder
+		expectError   string
+		expect        []byte
+	}{
+		{
+			name:        "ok (default is high word first)",
+			whenAddress: 2,
+			expect:      []byte{0x0, 0x2, 0x0, 0x3},
+		},
+		{
+			name:          "ok, low word first",
+			whenAddress:   2,
+			whenByteOrder: LowWordFirst,
+			expect:        []byte{0x0, 0x3, 0x0, 0x2},
+		},
+		{
+			name:        "nok, address out of bound",
+			whenAddress: 5,
+			expect:      nil,
+			expectError: "address over startAddress+quantity bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r, _ := NewRegisters([]byte{0x0, 0x1, 0x0, 0x2, 0x0, 0x3, 0x0, 0x4}, 1)
+
+			result, err := r.DoubleRegister(tc.whenAddress, tc.whenByteOrder)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+
+				result[0] = 0xFF // should not change original slice
+				assert.Equal(t, []byte{0x0, 0x1, 0x0, 0x2, 0x0, 0x3, 0x0, 0x4}, r.data)
+			}
+		})
+	}
+}
+
+func TestRegisters_QuadRegister(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		whenAddress   uint16
+		whenByteOrder ByteOrder
+		expectError   string
+		expect        []byte
+	}{
+		{
+			name:        "ok (default is high word first)",
+			whenAddress: 2,
+			expect:      []byte{0x0, 0x2, 0x0, 0x3, 0x0, 0x4, 0x0, 0x5},
+		},
+		{
+			name:          "ok, low word first",
+			whenAddress:   2,
+			whenByteOrder: LowWordFirst,
+			expect:        []byte{0x0, 0x5, 0x0, 0x4, 0x0, 0x3, 0x0, 0x2},
+		},
+		{
+			name:        "nok, address out of bound",
+			whenAddress: 6,
+			expect:      nil,
+			expectError: "address over startAddress+quantity bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r, _ := NewRegisters([]byte{0x0, 0x1, 0x0, 0x2, 0x0, 0x3, 0x0, 0x4, 0x0, 0x5, 0x0, 0x6, 0x0, 0x7, 0x0, 0x8}, 1)
+
+			result, err := r.QuadRegister(tc.whenAddress, tc.whenByteOrder)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+
+				result[0] = 0xFF // should not change original slice
+				assert.Equal(t, []byte{0x0, 0x1, 0x0, 0x2, 0x0, 0x3, 0x0, 0x4, 0x0, 0x5, 0x0, 0x6, 0x0, 0x7, 0x0, 0x8}, r.data)
+			}
+		})
+	}
+}
+
 func TestRegisters_Bit(t *testing.T) {
 	var testCases = []struct {
 		name        string

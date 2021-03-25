@@ -111,6 +111,15 @@ func (r *Registers) WithByteOrder(byteOrder ByteOrder) *Registers {
 	return r
 }
 
+// Register returns single register data (16bit) from given address
+func (r Registers) Register(address uint16) ([]byte, error) {
+	b, err := r.register(address)
+	if err != nil {
+		return nil, err
+	}
+	return []byte{b[0], b[1]}, nil
+}
+
 func (r Registers) register(address uint16) ([]byte, error) {
 	if address < r.startAddress {
 		return nil, errors.New("address under startAddress bounds")
@@ -120,6 +129,15 @@ func (r Registers) register(address uint16) ([]byte, error) {
 	}
 	startIndex := (address - r.startAddress) * 2
 	return r.data[startIndex : startIndex+2], nil
+}
+
+// DoubleRegister returns two registers data (32bit) from starting from given address using word/register order
+func (r Registers) DoubleRegister(address uint16, byteOrder ByteOrder) ([]byte, error) {
+	b, err := r.doubleRegister(address, byteOrder)
+	if err != nil {
+		return nil, err
+	}
+	return []byte{b[0], b[1], b[2], b[3]}, nil
 }
 
 func (r Registers) doubleRegister(address uint16, byteOrder ByteOrder) ([]byte, error) {
@@ -141,6 +159,15 @@ func (r Registers) doubleRegister(address uint16, byteOrder ByteOrder) ([]byte, 
 		}, nil
 	}
 	return r.data[startIndex : startIndex+4], nil
+}
+
+// QuadRegister returns four registers data (64bit) from starting from given address using word/register order
+func (r Registers) QuadRegister(address uint16, byteOrder ByteOrder) ([]byte, error) {
+	b, err := r.quadRegister(address, byteOrder)
+	if err != nil {
+		return nil, err
+	}
+	return []byte{b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]}, nil
 }
 
 func (r Registers) quadRegister(address uint16, byteOrder ByteOrder) ([]byte, error) {
