@@ -274,6 +274,9 @@ func TestClient_Do_receiveErrorPacket(t *testing.T) {
 	expectedErr := &packet.ErrorResponseTCP{TransactionID: 1245, UnitID: 1, Function: 2, Code: 3}
 	assert.EqualError(t, err, expectedErr.Error())
 
+	var target *ClientError
+	assert.True(t, errors.As(err, &target))
+
 	conn.AssertExpectations(t)
 }
 
@@ -373,6 +376,10 @@ func TestClient_Do_ClientShouldBeConnected(t *testing.T) {
 
 	assert.Nil(t, response)
 	assert.EqualError(t, err, "client is not connected")
+
+	var target *ClientError
+	assert.True(t, errors.As(err, &target))
+
 	conn.AssertExpectations(t)
 }
 
@@ -383,7 +390,7 @@ func TestClient_Do_SetWriteDeadlineError(t *testing.T) {
 
 	conn.On("SetWriteDeadline", exampleNow.Add(defaultWriteTimeout)).
 		Once().
-		Return(errors.New("SetWriteDeadline error"))
+		Return(&ClientError{Err: errors.New("SetWriteDeadline error")})
 
 	client := NewTCPClient()
 	client.conn = conn
@@ -395,6 +402,10 @@ func TestClient_Do_SetWriteDeadlineError(t *testing.T) {
 
 	assert.Nil(t, response)
 	assert.EqualError(t, err, "SetWriteDeadline error")
+
+	var target *ClientError
+	assert.True(t, errors.As(err, &target))
+
 	conn.AssertExpectations(t)
 }
 
@@ -418,6 +429,10 @@ func TestClient_Do_writeError(t *testing.T) {
 
 	assert.Nil(t, response)
 	assert.EqualError(t, err, "write error")
+
+	var target *ClientError
+	assert.True(t, errors.As(err, &target))
+
 	conn.AssertExpectations(t)
 }
 
@@ -442,6 +457,10 @@ func TestClient_Do_unknownReadError(t *testing.T) {
 
 	assert.Nil(t, response)
 	assert.EqualError(t, err, io.ErrUnexpectedEOF.Error())
+
+	var target *ClientError
+	assert.True(t, errors.As(err, &target))
+
 	conn.AssertExpectations(t)
 }
 
@@ -466,6 +485,10 @@ func TestClient_Do_ReadMoreBytesThanPacketCanBe(t *testing.T) {
 
 	assert.Nil(t, response)
 	assert.EqualError(t, err, "received more bytes than valid Modbus packet size can be")
+
+	var target *ClientError
+	assert.True(t, errors.As(err, &target))
+
 	conn.AssertExpectations(t)
 }
 
@@ -596,6 +619,12 @@ func TestAddressExtractor(t *testing.T) {
 		{
 			name:          "ok, domain name, tcp is default",
 			whenAddress:   "cool.test.com:502",
+			expectNetwork: "tcp",
+			expectAddr:    "cool.test.com:502",
+		},
+		{
+			name:          "ok, with specific tcp",
+			whenAddress:   "tcp://cool.test.com:502",
 			expectNetwork: "tcp",
 			expectAddr:    "cool.test.com:502",
 		},

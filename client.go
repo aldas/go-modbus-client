@@ -32,7 +32,10 @@ const (
 )
 
 // ErrPacketTooLong is error indicating that modbus server sent amount of data that is bigger than any modbus packet could be
-var ErrPacketTooLong = errors.New("received more bytes than valid Modbus packet size can be")
+var ErrPacketTooLong = ClientError{Err: errors.New("received more bytes than valid Modbus packet size can be")}
+
+// ErrClientNotConnected is error indicating that Client has not yet connected to the modbus server
+var ErrClientNotConnected = ClientError{Err: errors.New("client is not connected")}
 
 // Client provides mechanisms to send requests to modbus server over network connection
 type Client struct {
@@ -177,14 +180,18 @@ func dialContext(ctx context.Context, address string) (net.Conn, error) {
 
 func addressExtractor(address string) (string, string) {
 	network := "tcp"
-	addr := address
-	if strings.HasPrefix(addr, "tcp4://") {
-		network = "tcp4"
-		addr = strings.TrimPrefix(addr, "tcp4://")
-	} else if strings.HasPrefix(addr, "tcp6://") {
-		network = "tcp6"
-		addr = strings.TrimPrefix(addr, "tcp6://")
+	i := strings.Index(address, "://")
+	if i == -1 {
+		return network, address
 	}
+	nwrk := address[0:i]
+	switch nwrk {
+	case "tcp4":
+		network = "tcp4"
+	case "tcp6":
+		network = "tcp6"
+	}
+	addr := address[i+3:]
 	return network, addr
 }
 
@@ -199,9 +206,21 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
+// ClientError indicates errors returned by Client that network related and are possibly retryable
+type ClientError struct {
+	Err error
+}
+
+// Error returns contained error message
+func (e *ClientError) Error() string { return e.Err.Error() }
+
+// Unwrap allows unwrapping errors with errors.Is and errors.As
+func (e *ClientError) Unwrap() error { return e.Err }
+
 // Do sends given Modbus request to modbus server and returns parsed Response.
 // ctx is to be used for to cancel connection attempt.
-// On modbus exception nil is returned as response and error has value of type packet.ErrorResponseTCP or packet.ErrorResponseRTU
+// On modbus exception nil is returned as response and error wraps value of type packet.ErrorResponseTCP or packet.ErrorResponseRTU
+// User errors.Is and errors.As to check if error wraps packet.ErrorResponseTCP or packet.ErrorResponseRTU
 func (c *Client) Do(ctx context.Context, req packet.Request) (packet.Response, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -210,7 +229,7 @@ func (c *Client) Do(ctx context.Context, req packet.Request) (packet.Response, e
 		return nil, errors.New("request can not be nil")
 	}
 	if c.conn == nil {
-		return nil, errors.New("client is not connected")
+		return nil, &ErrClientNotConnected
 	}
 
 	resp, err := c.do(ctx, req.Bytes(), req.ExpectedResponseLength())
@@ -231,7 +250,7 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 		c.hooks.BeforeWrite(data)
 	}
 	if _, err := c.conn.Write(data); err != nil {
-		return nil, err
+		return nil, &ClientError{Err: err}
 	}
 
 	// make buffer a little bit bigger than would be valid to see problems when somehow more bytes are sent
@@ -244,7 +263,7 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-readTimeout:
-			return nil, errors.New("total read timeout exceeded")
+			return nil, &ClientError{Err: errors.New("total read timeout exceeded")}
 		default:
 		}
 
@@ -257,17 +276,15 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 		// os.ErrDeadlineExceeded - we set new deadline on next iteration
 		// io.EOF - we check if read + received is enough to form complete packet
 		if err != nil && !(errors.Is(err, os.ErrDeadlineExceeded) || errors.Is(err, io.EOF)) {
-			// TODO: call flush
-			return nil, err
+			return nil, &ClientError{Err: err}
 		}
 		total += n
 		if total > tcpPacketMaxLen {
-			return nil, ErrPacketTooLong
+			return nil, &ErrPacketTooLong
 		}
 		// check if we have exactly the error packet. Error packets are shorter than regulars packets
 		if errPacket := c.asProtocolErrorFunc(received[0:total]); errPacket != nil {
-			// TODO: call flush
-			return nil, errPacket
+			return nil, &ClientError{Err: errPacket}
 		}
 		if total >= expectedLen {
 			break
@@ -277,7 +294,7 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 		}
 	}
 	if total == 0 {
-		return nil, errors.New("no bytes received")
+		return nil, &ClientError{Err: errors.New("no bytes received")}
 	}
 
 	result := make([]byte, total)

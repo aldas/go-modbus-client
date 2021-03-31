@@ -166,6 +166,9 @@ func TestSerialClient_Do_receiveErrorPacket(t *testing.T) {
 	expectedErr := &packet.ErrorResponseRTU{UnitID: 1, Function: 1, Code: 1}
 	assert.EqualError(t, err, expectedErr.Error())
 
+	var target *ClientError
+	assert.True(t, errors.As(err, &target))
+
 	serialPort.AssertExpectations(t)
 }
 
@@ -264,6 +267,10 @@ func TestSerialClient_Do_writeError(t *testing.T) {
 
 	assert.Nil(t, response)
 	assert.EqualError(t, err, "write error")
+
+	var target *ClientError
+	assert.True(t, errors.As(err, &target))
+
 	serialPort.AssertExpectations(t)
 }
 
@@ -298,5 +305,9 @@ func TestSerialClient_Do_ReadMoreBytesThanPacketCanBe(t *testing.T) {
 
 	assert.Nil(t, response)
 	assert.EqualError(t, err, "received more bytes than valid Modbus packet size can be")
+
+	var target *ClientError
+	assert.True(t, errors.As(err, &target))
+
 	serialPort.AssertExpectations(t)
 }

@@ -65,6 +65,8 @@ func WithSerialReadTimeout(readTimeout time.Duration) func(c *SerialClient) {
 
 // Do sends given Modbus request to modbus server and returns parsed Response.
 // ctx is to be used for to cancel connection attempt.
+// On modbus exception nil is returned as response and error wraps value of type packet.ErrorResponseRTU
+// User errors.Is and errors.As to check if error wraps packet.ErrorResponseRTU
 func (c *SerialClient) Do(ctx context.Context, req packet.Request) (packet.Response, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -92,9 +94,9 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 	}
 	if _, err := c.serialPort.Write(data); err != nil {
 		if err := c.flush(); err != nil {
-			return nil, err
+			return nil, &ClientError{Err: err}
 		}
-		return nil, err
+		return nil, &ClientError{Err: err}
 	}
 
 	// make buffer a little bit bigger than would be valid to see problems when somehow more bytes are sent
@@ -107,7 +109,7 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-readTimeout:
-			return nil, errors.New("total read timeout exceeded")
+			return nil, &ClientError{Err: errors.New("total read timeout exceeded")}
 		default:
 		}
 
@@ -120,33 +122,33 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 		// io.EOF - we check if read + received is enough to form complete packet
 		if err != nil && !(errors.Is(err, os.ErrDeadlineExceeded) || errors.Is(err, io.EOF)) {
 			if err := c.flush(); err != nil {
-				return nil, err
+				return nil, &ClientError{Err: err}
 			}
-			return nil, err
+			return nil, &ClientError{Err: err}
 		}
 		total += n
 		if total > rtuPacketMaxLen {
 			if err := c.flush(); err != nil {
-				return nil, err
+				return nil, &ClientError{Err: err}
 			}
-			return nil, ErrPacketTooLong
+			return nil, &ErrPacketTooLong
 		}
 		// check if we have exactly the error packet. Error packets are shorter than regulars packets
 		if errPacket := c.asProtocolErrorFunc(received[0:total]); errPacket != nil {
 			if err := c.flush(); err != nil {
-				return nil, err
+				return nil, &ClientError{Err: err}
 			}
-			return nil, errPacket
+			return nil, &ClientError{Err: errPacket}
 		}
 		if total >= expectedLen {
 			if err := c.flush(); err != nil {
-				return nil, err
+				return nil, &ClientError{Err: err}
 			}
 			break
 		}
 	}
 	if total == 0 {
-		return nil, errors.New("no bytes received")
+		return nil, &ClientError{Err: errors.New("no bytes received")}
 	}
 
 	result := make([]byte, total)
