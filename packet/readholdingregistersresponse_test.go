@@ -53,6 +53,8 @@ func TestReadHoldingRegistersResponseTCP_Bytes(t *testing.T) {
 }
 
 func TestParseReadHoldingRegistersResponseTCP(t *testing.T) {
+	max124registers := make([]byte, 248)
+
 	var testCases = []struct {
 		name        string
 		given       []byte
@@ -83,6 +85,21 @@ func TestParseReadHoldingRegistersResponseTCP(t *testing.T) {
 			name:        "nok, byte len does not match packet len",
 			given:       []byte{0x81, 0x80, 0x00, 0x00, 0x00, 0x05, 0x03, 0x03, 0x01, 0xCD, 0x6B},
 			expectError: "received data length does not match byte len in packet",
+		},
+		{
+			name:  "ok, length is at the edge max byte/uint8 value",
+			given: append([]byte{0x81, 0x80, 0x00, 0x00, 0x00, 0x05, 0x03, 0x03, 248}, max124registers...),
+			expect: &ReadHoldingRegistersResponseTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 33152,
+					ProtocolID:    0,
+				},
+				ReadHoldingRegistersResponse: ReadHoldingRegistersResponse{
+					UnitID:          3,
+					RegisterByteLen: 248,
+					Data:            max124registers,
+				},
+			},
 		},
 	}
 
