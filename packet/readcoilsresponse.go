@@ -54,8 +54,8 @@ func ParseReadCoilsResponseTCP(data []byte) (*ReadCoilsResponseTCP, error) {
 	if dLen < 10 {
 		return nil, errors.New("received data length too short to be valid packet")
 	}
-	byteLen := data[8]
-	if dLen != 9+int(byteLen) {
+	byteLen := int(data[8])
+	if dLen != 9+byteLen {
 		return nil, errors.New("received data length does not match byte len in packet")
 	}
 	return &ReadCoilsResponseTCP{
@@ -66,7 +66,7 @@ func ParseReadCoilsResponseTCP(data []byte) (*ReadCoilsResponseTCP, error) {
 		ReadCoilsResponse: ReadCoilsResponse{
 			UnitID: data[6],
 			// function code = data[7]
-			CoilsByteLength: byteLen,
+			CoilsByteLength: data[8],
 			Data:            data[9 : 9+byteLen],
 		},
 	}, nil
@@ -89,8 +89,8 @@ func ParseReadCoilsResponseRTU(data []byte) (*ReadCoilsResponseRTU, error) {
 	if dLen < 6 {
 		return nil, errors.New("received data length too short to be valid packet")
 	}
-	byteLen := data[2]
-	if dLen != 3+int(byteLen)+2 {
+	byteLen := int(data[2])
+	if dLen != 3+byteLen+2 {
 		return nil, errors.New("received data length does not match byte len in packet")
 	}
 	return &ReadCoilsResponseRTU{

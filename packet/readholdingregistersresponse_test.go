@@ -145,6 +145,21 @@ func TestParseReadHoldingRegistersResponseRTU(t *testing.T) {
 			given:       []byte{0x10, 0x3, 0x1, 0x1, 0x2, 0xe, 0xd3},
 			expectError: "received data length does not match byte len in packet",
 		},
+		{
+			name: "ok, length is at the edge max byte/uint8 value",
+			given: func() []byte {
+				max124registers := make([]byte, 248)
+				b := append([]byte{0x03, 0x03, 248}, max124registers...)
+				return append(b, []byte{0xff, 0xff}...) // + CRC (invalid crc)
+			}(),
+			expect: &ReadHoldingRegistersResponseRTU{
+				ReadHoldingRegistersResponse: ReadHoldingRegistersResponse{
+					UnitID:          3,
+					RegisterByteLen: 248,
+					Data:            make([]byte, 248),
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

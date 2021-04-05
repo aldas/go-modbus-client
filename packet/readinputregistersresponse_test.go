@@ -53,6 +53,8 @@ func TestReadInputRegistersResponseTCP_Bytes(t *testing.T) {
 }
 
 func TestParseReadInputRegistersResponseTCP(t *testing.T) {
+	max124registers := make([]byte, 248)
+
 	var testCases = []struct {
 		name        string
 		given       []byte
@@ -83,6 +85,21 @@ func TestParseReadInputRegistersResponseTCP(t *testing.T) {
 			name:        "nok, byte len does not match packet len",
 			given:       []byte{0x81, 0x80, 0x00, 0x00, 0x00, 0x05, 0x03, 0x04, 0x01, 0xCD, 0x6B},
 			expectError: "received data length does not match byte len in packet",
+		},
+		{
+			name:  "ok, length is at the edge max byte/uint8 value",
+			given: append([]byte{0x81, 0x80, 0x00, 0x00, 0x00, 0x05, 0x03, 0x04, 248}, max124registers...),
+			expect: &ReadInputRegistersResponseTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 33152,
+					ProtocolID:    0,
+				},
+				ReadInputRegistersResponse: ReadInputRegistersResponse{
+					UnitID:          3,
+					RegisterByteLen: 248,
+					Data:            max124registers,
+				},
+			},
 		},
 	}
 
@@ -127,6 +144,21 @@ func TestParseReadInputRegistersResponseRTU(t *testing.T) {
 			name:        "nok, byte len does not match packet len",
 			given:       []byte{0x10, 0x4, 0x1, 0x1, 0x2, 0xb9, 0xd2},
 			expectError: "received data length does not match byte len in packet",
+		},
+		{
+			name: "ok, length is at the edge max byte/uint8 value",
+			given: func() []byte {
+				max124registers := make([]byte, 248)
+				b := append([]byte{0x03, 0x04, 248}, max124registers...)
+				return append(b, []byte{0xff, 0xff}...) // + CRC (invalid crc)
+			}(),
+			expect: &ReadInputRegistersResponseRTU{
+				ReadInputRegistersResponse: ReadInputRegistersResponse{
+					UnitID:          3,
+					RegisterByteLen: 248,
+					Data:            make([]byte, 248),
+				},
+			},
 		},
 	}
 
