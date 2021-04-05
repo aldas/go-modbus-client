@@ -23,12 +23,12 @@ type ReadDiscreteInputsRequestTCP struct {
 
 // ReadDiscreteInputsRequestRTU is RTU Request for Read Discrete Inputs (FC=02)
 //
-// Example packet: 0x10 0x02 0x00 0x6B 0x00 0x03 0xFF 0xFF
+// Example packet: 0x10 0x02 0x00 0x6B 0x00 0x03 0x4a 0x96
 // 0x10 - unit id (0)
 // 0x02 - function code (1)
 // 0x00 0x6B - start address (2,3)
 // 0x00 0x03 - discrete inputs quantity to return (4,5)
-// 0xFF 0xFF - CRC16 (6,7) // FIXME: add correct crc value example
+// 0x4a 0x96 - CRC16 (6,7)
 type ReadDiscreteInputsRequestRTU struct {
 	ReadDiscreteInputsRequest
 }

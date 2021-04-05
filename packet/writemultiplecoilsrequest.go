@@ -25,14 +25,14 @@ type WriteMultipleCoilsRequestTCP struct {
 
 // WriteMultipleCoilsRequestRTU is RTU Request for Write Multiple Coils (FC=15)
 //
-// Example packet: 0x11 0x0F 0x04 0x10 0x00 0x03 0x01 0x05 0xFF 0xFF
+// Example packet: 0x11 0x0F 0x04 0x10 0x00 0x03 0x01 0x05 0x8e 0x1f
 // 0x11 - unit id (0)
 // 0x0F - function code (1)
 // 0x04 0x10 - start address (2,3)
 // 0x00 0x03 - count of coils to write (4,5)
 // 0x01 - coils byte count (6)
 // 0x05 - coils data (7, ...)
-// 0xFF 0xFF - CRC16 (n-2,n-1) // FIXME: add correct crc value example
+// 0x8e 0x1f - CRC16 (n-2,n-1)
 type WriteMultipleCoilsRequestRTU struct {
 	WriteMultipleCoilsRequest
 }
