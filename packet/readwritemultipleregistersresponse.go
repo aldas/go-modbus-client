@@ -22,12 +22,12 @@ type ReadWriteMultipleRegistersResponseTCP struct {
 
 // ReadWriteMultipleRegistersResponseRTU is RTU Response for Read / Write Multiple Registers request (FC=23)
 //
-// Example packet: 0x11 0x17 0x02 0xCD 0x6B 0xFF 0xFF
+// Example packet: 0x11 0x17 0x02 0xCD 0x6B 0x69 0x08
 // 0x11 - unit id (0)
 // 0x17 - function code (1)
 // 0x02 - registers bytes count (2)
 // 0xCD 0x6B - write registers data (1 registers) (3, 4, ...)
-// 0xFF 0xFF - CRC16 (n-2,n-1) // FIXME: add correct crc value example
+// 0x69 0x08 - CRC16 (n-2,n-1)
 type ReadWriteMultipleRegistersResponseRTU struct {
 	ReadWriteMultipleRegistersResponse
 }

@@ -22,12 +22,12 @@ type ReadInputRegistersRequestTCP struct {
 
 // ReadInputRegistersRequestRTU is RTU Request for Read Input Registers (FC=04)
 //
-// Example packet: 0x01 0x04 0x00 0x6B 0x00 0x01 0xFF 0xFF
+// Example packet: 0x01 0x04 0x00 0x6B 0x00 0x01 0x40 0x16
 // 0x01 - unit id (0)
 // 0x04 - function code (1)
 // 0x00 0x6B - start address (2,3)
 // 0x00 0x01 - input registers quantity to return (4,5)
-// 0xFF 0xFF - CRC16 (6,7) // FIXME: add correct crc value example
+// 0x40 0x16 - CRC16 (6,7)
 type ReadInputRegistersRequestRTU struct {
 	ReadInputRegistersRequest
 }

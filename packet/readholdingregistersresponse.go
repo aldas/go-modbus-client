@@ -22,12 +22,12 @@ type ReadHoldingRegistersResponseTCP struct {
 
 // ReadHoldingRegistersResponseRTU is RTU Request for Read Holding Registers (FC=03)
 //
-// Example packet: 0x01 0x03 0x02 0xCD 0x6B 0xFF 0xFF
+// Example packet: 0x01 0x03 0x02 0xCD 0x6B 0xad 0x3b
 // 0x01 - unit id (0)
 // 0x03 - function code (1)
 // 0x02 - returned registers byte count (2)
 // 0xCD 0x6B - holding registers data (1 register) (3,4, ... 2 bytes for each register)
-// 0xFF 0xFF - CRC16 (n-2,n-1) // FIXME: add correct crc value example
+// 0xad 0x3b - CRC16 (n-2,n-1)
 type ReadHoldingRegistersResponseRTU struct {
 	ReadHoldingRegistersResponse
 }

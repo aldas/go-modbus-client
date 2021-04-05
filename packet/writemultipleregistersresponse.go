@@ -22,12 +22,12 @@ type WriteMultipleRegistersResponseTCP struct {
 
 // WriteMultipleRegistersResponseRTU is RTU Response for Write Multiple Registers (FC=16)
 //
-// Example packet: 0x11 0x10 0x04 0x10 0x00 0x03 0xFF 0xFF
+// Example packet: 0x11 0x10 0x04 0x10 0x00 0x03 0x82 0x6d
 // 0x11 - unit id (0)
 // 0x10 - function code (1)
 // 0x04 0x10 - start address (2,3)
 // 0x00 0x03 - count of registers written (4,5)
-// 0xFF 0xFF - CRC16 (6,7) // FIXME: add correct crc value example
+// 0x82 0x6d - CRC16 (6,7)
 type WriteMultipleRegistersResponseRTU struct {
 	WriteMultipleRegistersResponse
 }

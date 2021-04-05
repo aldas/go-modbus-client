@@ -23,12 +23,12 @@ type ReadCoilsRequestTCP struct {
 
 // ReadCoilsRequestRTU is RTU Request for Read Coils function (FC=01)
 //
-// Example packet:  0x10 0x01 0x00 0x6B 0x00 0x03 0xFF 0xFF
+// Example packet:  0x10 0x01 0x00 0x6B 0x00 0x03 0x0e 0x96
 // 0x10 - unit id (0)
 // 0x01 - function code (1)
 // 0x00 0x6B - start address (2,3)
 // 0x00 0x03 - coils quantity to return (4,5)
-// 0xFF 0xFF - CRC16 (6,7) // FIXME: add correct crc value example
+// 0x0e 0x96 - CRC16 (6,7)
 type ReadCoilsRequestRTU struct {
 	ReadCoilsRequest
 }

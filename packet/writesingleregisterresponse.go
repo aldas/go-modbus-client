@@ -22,12 +22,12 @@ type WriteSingleRegisterResponseTCP struct {
 
 // WriteSingleRegisterResponseRTU is RTU Response for Write Single Register (FC=06)
 //
-// Example packet: 0x11 0x06 0x00 0x6B 0x01 0x01 0xFF 0xFF
+// Example packet: 0x11 0x06 0x00 0x6B 0x01 0x01 0x3a 0xd6
 // 0x11 - unit id (0)
 // 0x06 - function code (1)
 // 0x00 0x6B - start address (2,3)
 // 0x01 0x01 - register data (4,5)
-// 0xFF 0xFF - CRC16 (6,7) // FIXME: add correct crc value example
+// 0x3a 0xd6 - CRC16 (6,7)
 type WriteSingleRegisterResponseRTU struct {
 	WriteSingleRegisterResponse
 }
