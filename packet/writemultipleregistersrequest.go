@@ -89,6 +89,40 @@ func (r WriteMultipleRegistersRequestTCP) ExpectedResponseLength() int {
 	return 6 + 6
 }
 
+// ParseWriteMultipleRegistersRequestTCP parses given bytes into WriteMultipleRegistersRequestTCP
+func ParseWriteMultipleRegistersRequestTCP(data []byte) (*WriteMultipleRegistersRequestTCP, error) {
+	header, err := ParseMBAPHeader(data)
+	if err != nil {
+		return nil, err
+	}
+	if data[7] != FunctionWriteMultipleRegisters {
+		return nil, errors.New("received function code in packet is not 0x10")
+	}
+	registerCount := binary.BigEndian.Uint16(data[10:12])
+	if !(registerCount >= 1 && registerCount <= 123) { // 0x0001 to 0x7B
+		return nil, errors.New("invalid register count. valid range 1..123")
+	}
+	registersBytesCount := data[12]
+	if len(data) != 13+int(registersBytesCount) {
+		return nil, errors.New("received data register bytes length does not match write data length")
+	}
+	var registerData []byte
+	if registersBytesCount > 0 {
+		registerData = make([]byte, registersBytesCount)
+		copy(registerData, data[13:13+registersBytesCount])
+	}
+	return &WriteMultipleRegistersRequestTCP{
+		MBAPHeader: header,
+		WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+			UnitID: data[6],
+			// function code = data[7]
+			StartAddress:  binary.BigEndian.Uint16(data[8:10]),
+			RegisterCount: registerCount,
+			Data:          registerData,
+		},
+	}, nil
+}
+
 // NewWriteMultipleRegistersRequestRTU creates new instance of Write Multiple Registers RTU request
 // NB: bytes for `data` must be in BigEndian byte order for server to interpret them correctly
 func NewWriteMultipleRegistersRequestRTU(unitID uint8, startAddress uint16, data []byte) (*WriteMultipleRegistersRequestRTU, error) {
@@ -127,6 +161,40 @@ func (r WriteMultipleRegistersRequestRTU) Bytes() []byte {
 func (r WriteMultipleRegistersRequestRTU) ExpectedResponseLength() int {
 	// response = 1 UnitID + 1 functionCode + 2 start addr + 2 count of registers + 2 CRC
 	return 6 + 2
+}
+
+// ParseWriteMultipleRegistersRequestRTU parses given bytes into WriteMultipleRegistersRequestRTU
+func ParseWriteMultipleRegistersRequestRTU(data []byte) (*WriteMultipleRegistersRequestRTU, error) {
+	dLen := len(data)
+	if dLen < 8 {
+		return nil, errors.New("received data length too short to be valid packet")
+	}
+	if data[1] != FunctionWriteMultipleRegisters {
+		return nil, errors.New("received function code in packet is not 0x10")
+	}
+	registerCount := binary.BigEndian.Uint16(data[4:6])
+	if !(registerCount >= 1 && registerCount <= 123) { // 0x0001 to 0x7B
+		return nil, errors.New("invalid register count. valid range 1..123")
+	}
+	registersBytesCount := data[6]
+	expectedLen := 7 + int(registersBytesCount)
+	if dLen != expectedLen && dLen != expectedLen+2 { // without crc and with crc
+		return nil, errors.New("received data register bytes length does not match write data length")
+	}
+	var registerData []byte
+	if registersBytesCount > 0 {
+		registerData = make([]byte, registersBytesCount)
+		copy(registerData, data[7:7+registersBytesCount])
+	}
+	return &WriteMultipleRegistersRequestRTU{
+		WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+			UnitID: data[0],
+			// function code = data[1]
+			StartAddress:  binary.BigEndian.Uint16(data[2:4]),
+			RegisterCount: registerCount,
+			Data:          registerData,
+		},
+	}, nil
 }
 
 // FunctionCode returns function code of this request

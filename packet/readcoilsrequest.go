@@ -1,6 +1,8 @@
 package packet
 
 import (
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -76,6 +78,30 @@ func (r ReadCoilsRequestTCP) ExpectedResponseLength() int {
 	return 6 + 3 + r.coilByteLength()
 }
 
+// ParseReadCoilsRequestTCP parses given bytes into ReadCoilsRequestTCP
+func ParseReadCoilsRequestTCP(data []byte) (*ReadCoilsRequestTCP, error) {
+	header, err := ParseMBAPHeader(data)
+	if err != nil {
+		return nil, err
+	}
+	if data[7] != FunctionReadCoils {
+		return nil, errors.New("received function code in packet is not 0x01")
+	}
+	quantity := binary.BigEndian.Uint16(data[10:12])
+	if !(quantity >= 1 && quantity <= 125) { // 0x0001 to 0x007D
+		return nil, errors.New("invalid quantity. valid range 1..125")
+	}
+	return &ReadCoilsRequestTCP{
+		MBAPHeader: header,
+		ReadCoilsRequest: ReadCoilsRequest{
+			UnitID: data[6],
+			// function code = data[7]
+			StartAddress: binary.BigEndian.Uint16(data[8:10]),
+			Quantity:     quantity,
+		},
+	}, nil
+}
+
 // NewReadCoilsRequestRTU creates new instance of Read Coils RTU request
 func NewReadCoilsRequestRTU(unitID uint8, startAddress uint16, quantity uint16) (*ReadCoilsRequestRTU, error) {
 	if quantity == 0 || quantity > 2000 {
@@ -107,6 +133,30 @@ func (r ReadCoilsRequestRTU) Bytes() []byte {
 func (r ReadCoilsRequestRTU) ExpectedResponseLength() int {
 	// response = 1 UnitID + 1 functionCode + 2 coils byte count + N coils data
 	return 4 + r.coilByteLength()
+}
+
+// ParseReadCoilsRequestRTU parses given bytes into ReadCoilsRequestRTU
+// Does not check CRC
+func ParseReadCoilsRequestRTU(data []byte) (*ReadCoilsRequestRTU, error) {
+	dLen := len(data)
+	if dLen != 8 && dLen != 6 { // with or without CRC bytes
+		return nil, errors.New("invalid data length to be valid packet")
+	}
+	if data[1] != FunctionReadCoils {
+		return nil, errors.New("received function code in packet is not 0x01")
+	}
+	quantity := binary.BigEndian.Uint16(data[4:6])
+	if !(quantity >= 1 && quantity <= 125) { // 0x0001 to 0x007D
+		return nil, errors.New("invalid quantity. valid range 1..125")
+	}
+	return &ReadCoilsRequestRTU{
+		ReadCoilsRequest: ReadCoilsRequest{
+			UnitID: data[0],
+			// function code = data[1]
+			StartAddress: binary.BigEndian.Uint16(data[2:4]),
+			Quantity:     quantity,
+		},
+	}, nil
 }
 
 // FunctionCode returns function code of this request

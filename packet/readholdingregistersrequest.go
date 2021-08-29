@@ -1,6 +1,8 @@
 package packet
 
 import (
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/rand"
 )
@@ -74,6 +76,30 @@ func (r ReadHoldingRegistersRequestTCP) ExpectedResponseLength() int {
 	return 6 + 3 + 2*int(r.Quantity)
 }
 
+// ParseReadHoldingRegistersRequestTCP parses given bytes into ReadHoldingRegistersRequestTCP
+func ParseReadHoldingRegistersRequestTCP(data []byte) (*ReadHoldingRegistersRequestTCP, error) {
+	header, err := ParseMBAPHeader(data)
+	if err != nil {
+		return nil, err
+	}
+	if data[7] != FunctionReadHoldingRegisters {
+		return nil, errors.New("received function code in packet is not 0x03")
+	}
+	quantity := binary.BigEndian.Uint16(data[10:12])
+	if !(quantity >= 1 && quantity <= 125) { // 0x0001 to 0x007D
+		return nil, errors.New("invalid quantity. valid range 1..125")
+	}
+	return &ReadHoldingRegistersRequestTCP{
+		MBAPHeader: header,
+		ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{
+			UnitID: data[6],
+			// function code = data[7]
+			StartAddress: binary.BigEndian.Uint16(data[8:10]),
+			Quantity:     quantity,
+		},
+	}, nil
+}
+
 // NewReadHoldingRegistersRequestRTU creates new instance of Read Holding Registers RTU request
 func NewReadHoldingRegistersRequestRTU(unitID uint8, startAddress uint16, quantity uint16) (*ReadHoldingRegistersRequestRTU, error) {
 	if quantity == 0 || quantity > MaxRegistersInReadResponse {
@@ -98,6 +124,29 @@ func (r ReadHoldingRegistersRequestRTU) Bytes() []byte {
 	result[6] = uint8(crc)
 	result[7] = uint8(crc >> 8)
 	return result
+}
+
+// ParseReadHoldingRegistersRequestRTU parses given bytes into ReadHoldingRegistersRequestRTU
+func ParseReadHoldingRegistersRequestRTU(data []byte) (*ReadHoldingRegistersRequestRTU, error) {
+	dLen := len(data)
+	if dLen != 8 && dLen != 6 { // with or without CRC bytes
+		return nil, errors.New("invalid data length to be valid packet")
+	}
+	if data[1] != FunctionReadHoldingRegisters {
+		return nil, errors.New("received function code in packet is not 0x03")
+	}
+	quantity := binary.BigEndian.Uint16(data[4:6])
+	if !(quantity >= 1 && quantity <= 125) { // 0x0001 to 0x007D
+		return nil, errors.New("invalid quantity. valid range 1..125")
+	}
+	return &ReadHoldingRegistersRequestRTU{
+		ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{
+			UnitID: data[0],
+			// function code = data[1]
+			StartAddress: binary.BigEndian.Uint16(data[2:4]),
+			Quantity:     quantity,
+		},
+	}, nil
 }
 
 // ExpectedResponseLength returns length of bytes that valid response to this request would be

@@ -80,10 +80,8 @@ func defaultClient() *Client {
 // NewTCPClient creates new instance of Modbus Client for Modbus TCP protocol
 func NewTCPClient(opts ...ClientOptionFunc) *Client {
 	client := defaultClient()
-	if opts != nil {
-		for _, o := range opts {
-			o(client)
-		}
+	for _, o := range opts {
+		o(client)
 	}
 	return client
 }
@@ -94,10 +92,8 @@ func NewRTUClient(opts ...ClientOptionFunc) *Client {
 	client.asProtocolErrorFunc = packet.AsRTUErrorPacket
 	client.parseResponseFunc = packet.ParseRTUResponseWithCRC
 
-	if opts != nil {
-		for _, o := range opts {
-			o(client)
-		}
+	for _, o := range opts {
+		o(client)
 	}
 	return client
 }
@@ -105,10 +101,8 @@ func NewRTUClient(opts ...ClientOptionFunc) *Client {
 // NewClient creates new instance of Modbus Client with given options
 func NewClient(opts ...ClientOptionFunc) *Client {
 	client := defaultClient()
-	if opts != nil {
-		for _, o := range opts {
-			o(client)
-		}
+	for _, o := range opts {
+		o(client)
 	}
 	return client
 }

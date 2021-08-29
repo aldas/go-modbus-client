@@ -57,6 +57,7 @@ func TestExternalUsage(t *testing.T) {
 
 	fields, err := req.ExtractFields(resp.(modbus.RegistersResponse), true)
 	assert.NotNil(t, resp)
+	assert.NoError(t, err)
 	assert.Len(t, fields, 2)
 
 	assert.Equal(t, uint16(1), fields[0].Value)
