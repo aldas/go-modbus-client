@@ -2,7 +2,6 @@ package packet
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -84,17 +83,26 @@ func ParseReadDiscreteInputsRequestTCP(data []byte) (*ReadDiscreteInputsRequestT
 	if err != nil {
 		return nil, err
 	}
+	unitID := data[6]
 	if data[7] != FunctionReadDiscreteInputs {
-		return nil, errors.New("received function code in packet is not 0x02")
+		tmpErr := NewErrorParseTCP(ErrIllegalFunction, "received function code in packet is not 0x02")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadDiscreteInputs
+		return nil, tmpErr
 	}
 	quantity := binary.BigEndian.Uint16(data[10:12])
 	if !(quantity >= 1 && quantity <= 125) { // 0x0001 to 0x007D
-		return nil, errors.New("invalid quantity. valid range 1..125")
+		tmpErr := NewErrorParseTCP(ErrIllegalDataValue, "invalid quantity. valid range 1..125")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadDiscreteInputs
+		return nil, tmpErr
 	}
 	return &ReadDiscreteInputsRequestTCP{
 		MBAPHeader: header,
 		ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{
-			UnitID: data[6],
+			UnitID: unitID,
 			// function code = data[7]
 			StartAddress: binary.BigEndian.Uint16(data[8:10]),
 			Quantity:     quantity,
@@ -139,18 +147,25 @@ func (r ReadDiscreteInputsRequestRTU) ExpectedResponseLength() int {
 func ParseReadDiscreteInputsRequestRTU(data []byte) (*ReadDiscreteInputsRequestRTU, error) {
 	dLen := len(data)
 	if dLen != 8 && dLen != 6 { // with or without CRC bytes
-		return nil, errors.New("invalid data length to be valid packet")
+		return nil, NewErrorParseRTU(ErrServerFailure, "invalid data length to be valid packet")
 	}
+	unitID := data[0]
 	if data[1] != FunctionReadDiscreteInputs {
-		return nil, errors.New("received function code in packet is not 0x02")
+		tmpErr := NewErrorParseRTU(ErrIllegalFunction, "received function code in packet is not 0x02")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadDiscreteInputs
+		return nil, tmpErr
 	}
 	quantity := binary.BigEndian.Uint16(data[4:6])
 	if !(quantity >= 1 && quantity <= 125) { // 0x0001 to 0x007D
-		return nil, errors.New("invalid quantity. valid range 1..125")
+		tmpErr := NewErrorParseRTU(ErrIllegalDataValue, "invalid quantity. valid range 1..125")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadDiscreteInputs
+		return nil, tmpErr
 	}
 	return &ReadDiscreteInputsRequestRTU{
 		ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{
-			UnitID: data[0],
+			UnitID: unitID,
 			// function code = data[1]
 			StartAddress: binary.BigEndian.Uint16(data[2:4]),
 			Quantity:     quantity,

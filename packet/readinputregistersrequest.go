@@ -2,7 +2,6 @@ package packet
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math/rand"
 )
@@ -82,17 +81,26 @@ func ParseReadInputRegistersRequestTCP(data []byte) (*ReadInputRegistersRequestT
 	if err != nil {
 		return nil, err
 	}
+	unitID := data[6]
 	if data[7] != FunctionReadInputRegisters {
-		return nil, errors.New("received function code in packet is not 0x04")
+		tmpErr := NewErrorParseTCP(ErrIllegalFunction, "received function code in packet is not 0x04")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadInputRegisters
+		return nil, tmpErr
 	}
 	quantity := binary.BigEndian.Uint16(data[10:12])
 	if !(quantity >= 1 && quantity <= 125) { // 0x0001 to 0x007D
-		return nil, errors.New("invalid quantity. valid range 1..125")
+		tmpErr := NewErrorParseTCP(ErrIllegalDataValue, "invalid quantity. valid range 1..125")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadInputRegisters
+		return nil, tmpErr
 	}
 	return &ReadInputRegistersRequestTCP{
 		MBAPHeader: header,
 		ReadInputRegistersRequest: ReadInputRegistersRequest{
-			UnitID: data[6],
+			UnitID: unitID,
 			// function code = data[7]
 			StartAddress: binary.BigEndian.Uint16(data[8:10]),
 			Quantity:     quantity,
@@ -130,18 +138,25 @@ func (r ReadInputRegistersRequestRTU) Bytes() []byte {
 func ParseReadInputRegistersRequestRTU(data []byte) (*ReadInputRegistersRequestRTU, error) {
 	dLen := len(data)
 	if dLen != 8 && dLen != 6 { // with or without CRC bytes
-		return nil, errors.New("invalid data length to be valid packet")
+		return nil, NewErrorParseRTU(ErrServerFailure, "invalid data length to be valid packet")
 	}
+	unitID := data[0]
 	if data[1] != FunctionReadInputRegisters {
-		return nil, errors.New("received function code in packet is not 0x04")
+		tmpErr := NewErrorParseRTU(ErrIllegalFunction, "received function code in packet is not 0x04")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadInputRegisters
+		return nil, tmpErr
 	}
 	quantity := binary.BigEndian.Uint16(data[4:6])
 	if !(quantity >= 1 && quantity <= 125) { // 0x0001 to 0x007D
-		return nil, errors.New("invalid quantity. valid range 1..125")
+		tmpErr := NewErrorParseRTU(ErrIllegalDataValue, "invalid quantity. valid range 1..125")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadInputRegisters
+		return nil, tmpErr
 	}
 	return &ReadInputRegistersRequestRTU{
 		ReadInputRegistersRequest: ReadInputRegistersRequest{
-			UnitID: data[0],
+			UnitID: unitID,
 			// function code = data[1]
 			StartAddress: binary.BigEndian.Uint16(data[2:4]),
 			Quantity:     quantity,

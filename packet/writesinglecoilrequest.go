@@ -2,7 +2,6 @@ package packet
 
 import (
 	"encoding/binary"
-	"errors"
 	"math/rand"
 )
 
@@ -85,17 +84,26 @@ func ParseWriteSingleCoilRequestTCP(data []byte) (*WriteSingleCoilRequestTCP, er
 	if err != nil {
 		return nil, err
 	}
+	unitID := data[6]
 	if data[7] != FunctionWriteSingleCoil {
-		return nil, errors.New("received function code in packet is not 0x05")
+		tmpErr := NewErrorParseTCP(ErrIllegalFunction, "received function code in packet is not 0x05")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteSingleCoil
+		return nil, tmpErr
 	}
 	coilStateRaw := binary.BigEndian.Uint16(data[10:12])
 	if coilStateRaw != writeCoilOn && coilStateRaw != writeCoilOff {
-		return nil, errors.New("coil state has invalid value")
+		tmpErr := NewErrorParseTCP(ErrIllegalDataValue, "coil state has invalid value")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteSingleCoil
+		return nil, tmpErr
 	}
 	return &WriteSingleCoilRequestTCP{
 		MBAPHeader: header,
 		WriteSingleCoilRequest: WriteSingleCoilRequest{
-			UnitID: data[6],
+			UnitID: unitID,
 			// function code = data[7]
 			Address:   binary.BigEndian.Uint16(data[8:10]),
 			CoilState: coilStateRaw == writeCoilOn,
@@ -135,18 +143,25 @@ func (r WriteSingleCoilRequestRTU) ExpectedResponseLength() int {
 func ParseWriteSingleCoilRequestRTU(data []byte) (*WriteSingleCoilRequestRTU, error) {
 	dLen := len(data)
 	if dLen != 8 && dLen != 6 { // with or without CRC
-		return nil, errors.New("received data length too short to be valid packet")
+		return nil, NewErrorParseRTU(ErrServerFailure, "received data length too short to be valid packet")
 	}
+	unitID := data[0]
 	if data[1] != FunctionWriteSingleCoil {
-		return nil, errors.New("received function code in packet is not 0x05")
+		tmpErr := NewErrorParseRTU(ErrIllegalFunction, "received function code in packet is not 0x05")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteSingleCoil
+		return nil, tmpErr
 	}
 	coilStateRaw := binary.BigEndian.Uint16(data[4:6])
 	if coilStateRaw != writeCoilOn && coilStateRaw != writeCoilOff {
-		return nil, errors.New("coil state has invalid value")
+		tmpErr := NewErrorParseRTU(ErrIllegalDataValue, "coil state has invalid value")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteSingleCoil
+		return nil, tmpErr
 	}
 	return &WriteSingleCoilRequestRTU{
 		WriteSingleCoilRequest: WriteSingleCoilRequest{
-			UnitID: data[0],
+			UnitID: unitID,
 			// function code = data[7]
 			Address:   binary.BigEndian.Uint16(data[2:4]),
 			CoilState: coilStateRaw == writeCoilOn,

@@ -47,9 +47,9 @@ func TestParseMBAPHeader(t *testing.T) {
 			expectError: "invalid protocol id",
 		},
 		{
-			name:        "nok, pdu length in header not be 0",
+			name:        "nok, pdu length in header can not be 0",
 			when:        []byte{0x81, 0x80, 0x00, 0x00, 0x00, 0x00},
-			expectError: "pdu length in header not be 0",
+			expectError: "pdu length in header can not be 0",
 		},
 		{
 			name:        "nok, packet length does not match length in header",

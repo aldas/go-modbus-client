@@ -2,7 +2,6 @@ package packet
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math/rand"
 )
@@ -91,16 +90,29 @@ func ParseWriteMultipleCoilsRequestTCP(data []byte) (*WriteMultipleCoilsRequestT
 	if err != nil {
 		return nil, err
 	}
+	unitID := data[6]
 	if data[7] != FunctionWriteMultipleCoils {
-		return nil, errors.New("received function code in packet is not 0x0f")
+		tmpErr := NewErrorParseTCP(ErrIllegalFunction, "received function code in packet is not 0x0f")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteMultipleCoils
+		return nil, tmpErr
 	}
 	coilCount := binary.BigEndian.Uint16(data[10:12])
 	if !(coilCount >= 1 && coilCount <= 1968) { // 0x0001 to 0x07B0
-		return nil, errors.New("invalid coils count. valid range 1..1968")
+		tmpErr := NewErrorParseTCP(ErrIllegalDataValue, "invalid coils count. valid range 1..1968")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteMultipleCoils
+		return nil, tmpErr
 	}
 	coilsBytesCount := data[12]
 	if len(data) < 13+int(coilsBytesCount) {
-		return nil, errors.New("received data coils bytes length does not match write data length")
+		tmpErr := NewErrorParseTCP(ErrIllegalDataValue, "received data coils bytes length does not match write data length")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteMultipleCoils
+		return nil, tmpErr
 	}
 	var coilsData []byte
 	if coilsBytesCount > 0 {
@@ -110,7 +122,7 @@ func ParseWriteMultipleCoilsRequestTCP(data []byte) (*WriteMultipleCoilsRequestT
 	return &WriteMultipleCoilsRequestTCP{
 		MBAPHeader: header,
 		WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
-			UnitID: data[6],
+			UnitID: unitID,
 			// function code = data[7]
 			StartAddress: binary.BigEndian.Uint16(data[8:10]),
 			CoilCount:    coilCount,
@@ -160,19 +172,29 @@ func (r WriteMultipleCoilsRequestRTU) ExpectedResponseLength() int {
 func ParseWriteMultipleCoilsRequestRTU(data []byte) (*WriteMultipleCoilsRequestRTU, error) {
 	dLen := len(data)
 	if dLen < 7 {
-		return nil, errors.New("received data length too short to be valid packet")
+		return nil, NewErrorParseRTU(ErrServerFailure, "received data length too short to be valid packet")
 	}
+	unitID := data[0]
 	if data[1] != FunctionWriteMultipleCoils {
-		return nil, errors.New("received function code in packet is not 0x0f")
+		tmpErr := NewErrorParseRTU(ErrIllegalFunction, "received function code in packet is not 0x0f")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteMultipleCoils
+		return nil, tmpErr
 	}
 	coilCount := binary.BigEndian.Uint16(data[4:6])
 	if !(coilCount >= 1 && coilCount <= 1968) { // 0x0001 to 0x07B0
-		return nil, errors.New("invalid coils count. valid range 1..1968")
+		tmpErr := NewErrorParseRTU(ErrIllegalDataValue, "invalid coils count. valid range 1..1968")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteMultipleCoils
+		return nil, tmpErr
 	}
 	coilsBytesCount := data[6]
 	expectedLen := 7 + int(coilsBytesCount)
 	if dLen != expectedLen && dLen != expectedLen+2 { // without crc and with crc
-		return nil, errors.New("received data coils bytes length does not match write data length")
+		tmpErr := NewErrorParseRTU(ErrIllegalDataValue, "received data coils bytes length does not match write data length")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteMultipleCoils
+		return nil, tmpErr
 	}
 	var coilsData []byte
 	if coilsBytesCount > 0 {
@@ -181,7 +203,7 @@ func ParseWriteMultipleCoilsRequestRTU(data []byte) (*WriteMultipleCoilsRequestR
 	}
 	return &WriteMultipleCoilsRequestRTU{
 		WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
-			UnitID: data[0],
+			UnitID: unitID,
 			// function code = data[1]
 			StartAddress: binary.BigEndian.Uint16(data[2:4]),
 			CoilCount:    coilCount,
