@@ -2,6 +2,7 @@ package packet
 
 import (
 	"encoding/binary"
+	"errors"
 	"math/rand"
 )
 
@@ -73,6 +74,26 @@ func (r WriteSingleRegisterRequestTCP) ExpectedResponseLength() int {
 	return 6 + 6
 }
 
+// ParseWriteSingleRegisterRequestTCP parses given bytes into WriteSingleRegisterRequestTCP
+func ParseWriteSingleRegisterRequestTCP(data []byte) (*WriteSingleRegisterRequestTCP, error) {
+	header, err := ParseMBAPHeader(data)
+	if err != nil {
+		return nil, err
+	}
+	if data[7] != FunctionWriteSingleRegister {
+		return nil, errors.New("received function code in packet is not 0x06")
+	}
+	return &WriteSingleRegisterRequestTCP{
+		MBAPHeader: header,
+		WriteSingleRegisterRequest: WriteSingleRegisterRequest{
+			UnitID: data[6],
+			// function code = data[7]
+			Address: binary.BigEndian.Uint16(data[8:10]),
+			Data:    [2]byte{data[10], data[11]},
+		},
+	}, nil
+}
+
 // NewWriteSingleRegisterRequestRTU creates new instance of Write Single Register RTU request
 // NB: byte slice for `data` must be in BigEndian byte order for server to interpret them correctly
 func NewWriteSingleRegisterRequestRTU(unitID uint8, address uint16, data []byte) (*WriteSingleRegisterRequestRTU, error) {
@@ -101,6 +122,25 @@ func (r WriteSingleRegisterRequestRTU) Bytes() []byte {
 func (r WriteSingleRegisterRequestRTU) ExpectedResponseLength() int {
 	// response = 1 UnitID + 1 functionCode + 2 address + 2 register data
 	return 6
+}
+
+// ParseWriteSingleRegisterRequestRTU parses given bytes into WriteSingleRegisterRequestRTU
+func ParseWriteSingleRegisterRequestRTU(data []byte) (*WriteSingleRegisterRequestRTU, error) {
+	dLen := len(data)
+	if dLen != 8 && dLen != 6 { // with or without CRC
+		return nil, errors.New("received data length too short to be valid packet")
+	}
+	if data[1] != FunctionWriteSingleRegister {
+		return nil, errors.New("received function code in packet is not 0x06")
+	}
+	return &WriteSingleRegisterRequestRTU{
+		WriteSingleRegisterRequest: WriteSingleRegisterRequest{
+			UnitID: data[0],
+			// function code = data[1]
+			Address: binary.BigEndian.Uint16(data[2:4]),
+			Data:    [2]byte{data[4], data[5]},
+		},
+	}, nil
 }
 
 // FunctionCode returns function code of this request

@@ -322,3 +322,123 @@ func TestReadInputRegistersRequest_Bytes(t *testing.T) {
 		})
 	}
 }
+
+func TestParseReadInputRegistersRequestTCP(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		when        []byte
+		expect      *ReadInputRegistersRequestTCP
+		expectError string
+	}{
+		{
+			name: "ok, parse ReadInputRegistersRequestTCP",
+			when: []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x04, 0x00, 0x6B, 0x00, 0x01},
+			expect: &ReadInputRegistersRequestTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 0x01,
+					ProtocolID:    0,
+				},
+				ReadInputRegistersRequest: ReadInputRegistersRequest{
+					UnitID:       0x1,
+					StartAddress: 0x6b,
+					Quantity:     0x01,
+				},
+			},
+		},
+		{
+			name:        "nok, invalid header",
+			when:        []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x07, 0x01, 0x04, 0x00, 0x6B, 0x00, 0x01},
+			expect:      nil,
+			expectError: "packet length does not match length in header",
+		},
+		{
+			name:        "nok, invalid function code",
+			when:        []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x01, 0x00, 0x6B, 0x00, 0x01},
+			expect:      nil,
+			expectError: "received function code in packet is not 0x04",
+		},
+		{
+			name:        "nok, quantity can not be 0",
+			when:        []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x04, 0x00, 0x6B, 0x00, 0x00},
+			expect:      nil,
+			expectError: "invalid quantity. valid range 1..125",
+		},
+		{
+			name:        "nok, quantity can not be 126",
+			when:        []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x04, 0x00, 0x6B, 0x00, 0x7e},
+			expect:      nil,
+			expectError: "invalid quantity. valid range 1..125",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseReadInputRegistersRequestTCP(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestParseReadInputRegistersRequestRTU(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		when        []byte
+		expect      *ReadInputRegistersRequestRTU
+		expectError string
+	}{
+		{
+			name: "ok, parse ReadHoldingRegistersRequestRTU",
+			when: []byte{0x01, 0x04, 0x00, 0x6B, 0x00, 0x01, 0xFF, 0xFF},
+			expect: &ReadInputRegistersRequestRTU{
+				ReadInputRegistersRequest: ReadInputRegistersRequest{
+					UnitID:       0x1,
+					StartAddress: 0x6b,
+					Quantity:     0x01,
+				},
+			},
+		},
+		{
+			name:        "nok, too short",
+			when:        []byte{0x01, 0x04, 0x00, 0x6B, 0x00},
+			expect:      nil,
+			expectError: "invalid data length to be valid packet",
+		},
+		{
+			name:        "nok, invalid function code",
+			when:        []byte{0x01, 0x00, 0x00, 0x6B, 0x00, 0x01, 0xFF, 0xFF},
+			expect:      nil,
+			expectError: "received function code in packet is not 0x04",
+		},
+		{
+			name:        "nok, quantity can not be 0",
+			when:        []byte{0x01, 0x04, 0x00, 0x6B, 0x00, 0x00, 0xFF, 0xFF},
+			expect:      nil,
+			expectError: "invalid quantity. valid range 1..125",
+		},
+		{
+			name:        "nok, quantity can not be 126",
+			when:        []byte{0x01, 0x04, 0x00, 0x6B, 0x00, 0x7e, 0xFF, 0xFF},
+			expect:      nil,
+			expectError: "invalid quantity. valid range 1..125",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseReadInputRegistersRequestRTU(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

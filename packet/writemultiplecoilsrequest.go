@@ -2,6 +2,7 @@ package packet
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/rand"
 )
@@ -84,6 +85,40 @@ func (r WriteMultipleCoilsRequestTCP) ExpectedResponseLength() int {
 	return 6 + 6
 }
 
+// ParseWriteMultipleCoilsRequestTCP parses given bytes into WriteMultipleCoilsRequestTCP
+func ParseWriteMultipleCoilsRequestTCP(data []byte) (*WriteMultipleCoilsRequestTCP, error) {
+	header, err := ParseMBAPHeader(data)
+	if err != nil {
+		return nil, err
+	}
+	if data[7] != FunctionWriteMultipleCoils {
+		return nil, errors.New("received function code in packet is not 0x0f")
+	}
+	coilCount := binary.BigEndian.Uint16(data[10:12])
+	if !(coilCount >= 1 && coilCount <= 1968) { // 0x0001 to 0x07B0
+		return nil, errors.New("invalid coils count. valid range 1..1968")
+	}
+	coilsBytesCount := data[12]
+	if len(data) < 13+int(coilsBytesCount) {
+		return nil, errors.New("received data coils bytes length does not match write data length")
+	}
+	var coilsData []byte
+	if coilsBytesCount > 0 {
+		coilsData = make([]byte, coilsBytesCount)
+		copy(coilsData, data[13:13+coilsBytesCount])
+	}
+	return &WriteMultipleCoilsRequestTCP{
+		MBAPHeader: header,
+		WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+			UnitID: data[6],
+			// function code = data[7]
+			StartAddress: binary.BigEndian.Uint16(data[8:10]),
+			CoilCount:    coilCount,
+			Data:         coilsData,
+		},
+	}, nil
+}
+
 // NewWriteMultipleCoilsRequestRTU creates new instance of Write Multiple Coils RTU request
 func NewWriteMultipleCoilsRequestRTU(unitID uint8, startAddress uint16, coils []bool) (*WriteMultipleCoilsRequestRTU, error) {
 	coilsCount := len(coils)
@@ -121,6 +156,40 @@ func (r WriteMultipleCoilsRequestRTU) ExpectedResponseLength() int {
 	return 6 + 2
 }
 
+// ParseWriteMultipleCoilsRequestRTU parses given bytes into WriteMultipleCoilsRequestRTU
+func ParseWriteMultipleCoilsRequestRTU(data []byte) (*WriteMultipleCoilsRequestRTU, error) {
+	dLen := len(data)
+	if dLen < 7 {
+		return nil, errors.New("received data length too short to be valid packet")
+	}
+	if data[1] != FunctionWriteMultipleCoils {
+		return nil, errors.New("received function code in packet is not 0x0f")
+	}
+	coilCount := binary.BigEndian.Uint16(data[4:6])
+	if !(coilCount >= 1 && coilCount <= 1968) { // 0x0001 to 0x07B0
+		return nil, errors.New("invalid coils count. valid range 1..1968")
+	}
+	coilsBytesCount := data[6]
+	expectedLen := 7 + int(coilsBytesCount)
+	if dLen != expectedLen && dLen != expectedLen+2 { // without crc and with crc
+		return nil, errors.New("received data coils bytes length does not match write data length")
+	}
+	var coilsData []byte
+	if coilsBytesCount > 0 {
+		coilsData = make([]byte, coilsBytesCount)
+		copy(coilsData, data[7:7+coilsBytesCount])
+	}
+	return &WriteMultipleCoilsRequestRTU{
+		WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+			UnitID: data[0],
+			// function code = data[1]
+			StartAddress: binary.BigEndian.Uint16(data[2:4]),
+			CoilCount:    coilCount,
+			Data:         coilsData,
+		},
+	}, nil
+}
+
 // FunctionCode returns function code of this request
 func (r WriteMultipleCoilsRequest) FunctionCode() uint8 {
 	return FunctionWriteMultipleCoils
@@ -156,7 +225,7 @@ func CoilsToBytes(coils []bool) []byte {
 	for i := 0; i < cLen; i++ {
 		bit := i % 8
 		nthByte := i / 8
-		if coils[i] == true {
+		if coils[i] {
 			v := result[nthByte] | (1 << bit)
 			result[nthByte] = v
 		}

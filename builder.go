@@ -178,9 +178,7 @@ func NewRequestBuilder(serverAddress string, unitID uint8) *Builder {
 
 // AddAll adds field into Builder. AddAll does not set ServerAddress and UnitID values.
 func (b *Builder) AddAll(fields Fields) *Builder {
-	for _, f := range fields {
-		b.fields = append(b.fields, f)
-	}
+	b.fields = append(b.fields, fields...)
 	return b
 }
 

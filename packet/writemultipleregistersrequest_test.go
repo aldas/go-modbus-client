@@ -304,3 +304,149 @@ func TestWriteMultipleRegistersRequest_Bytes(t *testing.T) {
 		})
 	}
 }
+
+func TestParseWriteMultipleRegistersRequestTCP(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		when        []byte
+		expect      *WriteMultipleRegistersRequestTCP
+		expectError string
+	}{
+		{
+			name: "ok, parse WriteMultipleRegistersRequestTCP",
+			when: []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x0d, 0x11, 0x10, 0x04, 0x10, 0x00, 0x03, 0x06, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01},
+			expect: &WriteMultipleRegistersRequestTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 0x0138,
+					ProtocolID:    0,
+				},
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID:        0x11,
+					StartAddress:  0x0410,
+					RegisterCount: 0x03,
+					Data:          []byte{0x00, 0xC8, 0x00, 0x82, 0x87, 0x01},
+				},
+			},
+		},
+		{
+			name:        "nok, invalid header",
+			when:        []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x0e, 0x11, 0x10, 0x04, 0x10, 0x00, 0x03, 0x06, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01},
+			expect:      nil,
+			expectError: "packet length does not match length in header",
+		},
+		{
+			name:        "nok, invalid function code",
+			when:        []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x0d, 0x11, 0x01, 0x04, 0x10, 0x00, 0x03, 0x06, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01},
+			expect:      nil,
+			expectError: "received function code in packet is not 0x10",
+		},
+		{
+			name:        "nok, register count can not be 0",
+			when:        []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x0d, 0x11, 0x10, 0x04, 0x10, 0x00, 0x00, 0x06, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01},
+			expect:      nil,
+			expectError: "invalid register count. valid range 1..123",
+		},
+		{
+			name:        "nok, register count can not be 126",
+			when:        []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x0d, 0x11, 0x10, 0x04, 0x10, 0x00, 0x7c, 0x06, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01},
+			expect:      nil,
+			expectError: "invalid register count. valid range 1..123",
+		},
+		{
+			name:        "nok, invalid register byte count",
+			when:        []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x0d, 0x11, 0x10, 0x04, 0x10, 0x00, 0x03, 0x05, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01},
+			expect:      nil,
+			expectError: "received data register bytes length does not match write data length",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseWriteMultipleRegistersRequestTCP(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestParseWriteMultipleRegistersRequestRTU(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		when        []byte
+		expect      *WriteMultipleRegistersRequestRTU
+		expectError string
+	}{
+		{
+			name: "ok, parse WriteMultipleRegistersRequestRTU with crc",
+			when: []byte{0x11, 0x10, 0x04, 0x10, 0x00, 0x03, 0x06, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01, 0xff, 0xff},
+			expect: &WriteMultipleRegistersRequestRTU{
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID:        0x11,
+					StartAddress:  0x0410,
+					RegisterCount: 0x03,
+					Data:          []byte{0x00, 0xC8, 0x00, 0x82, 0x87, 0x01},
+				},
+			},
+		},
+		{
+			name: "ok, parse WriteMultipleRegistersRequestRTU without crc",
+			when: []byte{0x11, 0x10, 0x04, 0x10, 0x00, 0x03, 0x06, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01},
+			expect: &WriteMultipleRegistersRequestRTU{
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID:        0x11,
+					StartAddress:  0x0410,
+					RegisterCount: 0x03,
+					Data:          []byte{0x00, 0xC8, 0x00, 0x82, 0x87, 0x01},
+				},
+			},
+		},
+		{
+			name:        "nok, too short",
+			when:        []byte{0x11, 0x10, 0x04, 0x10, 0x00, 0x03, 0x06},
+			expect:      nil,
+			expectError: "received data length too short to be valid packet",
+		},
+		{
+			name:        "nok, invalid function code",
+			when:        []byte{0x11, 0x00, 0x04, 0x10, 0x00, 0x03, 0x06, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01, 0xff, 0xff},
+			expect:      nil,
+			expectError: "received function code in packet is not 0x10",
+		},
+		{
+			name:        "nok, register count can not be 0",
+			when:        []byte{0x11, 0x10, 0x04, 0x10, 0x00, 0x00, 0x06, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01, 0xff, 0xff},
+			expect:      nil,
+			expectError: "invalid register count. valid range 1..123",
+		},
+		{
+			name:        "nok, register count can not be 123",
+			when:        []byte{0x11, 0x10, 0x04, 0x10, 0x00, 0x7c, 0x06, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01, 0xff, 0xff},
+			expect:      nil,
+			expectError: "invalid register count. valid range 1..123",
+		},
+		{
+			name:        "nok, invalid register byte count",
+			when:        []byte{0x11, 0x10, 0x04, 0x10, 0x00, 0x03, 0x05, 0x00, 0xC8, 0x00, 0x82, 0x87, 0x01, 0xff, 0xff},
+			expect:      nil,
+			expectError: "received data register bytes length does not match write data length",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseWriteMultipleRegistersRequestRTU(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

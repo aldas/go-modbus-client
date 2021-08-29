@@ -316,3 +316,110 @@ func TestWriteSingleRegisterRequest_Bytes(t *testing.T) {
 		})
 	}
 }
+
+func TestParseWriteSingleRegisterRequestTCP(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		when        []byte
+		expect      *WriteSingleRegisterRequestTCP
+		expectError string
+	}{
+		{
+			name: "ok, parse WriteSingleRegisterRequestTCP",
+			when: []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x11, 0x06, 0x00, 0x6B, 0x01, 0x02},
+			expect: &WriteSingleRegisterRequestTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 0x01,
+					ProtocolID:    0,
+				},
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{
+					UnitID:  0x11,
+					Address: 0x6b,
+					Data:    [2]byte{0x01, 0x02},
+				},
+			},
+		},
+		{
+			name:        "nok, invalid header",
+			when:        []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x07, 0x11, 0x06, 0x00, 0x6B, 0x01, 0x02},
+			expect:      nil,
+			expectError: "packet length does not match length in header",
+		},
+		{
+			name:        "nok, invalid function code",
+			when:        []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x11, 0x01, 0x00, 0x6B, 0x01, 0x02},
+			expect:      nil,
+			expectError: "received function code in packet is not 0x06",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseWriteSingleRegisterRequestTCP(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestParseWriteSingleRegisterRequestRTU(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		when        []byte
+		expect      *WriteSingleRegisterRequestRTU
+		expectError string
+	}{
+		{
+			name: "ok, parse WriteSingleRegisterRequestRTU with crc",
+			when: []byte{0x11, 0x06, 0x00, 0x6B, 0x01, 0x02, 0xff, 0xff},
+			expect: &WriteSingleRegisterRequestRTU{
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{
+					UnitID:  0x11,
+					Address: 0x6b,
+					Data:    [2]byte{0x01, 0x02},
+				},
+			},
+		},
+		{
+			name: "ok, parse WriteSingleRegisterRequestRTU without crc",
+			when: []byte{0x11, 0x06, 0x00, 0x6B, 0x01, 0x02},
+			expect: &WriteSingleRegisterRequestRTU{
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{
+					UnitID:  0x11,
+					Address: 0x6b,
+					Data:    [2]byte{0x01, 0x02},
+				},
+			},
+		},
+		{
+			name:        "nok, invalid length",
+			when:        []byte{0x11, 0x06, 0x00, 0x6B, 0x01, 0x02, 0xff},
+			expect:      nil,
+			expectError: "received data length too short to be valid packet",
+		},
+		{
+			name:        "nok, invalid function code",
+			when:        []byte{0x11, 0x00, 0x00, 0x6B, 0x01, 0x02, 0xff, 0xff},
+			expect:      nil,
+			expectError: "received function code in packet is not 0x06",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseWriteSingleRegisterRequestRTU(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

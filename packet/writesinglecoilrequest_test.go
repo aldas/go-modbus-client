@@ -316,3 +316,122 @@ func TestWriteSingleCoilRequest_Bytes(t *testing.T) {
 		})
 	}
 }
+
+func TestParseWriteSingleCoilRequestTCP(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		when        []byte
+		expect      *WriteSingleCoilRequestTCP
+		expectError string
+	}{
+		{
+			name: "ok, parse WriteSingleCoilRequestTCP",
+			when: []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x11, 0x05, 0x00, 0x6B, 0xFF, 0x00},
+			expect: &WriteSingleCoilRequestTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 0x01,
+					ProtocolID:    0,
+				},
+				WriteSingleCoilRequest: WriteSingleCoilRequest{
+					UnitID:    0x11,
+					Address:   0x6b,
+					CoilState: true,
+				},
+			},
+		},
+		{
+			name:        "nok, invalid header",
+			when:        []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x11, 0x05, 0x00, 0x6B, 0xFF, 0x00},
+			expect:      nil,
+			expectError: "packet length does not match length in header",
+		},
+		{
+			name:        "nok, invalid function code",
+			when:        []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x11, 0x01, 0x00, 0x6B, 0xFF, 0x00},
+			expect:      nil,
+			expectError: "received function code in packet is not 0x05",
+		},
+		{
+			name:        "nok, invalid coil state bytes",
+			when:        []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x11, 0x05, 0x00, 0x6B, 0xFF, 0xFF},
+			expect:      nil,
+			expectError: "coil state has invalid value",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseWriteSingleCoilRequestTCP(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestParseWriteSingleCoilRequestRTU(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		when        []byte
+		expect      *WriteSingleCoilRequestRTU
+		expectError string
+	}{
+		{
+			name: "ok, parse WriteSingleCoilRequestRTU with crc",
+			when: []byte{0x11, 0x05, 0x00, 0x6B, 0xFF, 0x00, 0xff, 0xff},
+			expect: &WriteSingleCoilRequestRTU{
+				WriteSingleCoilRequest: WriteSingleCoilRequest{
+					UnitID:    0x11,
+					Address:   0x6b,
+					CoilState: true,
+				},
+			},
+		},
+		{
+			name: "ok, parse WriteSingleCoilRequestRTU without crc",
+			when: []byte{0x11, 0x05, 0x00, 0x6B, 0xFF, 0x00},
+			expect: &WriteSingleCoilRequestRTU{
+				WriteSingleCoilRequest: WriteSingleCoilRequest{
+					UnitID:    0x11,
+					Address:   0x6b,
+					CoilState: true,
+				},
+			},
+		},
+		{
+			name:        "nok, invalid length",
+			when:        []byte{0x11, 0x05, 0x00, 0x6B, 0xFF, 0x00, 0xff},
+			expect:      nil,
+			expectError: "received data length too short to be valid packet",
+		},
+		{
+			name:        "nok, invalid function code",
+			when:        []byte{0x11, 0x00, 0x00, 0x6B, 0xFF, 0x00, 0xff, 0xff},
+			expect:      nil,
+			expectError: "received function code in packet is not 0x05",
+		},
+		{
+			name:        "nok, invalid coil state bytes",
+			when:        []byte{0x11, 0x05, 0x00, 0x6B, 0x01, 0x10, 0xff, 0xff},
+			expect:      nil,
+			expectError: "coil state has invalid value",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseWriteSingleCoilRequestRTU(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

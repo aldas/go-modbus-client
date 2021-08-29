@@ -350,3 +350,149 @@ func TestWriteMultipleCoilsRequest_Bytes(t *testing.T) {
 		})
 	}
 }
+
+func TestParseWriteMultipleCoilsRequestTCP(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		when        []byte
+		expect      *WriteMultipleCoilsRequestTCP
+		expectError string
+	}{
+		{
+			name: "ok, parse WriteMultipleCoilsRequestTCP",
+			when: []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x08, 0x11, 0x0F, 0x04, 0x10, 0x00, 0x03, 0x01, 0x05},
+			expect: &WriteMultipleCoilsRequestTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 0x0138,
+					ProtocolID:    0,
+				},
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID:       0x11,
+					StartAddress: 0x0410,
+					CoilCount:    0x03,
+					Data:         []byte{0x05},
+				},
+			},
+		},
+		{
+			name:        "nok, invalid header",
+			when:        []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x09, 0x11, 0x0F, 0x04, 0x10, 0x00, 0x03, 0x01, 0x05},
+			expect:      nil,
+			expectError: "packet length does not match length in header",
+		},
+		{
+			name:        "nok, invalid function code",
+			when:        []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x08, 0x11, 0x01, 0x04, 0x10, 0x00, 0x03, 0x01, 0x05},
+			expect:      nil,
+			expectError: "received function code in packet is not 0x0f",
+		},
+		{
+			name:        "nok, coils count can not be 0",
+			when:        []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x08, 0x11, 0x0F, 0x04, 0x10, 0x00, 0x00, 0x01, 0x05},
+			expect:      nil,
+			expectError: "invalid coils count. valid range 1..1968",
+		},
+		{
+			name:        "nok, coils count can not be 1969",
+			when:        []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x08, 0x11, 0x0F, 0x04, 0x10, 0x07, 0xb1, 0x01, 0x05},
+			expect:      nil,
+			expectError: "invalid coils count. valid range 1..1968",
+		},
+		{
+			name:        "nok, invalid coils byte count",
+			when:        []byte{0x01, 0x38, 0x00, 0x00, 0x00, 0x08, 0x11, 0x0F, 0x04, 0x10, 0x00, 0x03, 0x02, 0x05},
+			expect:      nil,
+			expectError: "received data coils bytes length does not match write data length",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseWriteMultipleCoilsRequestTCP(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestParseWriteMultipleCoilsRequestRTU(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		when        []byte
+		expect      *WriteMultipleCoilsRequestRTU
+		expectError string
+	}{
+		{
+			name: "ok, parse WriteMultipleCoilsRequestRTU with crc",
+			when: []byte{0x11, 0x0F, 0x04, 0x10, 0x00, 0x03, 0x01, 0x05, 0xFF, 0xFF},
+			expect: &WriteMultipleCoilsRequestRTU{
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID:       0x11,
+					StartAddress: 0x0410,
+					CoilCount:    0x03,
+					Data:         []byte{0x05},
+				},
+			},
+		},
+		{
+			name: "ok, parse WriteMultipleCoilsRequestRTU without crc",
+			when: []byte{0x11, 0x0F, 0x04, 0x10, 0x00, 0x03, 0x01, 0x05},
+			expect: &WriteMultipleCoilsRequestRTU{
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID:       0x11,
+					StartAddress: 0x0410,
+					CoilCount:    0x03,
+					Data:         []byte{0x05},
+				},
+			},
+		},
+		{
+			name:        "nok, too short",
+			when:        []byte{0x11, 0x0F, 0x04, 0x10, 0x00, 0x03},
+			expect:      nil,
+			expectError: "received data length too short to be valid packet",
+		},
+		{
+			name:        "nok, invalid function code",
+			when:        []byte{0x11, 0x00, 0x04, 0x10, 0x00, 0x03, 0x01, 0x05, 0xFF, 0xFF},
+			expect:      nil,
+			expectError: "received function code in packet is not 0x0f",
+		},
+		{
+			name:        "nok, coils count can not be 0",
+			when:        []byte{0x11, 0x0F, 0x04, 0x10, 0x00, 0x00, 0x01, 0x05, 0xFF, 0xFF},
+			expect:      nil,
+			expectError: "invalid coils count. valid range 1..1968",
+		},
+		{
+			name:        "nok, coils count can not be 1969",
+			when:        []byte{0x11, 0x0F, 0x04, 0x10, 0x0f, 0xb1, 0x01, 0x05, 0xFF, 0xFF},
+			expect:      nil,
+			expectError: "invalid coils count. valid range 1..1968",
+		},
+		{
+			name:        "nok, invalid coils byte count",
+			when:        []byte{0x11, 0x0F, 0x04, 0x10, 0x00, 0x03, 0x02, 0x05, 0xFF, 0xFF},
+			expect:      nil,
+			expectError: "received data coils bytes length does not match write data length",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ParseWriteMultipleCoilsRequestRTU(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

@@ -38,10 +38,8 @@ func NewSerialClient(serialPort io.ReadWriteCloser, opts ...SerialClientOptionFu
 		hooks:               nil,
 		isFlusher:           isFlusher,
 	}
-	if opts != nil {
-		for _, o := range opts {
-			o(client)
-		}
+	for _, o := range opts {
+		o(client)
 	}
 	return client
 }
