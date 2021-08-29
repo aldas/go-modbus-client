@@ -61,17 +61,17 @@ func (h MBAPHeader) bytes(dst []byte, length uint16) {
 // ParseMBAPHeader parses MBAPHeader from given bytes
 func ParseMBAPHeader(data []byte) (MBAPHeader, error) {
 	if len(data) < 6 {
-		return MBAPHeader{}, errors.New("data to short to contain MBAPHeader")
+		return MBAPHeader{}, NewErrorParseTCP(ErrServerFailure, "data to short to contain MBAPHeader")
 	}
 	if data[2] != 0x0 || data[3] != 0x00 {
-		return MBAPHeader{}, errors.New("invalid protocol id")
+		return MBAPHeader{}, NewErrorParseTCP(ErrServerFailure, "invalid protocol id")
 	}
 	pduLen := binary.BigEndian.Uint16(data[4:6])
 	if pduLen == 0 {
-		return MBAPHeader{}, errors.New("pdu length in header not be 0")
+		return MBAPHeader{}, NewErrorParseTCP(ErrServerFailure, "pdu length in header can not be 0")
 	}
 	if len(data) != 6+int(pduLen) {
-		return MBAPHeader{}, errors.New("packet length does not match length in header")
+		return MBAPHeader{}, NewErrorParseTCP(ErrServerFailure, "packet length does not match length in header")
 	}
 	return MBAPHeader{
 		TransactionID: binary.BigEndian.Uint16(data[0:2]),

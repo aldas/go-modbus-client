@@ -114,20 +114,37 @@ func ParseReadWriteMultipleRegistersRequestTCP(data []byte) (*ReadWriteMultipleR
 	if err != nil {
 		return nil, err
 	}
+	unitID := data[6]
 	if data[7] != FunctionReadWriteMultipleRegisters {
-		return nil, errors.New("received function code in packet is not 0x17")
+		tmpErr := NewErrorParseTCP(ErrIllegalFunction, "received function code in packet is not 0x17")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadWriteMultipleRegisters
+		return nil, tmpErr
 	}
 	readQuantity := binary.BigEndian.Uint16(data[10:12])
 	if !(readQuantity >= 1 && readQuantity <= 125) { // 0x0001 to 0x007D
-		return nil, errors.New("invalid read quantity. valid range 1..125")
+		tmpErr := NewErrorParseTCP(ErrIllegalDataValue, "invalid read quantity. valid range 1..125")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadWriteMultipleRegisters
+		return nil, tmpErr
 	}
 	writeQuantity := binary.BigEndian.Uint16(data[14:16])
 	if !(writeQuantity >= 1 && writeQuantity <= 121) { // 0x0001 to 0x0079
-		return nil, errors.New("invalid write quantity. valid range 1..121")
+		tmpErr := NewErrorParseTCP(ErrIllegalDataValue, "invalid write quantity. valid range 1..121")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadWriteMultipleRegisters
+		return nil, tmpErr
 	}
 	writeBytesCount := data[16]
 	if len(data) < 17+int(writeBytesCount) {
-		return nil, errors.New("received data write bytes length does not match write data length")
+		tmpErr := NewErrorParseTCP(ErrIllegalDataValue, "received data write bytes length does not match write data length")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadWriteMultipleRegisters
+		return nil, tmpErr
 	}
 	var writeData []byte
 	if writeBytesCount > 0 {
@@ -137,7 +154,7 @@ func ParseReadWriteMultipleRegistersRequestTCP(data []byte) (*ReadWriteMultipleR
 	return &ReadWriteMultipleRegistersRequestTCP{
 		MBAPHeader: header,
 		ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
-			UnitID: data[6],
+			UnitID: unitID,
 			// function code = data[7]
 			ReadStartAddress:  binary.BigEndian.Uint16(data[8:10]),
 			ReadQuantity:      readQuantity,
@@ -204,23 +221,36 @@ func (r ReadWriteMultipleRegistersRequestRTU) ExpectedResponseLength() int {
 func ParseReadWriteMultipleRegistersRequestRTU(data []byte) (*ReadWriteMultipleRegistersRequestRTU, error) {
 	dLen := len(data)
 	if dLen < 12 {
-		return nil, errors.New("received data length too short to be valid packet")
+		return nil, NewErrorParseRTU(ErrServerFailure, "received data length too short to be valid packet")
 	}
+	unitID := data[0]
 	if data[1] != FunctionReadWriteMultipleRegisters {
-		return nil, errors.New("received function code in packet is not 0x17")
+		tmpErr := NewErrorParseRTU(ErrIllegalFunction, "received function code in packet is not 0x17")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadWriteMultipleRegisters
+		return nil, tmpErr
 	}
 	readQuantity := binary.BigEndian.Uint16(data[4:6])
 	if !(readQuantity >= 1 && readQuantity <= 125) { // 0x0001 to 0x007D
-		return nil, errors.New("invalid read quantity. valid range 1..125")
+		tmpErr := NewErrorParseRTU(ErrIllegalDataValue, "invalid read quantity. valid range 1..125")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadWriteMultipleRegisters
+		return nil, tmpErr
 	}
 	writeQuantity := binary.BigEndian.Uint16(data[8:10])
 	if !(writeQuantity >= 1 && writeQuantity <= 121) { // 0x0001 to 0x0079
-		return nil, errors.New("invalid write quantity. valid range 1..121")
+		tmpErr := NewErrorParseRTU(ErrIllegalDataValue, "invalid write quantity. valid range 1..121")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadWriteMultipleRegisters
+		return nil, tmpErr
 	}
 	writeBytesCount := data[10]
 	expectedLen := 11 + int(writeBytesCount)
 	if dLen != expectedLen && dLen != expectedLen+2 { // without crc and with crc
-		return nil, errors.New("received data write bytes length does not match write data length")
+		tmpErr := NewErrorParseRTU(ErrIllegalDataValue, "received data write bytes length does not match write data length")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionReadWriteMultipleRegisters
+		return nil, tmpErr
 	}
 	var writeData []byte
 	if writeBytesCount > 0 {
@@ -229,7 +259,7 @@ func ParseReadWriteMultipleRegistersRequestRTU(data []byte) (*ReadWriteMultipleR
 	}
 	return &ReadWriteMultipleRegistersRequestRTU{
 		ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
-			UnitID: data[0],
+			UnitID: unitID,
 			// function code = data[1]
 			ReadStartAddress:  binary.BigEndian.Uint16(data[2:4]),
 			ReadQuantity:      readQuantity,

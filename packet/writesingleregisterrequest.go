@@ -2,7 +2,6 @@ package packet
 
 import (
 	"encoding/binary"
-	"errors"
 	"math/rand"
 )
 
@@ -80,13 +79,18 @@ func ParseWriteSingleRegisterRequestTCP(data []byte) (*WriteSingleRegisterReques
 	if err != nil {
 		return nil, err
 	}
+	unitID := data[6]
 	if data[7] != FunctionWriteSingleRegister {
-		return nil, errors.New("received function code in packet is not 0x06")
+		tmpErr := NewErrorParseTCP(ErrIllegalFunction, "received function code in packet is not 0x06")
+		tmpErr.Packet.TransactionID = header.TransactionID
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteSingleCoil
+		return nil, tmpErr
 	}
 	return &WriteSingleRegisterRequestTCP{
 		MBAPHeader: header,
 		WriteSingleRegisterRequest: WriteSingleRegisterRequest{
-			UnitID: data[6],
+			UnitID: unitID,
 			// function code = data[7]
 			Address: binary.BigEndian.Uint16(data[8:10]),
 			Data:    [2]byte{data[10], data[11]},
@@ -128,14 +132,18 @@ func (r WriteSingleRegisterRequestRTU) ExpectedResponseLength() int {
 func ParseWriteSingleRegisterRequestRTU(data []byte) (*WriteSingleRegisterRequestRTU, error) {
 	dLen := len(data)
 	if dLen != 8 && dLen != 6 { // with or without CRC
-		return nil, errors.New("received data length too short to be valid packet")
+		return nil, NewErrorParseRTU(ErrServerFailure, "received data length too short to be valid packet")
 	}
+	unitID := data[0]
 	if data[1] != FunctionWriteSingleRegister {
-		return nil, errors.New("received function code in packet is not 0x06")
+		tmpErr := NewErrorParseRTU(ErrIllegalFunction, "received function code in packet is not 0x06")
+		tmpErr.Packet.UnitID = unitID
+		tmpErr.Packet.Function = FunctionWriteSingleRegister
+		return nil, tmpErr
 	}
 	return &WriteSingleRegisterRequestRTU{
 		WriteSingleRegisterRequest: WriteSingleRegisterRequest{
-			UnitID: data[0],
+			UnitID: unitID,
 			// function code = data[1]
 			Address: binary.BigEndian.Uint16(data[2:4]),
 			Data:    [2]byte{data[4], data[5]},
