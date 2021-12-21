@@ -154,6 +154,17 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 	return result, nil
 }
 
+// Close closes serial connection to the device
+func (c *SerialClient) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.serialPort == nil {
+		return nil
+	}
+	return c.serialPort.Close()
+}
+
 func (c *SerialClient) flush() error {
 	if !c.isFlusher {
 		return nil
