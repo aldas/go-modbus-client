@@ -311,3 +311,51 @@ func TestSerialClient_Do_ReadMoreBytesThanPacketCanBe(t *testing.T) {
 
 	serialPort.AssertExpectations(t)
 }
+
+func TestSerialClient_Close(t *testing.T) {
+	var testCases = []struct {
+		name              string
+		givenNotConnected bool
+		whenError         error
+		expectClose       bool
+		expectError       string
+	}{
+		{
+			name:        "ok",
+			expectClose: true,
+		},
+		{
+			name:              "ok, no connection is no-op",
+			givenNotConnected: true,
+			expectClose:       false,
+		},
+		{
+			name:        "nok, error on close",
+			expectClose: true,
+			whenError:   errors.New("close error"),
+			expectError: "close error",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			serialPort := new(serialMock)
+			if tc.expectClose {
+				serialPort.On("Close").Once().Return(tc.whenError)
+			}
+
+			client := NewSerialClient(nil)
+			if !tc.givenNotConnected {
+				client.serialPort = serialPort
+			}
+
+			err := client.Close()
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+			serialPort.AssertExpectations(t)
+		})
+	}
+}
