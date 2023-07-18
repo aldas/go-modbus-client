@@ -10,7 +10,7 @@ check: lint vet race ## check project
 
 init:
 	git config core.hooksPath ./scripts/.githooks
-	@go get -u golang.org/x/lint/golint
+	@go install golang.org/x/lint/golint@latest
 
 lint: ## Lint the files
 	@golint -set_exit_status ${PKG_LIST}
@@ -21,8 +21,8 @@ vet: ## Vet the files
 test: ## Run unittests
 	@go test -short ${PKG_LIST}
 
-goversion ?= "1.16"
-test_version: ## Run tests inside Docker with given version (defaults to 1.16 oldest supported). Example: make test_version goversion=1.16
+goversion ?= "1.20"
+test_version: ## Run tests inside Docker with given version (defaults to 1.20). Example: make test_version goversion=1.20
 	@docker run --rm -it -v $(shell pwd):/project golang:$(goversion) /bin/sh -c "cd /project && make init check"
 
 race: ## Run data race detector

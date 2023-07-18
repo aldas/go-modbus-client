@@ -173,19 +173,10 @@ func dialContext(ctx context.Context, address string) (net.Conn, error) {
 }
 
 func addressExtractor(address string) (string, string) {
-	network := "tcp"
-	i := strings.Index(address, "://")
-	if i == -1 {
-		return network, address
+	network, addr, ok := strings.Cut(address, "://")
+	if !ok {
+		return "tcp", address
 	}
-	nwrk := address[0:i]
-	switch nwrk {
-	case "tcp4":
-		network = "tcp4"
-	case "tcp6":
-		network = "tcp6"
-	}
-	addr := address[i+3:]
 	return network, addr
 }
 
