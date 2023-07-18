@@ -1,20 +1,37 @@
-on: [ push ]
 name: Check and test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read #  to fetch code (actions/checkout)
+
+env:
+  # run coverage and benchmarks only with the latest Go version
+  LATEST_GO_VERSION: "1.20"
+
+
 jobs:
   test:
     strategy:
       matrix:
-        go-version: [ 1.16, 1.17 ]
+        go-version: [ "1.19", "1.20" ]
         platform: [ ubuntu-latest ]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go-version }}
 
       - name: Checkout code of this branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Execute Go lint, check, test
         run: |
@@ -23,10 +40,7 @@ jobs:
           go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
 
       - name: Upload coverage to Codecov
-        if: success() && matrix.go-version == 1.17 && matrix.platform == 'ubuntu-latest'
-        uses: codecov/codecov-action@v1
+        if: success() && matrix.go == env.LATEST_GO_VERSION && matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v3
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: coverage.coverprofile
-          flags: unittests
           fail_ci_if_error: false

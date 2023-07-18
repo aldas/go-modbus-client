@@ -96,6 +96,10 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 		}
 		return nil, &ClientError{Err: err}
 	}
+	// some serial devices need time between write and reads for device to have enough time to start responding
+	// in theory we could just start reading and waiting bytes to arrive but this does not seems to work reliably
+	// sleeping a little before reading seems to solve problems.
+	time.Sleep(30 * time.Millisecond)
 
 	// make buffer a little bit bigger than would be valid to see problems when somehow more bytes are sent
 	const maxBytes = rtuPacketMaxLen + 10
