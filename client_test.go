@@ -112,10 +112,14 @@ func (l *mockLogger) BeforeParse(received []byte) {
 
 func TestWithOptions(t *testing.T) {
 	client := NewClient(
-		WithProtocolErrorFunc(packet.AsRTUErrorPacket),
-		WithParseResponseFunc(packet.ParseRTUResponse),
-		WithTimeouts(99*time.Second, 98*time.Second),
-		WithHooks(new(mockLogger)),
+		ClientConfig{
+			WriteTimeout:        99 * time.Second,
+			ReadTimeout:         98 * time.Second,
+			DialContextFunc:     nil,
+			AsProtocolErrorFunc: packet.AsRTUErrorPacket,
+			ParseResponseFunc:   packet.ParseRTUResponse,
+			Hooks:               new(mockLogger),
+		},
 	)
 	assert.NotNil(t, client.asProtocolErrorFunc)
 	assert.NotNil(t, client.parseResponseFunc)
@@ -146,7 +150,7 @@ func TestClient_Do_receivePacketWith1Read(t *testing.T) {
 	logger.On("AfterEachRead", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1, 0x2, 0x0, 0x1}, 11, nil).Once()
 	logger.On("BeforeParse", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1, 0x2, 0x0, 0x1}).Once()
 
-	client := NewTCPClient(WithHooks(logger))
+	client := NewTCPClientWithConfig(ClientConfig{Hooks: logger})
 	client.conn = conn
 	client.timeNow = func() time.Time {
 		return exampleNow
@@ -475,7 +479,7 @@ func TestClient_Do_ReadMoreBytesThanPacketCanBe(t *testing.T) {
 	conn.On("Read", mock.Anything).
 		Return(tcpPacketMaxLen+1, nil)
 
-	client := NewClient()
+	client := NewClient(ClientConfig{})
 	client.conn = conn
 	client.timeNow = func() time.Time {
 		return exampleNow

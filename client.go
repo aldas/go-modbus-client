@@ -64,8 +64,22 @@ type ClientHooks interface {
 	BeforeParse(received []byte)
 }
 
-func defaultClient() *Client {
-	return &Client{
+// ClientConfig is configuration for Client
+type ClientConfig struct {
+	// WriteTimeout is total amount of time writing the request can take after client returns error
+	WriteTimeout time.Duration
+	// ReadTimeout is total amount of time reading the response can take before client returns error
+	ReadTimeout time.Duration
+
+	DialContextFunc     func(ctx context.Context, address string) (net.Conn, error)
+	AsProtocolErrorFunc func(data []byte) error
+	ParseResponseFunc   func(data []byte) (packet.Response, error)
+
+	Hooks ClientHooks
+}
+
+func defaultClient(conf ClientConfig) *Client {
+	c := &Client{
 		timeNow:      time.Now,
 		writeTimeout: defaultWriteTimeout,
 		readTimeout:  defaultReadTimeout,
@@ -75,75 +89,57 @@ func defaultClient() *Client {
 		asProtocolErrorFunc: packet.AsTCPErrorPacket,
 		parseResponseFunc:   packet.ParseTCPResponse,
 	}
+
+	if conf.WriteTimeout > 0 {
+		c.writeTimeout = conf.WriteTimeout
+	}
+	if conf.ReadTimeout > 0 {
+		c.readTimeout = conf.ReadTimeout
+	}
+	if conf.DialContextFunc != nil {
+		c.dialContextFunc = conf.DialContextFunc
+	}
+	if conf.AsProtocolErrorFunc != nil {
+		c.asProtocolErrorFunc = conf.AsProtocolErrorFunc
+	}
+	if conf.ParseResponseFunc != nil {
+		c.parseResponseFunc = conf.ParseResponseFunc
+	}
+	if conf.Hooks != nil {
+		c.hooks = conf.Hooks
+	}
+	return c
 }
 
 // NewTCPClient creates new instance of Modbus Client for Modbus TCP protocol
-func NewTCPClient(opts ...ClientOptionFunc) *Client {
-	client := defaultClient()
-	for _, o := range opts {
-		o(client)
-	}
+func NewTCPClient() *Client {
+	return NewTCPClientWithConfig(ClientConfig{})
+}
+
+// NewTCPClientWithConfig creates new instance of Modbus Client for Modbus TCP protocol with given configuration options
+func NewTCPClientWithConfig(conf ClientConfig) *Client {
+	client := defaultClient(conf)
+	client.asProtocolErrorFunc = packet.AsTCPErrorPacket
+	client.parseResponseFunc = packet.ParseTCPResponse
 	return client
 }
 
 // NewRTUClient creates new instance of Modbus Client for Modbus RTU protocol
-func NewRTUClient(opts ...ClientOptionFunc) *Client {
-	client := defaultClient()
+func NewRTUClient() *Client {
+	return NewRTUClientWithConfig(ClientConfig{})
+}
+
+// NewRTUClientWithConfig creates new instance of Modbus Client for Modbus RTU protocol with given configuration options
+func NewRTUClientWithConfig(conf ClientConfig) *Client {
+	client := defaultClient(conf)
 	client.asProtocolErrorFunc = packet.AsRTUErrorPacket
 	client.parseResponseFunc = packet.ParseRTUResponseWithCRC
-
-	for _, o := range opts {
-		o(client)
-	}
 	return client
 }
 
-// NewClient creates new instance of Modbus Client with given options
-func NewClient(opts ...ClientOptionFunc) *Client {
-	client := defaultClient()
-	for _, o := range opts {
-		o(client)
-	}
-	return client
-}
-
-// ClientOptionFunc is options type for NewClient function
-type ClientOptionFunc func(c *Client)
-
-// WithProtocolErrorFunc is option to provide custom function for parsing error packet
-func WithProtocolErrorFunc(errorFunc func(data []byte) error) func(c *Client) {
-	return func(c *Client) {
-		c.asProtocolErrorFunc = errorFunc
-	}
-}
-
-// WithParseResponseFunc is option to provide custom function for parsing protocol packet
-func WithParseResponseFunc(parseFunc func(data []byte) (packet.Response, error)) func(c *Client) {
-	return func(c *Client) {
-		c.parseResponseFunc = parseFunc
-	}
-}
-
-// WithDialContextFunc is option to provide custom function for creating new connection
-func WithDialContextFunc(dialContextFunc func(ctx context.Context, address string) (net.Conn, error)) func(c *Client) {
-	return func(c *Client) {
-		c.dialContextFunc = dialContextFunc
-	}
-}
-
-// WithTimeouts is option to for setting writing packet or reading packet timeouts
-func WithTimeouts(writeTimeout time.Duration, readTimeout time.Duration) func(c *Client) {
-	return func(c *Client) {
-		c.writeTimeout = writeTimeout
-		c.readTimeout = readTimeout
-	}
-}
-
-// WithHooks is option to set hooks in client
-func WithHooks(logger ClientHooks) func(c *Client) {
-	return func(c *Client) {
-		c.hooks = logger
-	}
+// NewClient creates new instance of Modbus Client with given configuration options
+func NewClient(conf ClientConfig) *Client {
+	return defaultClient(conf)
 }
 
 // Connect opens network connection to Client to server. Context lifetime is only meant for this call.

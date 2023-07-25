@@ -19,7 +19,7 @@ type Request interface {
 // ParseTCPRequest parses given bytes into modbus TCP request packet or returns error
 func ParseTCPRequest(data []byte) (Request, error) {
 	if len(data) < 9 {
-		return nil, errors.New("data is too short to be a Modbus TCP packet")
+		return nil, ErrTCPDataTooShort
 	}
 	functionCode := data[7]
 	switch functionCode {
@@ -42,7 +42,7 @@ func ParseTCPRequest(data []byte) (Request, error) {
 	case FunctionReadWriteMultipleRegisters: // 0x17
 		return ParseReadWriteMultipleRegistersRequestTCP(data)
 	default:
-		return nil, fmt.Errorf("unknown function code parsed: %v", functionCode)
+		return nil, NewErrorParseTCP(ErrIllegalFunction, fmt.Sprintf("unknown function code parsed: %v", functionCode))
 	}
 }
 

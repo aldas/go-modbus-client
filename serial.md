@@ -6,6 +6,7 @@ using cheap [USB To RS485 422](https://www.aliexpress.com/item/32888122294.html)
 ## github.com/jacobsa/go-serial/serial
 
 Example for: [github.com/jacobsa/go-serial/serial](https://github.com/jacobsa/go-serial/)
+
 ```go
 // import "github.com/jacobsa/go-serial/serial"
 serialPort, err := serial.Open(serial.OpenOptions{
@@ -40,6 +41,7 @@ fmt.Printf("temperature: %v\n", float32(temp) / 10)
 ## github.com/tarm/serial
 
 Example for: [github.com/tarm/serial](https://github.com/tarm/serial)
+
 ```go
 serialPort, err := serial.OpenPort(&serial.Config{Name: "/dev/ttyUSB0", Baud: 9600, ReadTimeout: 2 * time.Second})
 if err != nil {
@@ -65,6 +67,7 @@ fmt.Printf("temperature: %v\n", float32(temp) / 10)
 ## Raw syscall
 
 Example for with raw syscalls (only on unix/linux systems)
+
 ```go
 serialPort, _ := os.OpenFile("/dev/ttyUSB0", syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
 

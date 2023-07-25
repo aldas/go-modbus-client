@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 if [[ -z "$(which golint)" ]]; then
-	echo "golint not found, executing: go get github.com/golang/lint/golint"
-	go get github.com/golang/lint/golint
+	echo "golint not found, executing: go install golang.org/x/lint/golint@latest"
+	go install golang.org/x/lint/golint@latest
 fi
 
 STAGED_GO_FILES=$(git diff --cached --name-only | grep ".go$")

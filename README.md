@@ -70,6 +70,7 @@ for _, req := range requests {
     assert.Equal(t, "alarm_do_1", fields[1].Field.Name)
 }
 ```
+
 ### RTU over serial port
 
 RTU examples to interact with serial port can be found from [serial.md](serial.md)
@@ -77,7 +78,10 @@ RTU examples to interact with serial port can be found from [serial.md](serial.m
 ### Low level packets
 
 ```go
-client := modbus.NewTCPClient(modbus.WithTimeouts(10*time.Second, 10*time.Second))
+client := modbus.NewTCPClientWithConfig(modbus.ClientConfig{
+    WriteTimeout: 2 * time.Second,
+    ReadTimeout:  2 * time.Second,
+})
 if err := client.Connect(context.Background(), "localhost:5020"); err != nil {
     return err
 }
@@ -103,6 +107,7 @@ uint32Var, err := registers.Uint32(17) // extract uint32 value from register 17
 ```
 
 To create single TCP packet use following methods. Use `RTU` suffix to create RTU packets.
+
 ```go
 import "github.com/aldas/go-modbus-client/packet"
 

@@ -42,12 +42,13 @@ import (
 // Source: http://unixpapa.com/incnote/byteorder.html
 //
 // 32bit (dword) integer is in:
-//      Little Endian (ABCD) = 0x01020304  (0x04 + (0x03 << 8) + (0x02 << 16) + (0x01 << 24))
+//
+//	Little Endian (ABCD) = 0x01020304  (0x04 + (0x03 << 8) + (0x02 << 16) + (0x01 << 24))
 //
 // May be sent over tcp/udp as:
-//      Big Endian (DCBA) = 0x04030201
-//      Big Endian Low Word First (BADC) = 0x02010403 <-- used by WAGO 750-XXX to send modbus packets over tcp/udp
 //
+//	Big Endian (DCBA) = 0x04030201
+//	Big Endian Low Word First (BADC) = 0x02010403 <-- used by WAGO 750-XXX to send modbus packets over tcp/udp
 const (
 	useDefaultByteOrder ByteOrder = 0
 	// BigEndian system stores the most significant byte of a word at the smallest memory address and the least

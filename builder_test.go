@@ -16,9 +16,6 @@ func TestBuilder_ReadHoldingRegistersTCP(t *testing.T) {
 
 	receivedChan := make(chan []byte, 1)
 	handler := func(received []byte, bytesRead int) (response []byte, closeConnection bool) {
-		if bytesRead == 0 {
-			return nil, false
-		}
 		receivedChan <- received
 		resp := packet.ReadHoldingRegistersResponseTCP{
 			MBAPHeader: packet.MBAPHeader{TransactionID: 123, ProtocolID: 0},
@@ -41,17 +38,25 @@ func TestBuilder_ReadHoldingRegistersTCP(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
-	client := NewClient()
-	err = client.Connect(context.Background(), addr)
+	ctxReq, cancelReq := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelReq()
+
+	client := NewTCPClient()
+	err = client.Connect(ctxReq, addr)
 	assert.NoError(t, err)
 
 	request := reqs[0]
-	resp, err := client.Do(context.Background(), request)
+	resp, err := client.Do(ctxReq, request)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 
-	received := <-receivedChan
-	assert.Equal(t, []byte{0, 0, 0, 6, 0, 3, 0, 18, 0, 4}, received[2:]) // trim transaction ID
+	select {
+	case received := <-receivedChan:
+		assert.Equal(t, []byte{0, 0, 0, 6, 0, 3, 0, 18, 0, 4}, received[2:]) // trim transaction ID
+	default:
+		t.Errorf("nothing received")
+	}
+
 }
 
 func TestBuilder_ReadHoldingRegistersRTU(t *testing.T) {
@@ -60,9 +65,6 @@ func TestBuilder_ReadHoldingRegistersRTU(t *testing.T) {
 
 	receivedChan := make(chan []byte, 1)
 	handler := func(received []byte, bytesRead int) (response []byte, closeConnection bool) {
-		if bytesRead == 0 {
-			return nil, false
-		}
 		receivedChan <- received
 		resp := packet.ReadHoldingRegistersResponseRTU{
 			ReadHoldingRegistersResponse: packet.ReadHoldingRegistersResponse{
@@ -103,9 +105,6 @@ func TestBuilder_ReadInputRegistersTCP(t *testing.T) {
 
 	receivedChan := make(chan []byte, 1)
 	handler := func(received []byte, bytesRead int) (response []byte, closeConnection bool) {
-		if bytesRead == 0 {
-			return nil, false
-		}
 		receivedChan <- received
 		resp := packet.ReadInputRegistersResponseTCP{
 			MBAPHeader: packet.MBAPHeader{TransactionID: 123, ProtocolID: 0},
@@ -128,7 +127,7 @@ func TestBuilder_ReadInputRegistersTCP(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
-	client := NewClient()
+	client := NewTCPClient()
 	err = client.Connect(context.Background(), addr)
 	assert.NoError(t, err)
 
@@ -147,9 +146,6 @@ func TestBuilder_ReadInputRegistersRTU(t *testing.T) {
 
 	receivedChan := make(chan []byte, 1)
 	handler := func(received []byte, bytesRead int) (response []byte, closeConnection bool) {
-		if bytesRead == 0 {
-			return nil, false
-		}
 		receivedChan <- received
 		resp := packet.ReadInputRegistersResponseRTU{
 			ReadInputRegistersResponse: packet.ReadInputRegistersResponse{

@@ -84,17 +84,24 @@ type LooksLikeType int
 
 const (
 	// DataTooShort is case when slice of bytes is too short to determine result
-	DataTooShort = iota
+	DataTooShort LooksLikeType = 0
 	// IsNotTPCPacket is case when slice of bytes can not be Modbus TCP packet
-	IsNotTPCPacket
+	IsNotTPCPacket LooksLikeType = 1
 	// LooksLikeTCPPacket is case when slice of bytes looks like Modbus TCP packet with supported function code
-	LooksLikeTCPPacket
+	LooksLikeTCPPacket LooksLikeType = 2
 	// UnsupportedFunctionCode is case when slice of bytes looks like Modbus TCP packet but function code value is not supported
-	UnsupportedFunctionCode
+	UnsupportedFunctionCode LooksLikeType = 3
 )
 
-// IsLikeModbusTCP checks if given data starts with bytes that could be potentially parsed as Modbus TCP packet.
-func IsLikeModbusTCP(data []byte, allowUnSupportedFunctionCodes bool) (expectedLen int, looksLike LooksLikeType) {
+var (
+	// ErrTCPDataTooShort is returned when received data is still too short to be actual Modbus TCP packet.
+	ErrTCPDataTooShort = NewErrorParseTCP(ErrUnknown, "data is too short to be a Modbus TCP packet")
+	// ErrIsNotTCPPacket is returned when received data does not look like Modbus TCP packet
+	ErrIsNotTCPPacket = NewErrorParseTCP(ErrUnknown, "data does not like Modbus TCP packet")
+)
+
+// LooksLikeModbusTCP checks if given data starts with bytes that could be potentially parsed as Modbus TCP packet.
+func LooksLikeModbusTCP(data []byte, allowUnSupportedFunctionCodes bool) (expectedLen int, error error) {
 	// Example of first 8 bytes
 	// 0x81 0x80 - transaction id (0,1)
 	// 0x00 0x00 - protocol id (2,3)
@@ -104,29 +111,37 @@ func IsLikeModbusTCP(data []byte, allowUnSupportedFunctionCodes bool) (expectedL
 
 	// minimal amount is 9 bytes (header + unit id + function code + 1 byte of something ala error code)
 	if len(data) < 9 {
-		return 0, DataTooShort
+		return 0, ErrTCPDataTooShort
 	}
 	if !(data[2] == 0x0 && data[3] == 0x0) { // check protocol id
-		return 0, IsNotTPCPacket
+		return 0, ErrIsNotTCPPacket
 	}
 	pduLen := binary.BigEndian.Uint16(data[4:6]) // number of bytes in the message to follow
 	if pduLen < 3 {                              // every request is more than 2 bytes of PDU
-		return 0, IsNotTPCPacket
+		return 0, ErrIsNotTCPPacket
 	}
 	functionCode := data[7] // function code
 	if functionCode == 0 {
-		return 0, IsNotTPCPacket
+		return 0, ErrIsNotTCPPacket
 	}
 	expectedLen = int(pduLen) + 6
 	if allowUnSupportedFunctionCodes {
-		return expectedLen, LooksLikeTCPPacket
+		return expectedLen, nil
 	}
 	for _, fc := range supportedFunctionCodes {
 		if fc == functionCode {
-			return expectedLen, LooksLikeTCPPacket
+			return expectedLen, nil
 		}
 	}
-	return expectedLen, UnsupportedFunctionCode
+	return expectedLen, &ErrorParseTCP{
+		Message: "unsupported function code",
+		Packet: ErrorResponseTCP{
+			TransactionID: binary.BigEndian.Uint16(data[0:2]),
+			UnitID:        data[6],
+			Function:      functionCode,
+			Code:          ErrIllegalFunction,
+		},
+	}
 }
 
 //

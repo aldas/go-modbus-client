@@ -9,8 +9,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-* Added `packet.IsLikeModbusTCP()` to check if given bytes are possibly TCP packet or start of packet.
+* Added `packet.LooksLikeModbusTCP()` to check if given bytes are possibly TCP packet or start of packet.
 * Added `Parse*Request*` for every function type to help implement Modbus servers.
+* Added `Server` package to implement your own modbus server
 
 ## [0.0.1] - 2021-04-11
 

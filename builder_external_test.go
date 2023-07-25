@@ -41,14 +41,11 @@ func TestExternalUsage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
-	client := modbus.NewClient()
+	client := modbus.NewTCPClient()
 	if err := client.Connect(context.Background(), addr); err != nil {
 		return
 	}
 
-	//for _, req := range reqs {
-	//
-	//}
 	req := reqs[0] // skip looping as we always have 1 request in this example
 	resp, err := client.Do(context.Background(), req)
 

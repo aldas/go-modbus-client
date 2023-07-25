@@ -13,7 +13,7 @@ permissions:
   contents: read #  to fetch code (actions/checkout)
 
 env:
-  # run coverage and benchmarks only with the latest Go version
+  # run coverage only with the latest Go version
   LATEST_GO_VERSION: "1.20"
 
 
