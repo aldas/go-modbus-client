@@ -244,7 +244,7 @@ func (c *connection) handle(ctx context.Context) {
 		if debugRawRead {
 			rrt.Read(received[0:n], n, err)
 		}
-		if err != nil && !errors.Is(err, os.ErrDeadlineExceeded) {
+		if err != nil && !os.IsTimeout(err) {
 			if !errors.Is(err, io.EOF) {
 				c.onErrorFunc(err)
 			}
