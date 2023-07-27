@@ -22,7 +22,8 @@ const (
 
 var (
 	// ErrServerClosed is returned when server context is ended (by shutdown)
-	ErrServerClosed      = errors.New("modbus server closed")
+	ErrServerClosed = errors.New("modbus server closed")
+	// ErrServerIdleTimeout is returned when server closes connection that has been idle too long
 	ErrServerIdleTimeout = errors.New("modbus server closed idle connection")
 )
 
