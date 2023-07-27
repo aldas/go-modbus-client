@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -216,7 +217,10 @@ func (s *Server) trackConn(c *connection, isAdd bool) {
 
 func isTimeout(err error) bool {
 	var terr interface{ Timeout() bool }
-	return errors.As(err, &terr) && terr.Timeout()
+	if errors.As(err, &terr) && terr.Timeout() {
+		return true
+	}
+	return strings.Contains(err.Error(), "i/o timeout")
 }
 
 func (c *connection) handle(ctx context.Context) {
