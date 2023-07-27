@@ -26,8 +26,6 @@ func TestRequestToServer(t *testing.T) {
 			serverAddrCh <- addr.String()
 			log.Printf("listening on: %v\n", addr.String())
 		},
-		OnErrorFunc:  nil,
-		OnAcceptFunc: nil,
 	}
 
 	tCtx, tCancel := context.WithTimeout(context.Background(), 1*time.Second)

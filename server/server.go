@@ -43,10 +43,11 @@ type ModbusHandler interface {
 //
 // Public fields are not designed to be goroutine safe. Do not mutate after server has been started
 type Server struct {
-	mu                sync.RWMutex
-	listener          net.Listener // for simplicity, we only allow serving one listener
-	isShutdown        atomic.Bool
-	activeConnections map[*connection]struct{}
+	mu                    sync.RWMutex
+	listener              net.Listener // for simplicity, we only allow serving one listener
+	isShutdown            atomic.Bool
+	activeConnections     map[*connection]struct{}
+	activeConnectionCount atomic.Int64
 
 	// AssemblerCreatorFunc creates Assembler for each connetion to assemble different read byte fragments into complete
 	// modbus packet. Could have different implementations for TCP or RTU packets
@@ -54,9 +55,18 @@ type Server struct {
 
 	// OnServeFunc allows capturing listener address just before server starts to accepting connections. This is useful
 	// for testing when listener is started with random port `:0`.
-	OnServeFunc  func(addr net.Addr)
-	OnErrorFunc  func(err error)
-	OnAcceptFunc func(ctx context.Context, remoteAddr net.Addr) error
+	OnServeFunc func(addr net.Addr)
+
+	OnErrorFunc func(err error)
+
+	// OnAcceptConnFunc is called when server accepts new connection. When method returns an error the connection will be closed.
+	// connectionCount indicated currently active connection count.
+	//
+	// This is where firewall rules and other limits can be implemented
+	OnAcceptConnFunc func(ctx context.Context, remoteAddr net.Addr, connectionCount uint64) error
+
+	// OnCloseConnFunc is called at the end of connection. isServerShutdown indicated if method is called at server shutdown.
+	OnCloseConnFunc func(ctx context.Context, remoteAddr net.Addr, isServerShutdown bool)
 }
 
 type connection struct {
@@ -114,8 +124,11 @@ func (s *Server) serve(ctx context.Context, listener net.Listener, handler Modbu
 			return err
 		}
 
-		if s.OnAcceptFunc != nil {
-			if err := s.OnAcceptFunc(ctx, netConn.RemoteAddr()); err != nil {
+		if s.OnAcceptConnFunc != nil {
+			if err := s.OnAcceptConnFunc(ctx, netConn.RemoteAddr(), uint64(s.activeConnectionCount.Load())); err != nil {
+				if err := netConn.Close(); err != nil {
+					onErrorFunc(fmt.Errorf("connection.close error, err: %w", err))
+				}
 				continue
 			}
 		}
@@ -142,6 +155,9 @@ func (s *Server) serve(ctx context.Context, listener net.Listener, handler Modbu
 					conn.onErrorFunc(fmt.Errorf("failed to close handler connection, err: %w", err))
 				}
 				s.trackConn(c, false)
+				if s.OnAcceptConnFunc != nil {
+					s.OnCloseConnFunc(ctx, conn.conn.RemoteAddr(), s.isShutdown.Load())
+				}
 			}()
 			conn.handle(ctx)
 		}(ctx, c)
@@ -173,8 +189,10 @@ func (s *Server) trackConn(c *connection, isAdd bool) {
 	}
 	if isAdd {
 		s.activeConnections[c] = struct{}{}
+		s.activeConnectionCount.Add(1)
 	} else {
 		delete(s.activeConnections, c)
+		s.activeConnectionCount.Add(-1)
 	}
 }
 

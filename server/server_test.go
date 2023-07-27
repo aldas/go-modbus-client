@@ -21,8 +21,9 @@ func TestRequestToServer(t *testing.T) {
 		OnServeFunc: func(addr net.Addr) {
 			serverAddrCh <- addr.String()
 		},
-		OnErrorFunc:  nil,
-		OnAcceptFunc: nil,
+		OnErrorFunc:      nil,
+		OnAcceptConnFunc: nil,
+		OnCloseConnFunc:  nil,
 	}
 
 	tCtx, tCancel := context.WithTimeout(context.Background(), 1*time.Second)
