@@ -8,7 +8,7 @@ import (
 	"io"
 	"log"
 	"net"
-	"strings"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -215,14 +215,6 @@ func (s *Server) trackConn(c *connection, isAdd bool) {
 	}
 }
 
-func isTimeout(err error) bool {
-	var terr interface{ Timeout() bool }
-	if errors.As(err, &terr) && terr.Timeout() {
-		return true
-	}
-	return strings.Contains(err.Error(), "i/o timeout")
-}
-
 func (c *connection) handle(ctx context.Context) {
 	cCtx, cCancel := context.WithCancel(ctx)
 	defer cCancel()
@@ -252,7 +244,7 @@ func (c *connection) handle(ctx context.Context) {
 		if debugRawRead {
 			rrt.Read(received[0:n], n, err)
 		}
-		if err != nil && !isTimeout(err) {
+		if err != nil && !errors.Is(err, os.ErrDeadlineExceeded) {
 			if !errors.Is(err, io.EOF) {
 				c.onErrorFunc(err)
 			}
