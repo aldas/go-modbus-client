@@ -7,13 +7,14 @@ import (
 	"github.com/aldas/go-modbus-client/packet"
 )
 
-// modbusTCPAssembler assembles read data into complete packets and calls ModbusHandler with assembled packet
-type modbusTCPAssembler struct {
+// ModbusTCPAssembler assembles read data into complete packets and calls ModbusHandler with assembled packet
+type ModbusTCPAssembler struct {
 	handler  ModbusHandler
 	received bytes.Buffer
 }
 
-func (m *modbusTCPAssembler) ReceiveRead(ctx context.Context, received []byte, bytesRead int) (response []byte, closeConnection bool) {
+// ReceiveRead assembles read byte until full TCP packet is formed or return an error when received data does not look like TCP packet
+func (m *ModbusTCPAssembler) ReceiveRead(ctx context.Context, received []byte, bytesRead int) (response []byte, closeConnection bool) {
 	m.received.Write(received)
 
 	n, err := packet.LooksLikeModbusTCP(m.received.Bytes(), false)

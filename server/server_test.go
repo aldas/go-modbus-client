@@ -33,7 +33,7 @@ func TestRequestToServer(t *testing.T) {
 
 	// we start the server and listen for incoming connections/data in separate goroutine. ListenAndServe is blocking call.
 	go func() {
-		err := s.ListenAndServe(ctx, "localhost:5020", mbs)
+		err := s.ListenAndServe(ctx, "localhost:0", mbs)
 		if err != nil && !errors.Is(err, ErrServerClosed) {
 			assert.NoError(t, err)
 		}

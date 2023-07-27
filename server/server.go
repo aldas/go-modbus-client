@@ -112,7 +112,7 @@ type ContextRemoteAddr struct{}
 func (s *Server) serve(ctx context.Context, listener net.Listener, handler ModbusHandler) error {
 	if s.AssemblerCreatorFunc == nil {
 		s.AssemblerCreatorFunc = func(handler ModbusHandler) PacketAssembler {
-			return &modbusTCPAssembler{handler: handler}
+			return &ModbusTCPAssembler{handler: handler}
 		}
 	}
 	onErrorFunc := s.OnErrorFunc
