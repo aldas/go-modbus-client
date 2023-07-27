@@ -9,7 +9,7 @@ import (
 
 // ModbusTCPAssembler assembles read data into complete packets and calls ModbusHandler with assembled packet
 type ModbusTCPAssembler struct {
-	handler  ModbusHandler
+	Handler  ModbusHandler
 	received bytes.Buffer
 }
 
@@ -29,7 +29,7 @@ func (m *ModbusTCPAssembler) ReceiveRead(ctx context.Context, received []byte, b
 		return err.(*packet.ErrorParseTCP).Bytes(), false
 	}
 
-	resp, err := m.handler.Handle(ctx, p)
+	resp, err := m.Handler.Handle(ctx, p)
 	if err != nil {
 		var target *packet.ErrorParseTCP
 		if errors.As(err, &target) {
