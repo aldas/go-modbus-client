@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	readTimeout  = 1 * time.Millisecond
-	writeTimeout = 1 * time.Millisecond
+	readTimeout  = 5 * time.Millisecond
+	writeTimeout = 50 * time.Millisecond
 	idleTimeout  = 25 * time.Second
 )
 
@@ -31,6 +31,11 @@ var (
 // return with closeConnection=true when you are done sending and want to close connection
 type PacketAssembler interface {
 	ReceiveRead(ctx context.Context, received []byte, bytesRead int) (response []byte, closeConnection bool)
+}
+
+// RawReadTracer is PacketAssembler optional interface that is called for each Read from connection to allow tracing read results
+type RawReadTracer interface {
+	Read(data []byte, n int, err error)
 }
 
 // ModbusHandler calls Handle method when it has received enough data to be parsed into Modbus packet.
@@ -48,6 +53,11 @@ type Server struct {
 	isShutdown            atomic.Bool
 	activeConnections     map[*connection]struct{}
 	activeConnectionCount atomic.Int64
+
+	// WriteTimeout is amount of time writing the request can take after it errors out
+	WriteTimeout time.Duration
+	// ReadTimeout is amount of time reading the response can take
+	ReadTimeout time.Duration
 
 	// AssemblerCreatorFunc creates Assembler for each connetion to assemble different read byte fragments into complete
 	// modbus packet. Could have different implementations for TCP or RTU packets
@@ -74,6 +84,9 @@ type connection struct {
 	isBeingHandled atomic.Bool
 	assembler      PacketAssembler
 
+	writeTimeout time.Duration
+	readTimeout  time.Duration
+
 	onErrorFunc func(error)
 }
 
@@ -92,6 +105,9 @@ func (s *Server) ListenAndServe(ctx context.Context, address string, handler Mod
 func (s *Server) Serve(ctx context.Context, listener net.Listener, handler ModbusHandler) error {
 	return s.serve(ctx, listener, handler)
 }
+
+// ContextRemoteAddr is context.Context value containing clients remote address
+type ContextRemoteAddr struct{}
 
 func (s *Server) serve(ctx context.Context, listener net.Listener, handler ModbusHandler) error {
 	if s.AssemblerCreatorFunc == nil {
@@ -139,10 +155,13 @@ func (s *Server) serve(ctx context.Context, listener net.Listener, handler Modbu
 		default:
 		}
 
+		cCtx := context.WithValue(ctx, ContextRemoteAddr{}, netConn.RemoteAddr())
 		c := &connection{
 			conn:           netConn,
 			isBeingHandled: atomic.Bool{},
 			assembler:      s.AssemblerCreatorFunc(handler),
+			writeTimeout:   s.WriteTimeout,
+			readTimeout:    s.ReadTimeout,
 			onErrorFunc:    onErrorFunc,
 		}
 		s.trackConn(c, true)
@@ -160,7 +179,7 @@ func (s *Server) serve(ctx context.Context, listener net.Listener, handler Modbu
 				}
 			}()
 			conn.handle(ctx)
-		}(ctx, c)
+		}(cCtx, c)
 	}
 }
 
@@ -200,6 +219,16 @@ func (c *connection) handle(ctx context.Context) {
 	cCtx, cCancel := context.WithCancel(ctx)
 	defer cCancel()
 
+	rTimeout := readTimeout
+	if c.readTimeout > 0 {
+		rTimeout = c.readTimeout
+	}
+	wTimeout := writeTimeout
+	if c.writeTimeout > 0 {
+		wTimeout = c.writeTimeout
+	}
+
+	rrt, debugRawRead := c.assembler.(RawReadTracer)
 	conn := c.conn
 	var lastReceived time.Time
 	received := make([]byte, 300)
@@ -210,8 +239,11 @@ func (c *connection) handle(ctx context.Context) {
 		default:
 		}
 
-		_ = conn.SetReadDeadline(time.Now().Add(readTimeout))
+		_ = conn.SetReadDeadline(time.Now().Add(rTimeout))
 		n, err := conn.Read(received)
+		if debugRawRead {
+			rrt.Read(received[0:n], n, err)
+		}
 		if err != nil && !errors.Is(err, os.ErrDeadlineExceeded) {
 			if !errors.Is(err, io.EOF) {
 				c.onErrorFunc(err)
@@ -229,7 +261,7 @@ func (c *connection) handle(ctx context.Context) {
 		c.isBeingHandled.Store(true)
 		toSend, closeConn := c.assembler.ReceiveRead(cCtx, received[0:n], n)
 		if toSend != nil {
-			_ = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+			_ = conn.SetWriteDeadline(time.Now().Add(wTimeout))
 			if _, err := conn.Write(toSend); err != nil {
 				c.onErrorFunc(err)
 				return // when write fails to client we close connection
