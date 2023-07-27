@@ -22,7 +22,8 @@ const (
 
 var (
 	// ErrServerClosed is returned when server context is ended (by shutdown)
-	ErrServerClosed = errors.New("modbus server closed")
+	ErrServerClosed      = errors.New("modbus server closed")
+	ErrServerIdleTimeout = errors.New("modbus server closed idle connection")
 )
 
 // PacketAssembler is called when server reads data from client connection. Is responsible for assembling data read
@@ -253,6 +254,7 @@ func (c *connection) handle(ctx context.Context) {
 		if n > 0 {
 			lastReceived = time.Now()
 		} else if time.Now().Sub(lastReceived) > idleTimeout {
+			c.onErrorFunc(ErrServerIdleTimeout)
 			return // close idle connection
 		} else {
 			continue // nothing read and not idle yet
