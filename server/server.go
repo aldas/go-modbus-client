@@ -238,7 +238,7 @@ func (c *connection) handle(ctx context.Context) {
 
 	rrt, debugRawRead := c.assembler.(RawReadTracer)
 	conn := c.conn
-	var lastReceived time.Time
+	lastReceived := time.Now()
 	received := make([]byte, 300)
 	for {
 		select {
