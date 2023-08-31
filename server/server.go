@@ -143,7 +143,7 @@ func (s *Server) serve(ctx context.Context, listener net.Listener, handler Modbu
 		}
 
 		if s.OnAcceptConnFunc != nil {
-			if err := s.OnAcceptConnFunc(ctx, netConn.RemoteAddr(), uint64(s.activeConnectionCount.Load())); err != nil {
+			if err := s.OnAcceptConnFunc(ctx, netConn.RemoteAddr(), uint64(s.activeConnectionCount.Load()+1)); err != nil {
 				if err := netConn.Close(); err != nil {
 					onErrorFunc(fmt.Errorf("connection.close error, err: %w", err))
 				}
