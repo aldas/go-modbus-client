@@ -18,7 +18,7 @@ type Request interface {
 
 // ParseTCPRequest parses given bytes into modbus TCP request packet or returns error
 func ParseTCPRequest(data []byte) (Request, error) {
-	if len(data) < 9 {
+	if len(data) < 8 {
 		return nil, ErrTCPDataTooShort
 	}
 	functionCode := data[7]
@@ -39,6 +39,8 @@ func ParseTCPRequest(data []byte) (Request, error) {
 		return ParseWriteMultipleCoilsRequestTCP(data)
 	case FunctionWriteMultipleRegisters: // 0x10
 		return ParseWriteMultipleRegistersRequestTCP(data)
+	case FunctionReadServerID: // 0x11
+		return ParseReadServerIDRequestTCP(data)
 	case FunctionReadWriteMultipleRegisters: // 0x17
 		return ParseReadWriteMultipleRegistersRequestTCP(data)
 	default:
@@ -49,7 +51,7 @@ func ParseTCPRequest(data []byte) (Request, error) {
 // ParseRTURequestWithCRC checks packet CRC and parses given bytes into modbus RTU request packet or returns error
 func ParseRTURequestWithCRC(data []byte) (Response, error) {
 	dataLen := len(data)
-	if dataLen < 5 {
+	if dataLen < 4 {
 		return nil, errors.New("data is too short to be a Modbus RTU packet")
 	}
 	packetCRC := binary.LittleEndian.Uint16(data[dataLen-2:])
@@ -63,7 +65,7 @@ func ParseRTURequestWithCRC(data []byte) (Response, error) {
 // ParseRTURequest parses given bytes into modbus RTU request packet or returns error
 // Does not check CRC.
 func ParseRTURequest(data []byte) (Request, error) {
-	if len(data) < 5 {
+	if len(data) < 4 {
 		return nil, errors.New("data is too short to be a Modbus RTU packet")
 	}
 	functionCode := data[1]
@@ -84,6 +86,8 @@ func ParseRTURequest(data []byte) (Request, error) {
 		return ParseWriteMultipleCoilsRequestRTU(data)
 	case FunctionWriteMultipleRegisters: // 0x10
 		return ParseWriteMultipleRegistersRequestRTU(data)
+	case FunctionReadServerID: // 0x11
+		return ParseReadServerIDRequestRTU(data)
 	case FunctionReadWriteMultipleRegisters: // 0x17
 		return ParseReadWriteMultipleRegistersRequestRTU(data)
 	default:

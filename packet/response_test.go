@@ -155,6 +155,22 @@ func TestParseTCPResponse(t *testing.T) {
 			},
 		},
 		{
+			name:     "ok, ReadServerIDResponseTCP (fc17)",
+			whenData: []byte{0x81, 0x80, 0x00, 0x00, 0x00, 0x08, 0x03, 0x11, 0x02, 0x01, 0x02, 0xFF, 0x03, 0x04},
+			expect: &ReadServerIDResponseTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 33152,
+					ProtocolID:    0,
+				},
+				ReadServerIDResponse: ReadServerIDResponse{
+					UnitID:         3,
+					Status:         0xff,
+					ServerID:       []byte{0x01, 0x02},
+					AdditionalData: []byte{0x03, 0x04},
+				},
+			},
+		},
+		{
 			name:        "ok, ErrorResponseTCP (code=3)",
 			whenData:    []byte{0x4, 0xdd, 0x0, 0x0, 0x0, 0x3, 0x1, 0x82, 0x3},
 			expect:      nil,
@@ -162,7 +178,7 @@ func TestParseTCPResponse(t *testing.T) {
 		},
 		{
 			name:        "nok, data too short",
-			whenData:    []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x6},
+			whenData:    []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1},
 			expect:      nil,
 			expectError: "data is too short to be a Modbus TCP packet",
 		},
@@ -296,6 +312,18 @@ func TestParseRTUResponse(t *testing.T) {
 			},
 		},
 		{
+			name:     "ok, ReadServerIDResponseRTU (fc17)",
+			whenData: []byte{0x10, 0x11, 0x02, 0x01, 0x02, 0xff, 0x03, 0x04, 0xec, 0xd2},
+			expect: &ReadServerIDResponseRTU{
+				ReadServerIDResponse: ReadServerIDResponse{
+					UnitID:         16,
+					Status:         0xff,
+					ServerID:       []byte{0x01, 0x02},
+					AdditionalData: []byte{0x03, 0x04},
+				},
+			},
+		},
+		{
 			name:        "ok, ErrorResponseRTU (code=3)",
 			whenData:    []byte{0x1, 0x82, 0x3, 0xa1, 0x0},
 			expect:      nil,
@@ -303,7 +331,7 @@ func TestParseRTUResponse(t *testing.T) {
 		},
 		{
 			name:        "nok, data too short",
-			whenData:    []byte{0x1, 0x82, 0x3, 0xa1},
+			whenData:    []byte{0x1, 0x82, 0x3},
 			expect:      nil,
 			expectError: "data is too short to be a Modbus RTU packet",
 		},
@@ -355,7 +383,7 @@ func TestParseRTUResponseWithCRC(t *testing.T) {
 		},
 		{
 			name:        "nok, packet too short",
-			whenData:    []byte{0x1, 0x82, 0x3, 0xa1},
+			whenData:    []byte{0x1, 0x82, 0x3},
 			expect:      nil,
 			expectError: "data is too short to be a Modbus RTU packet",
 		},

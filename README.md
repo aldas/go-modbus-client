@@ -28,6 +28,7 @@ go get github.com/aldas/go-modbus-client
 * FC6 - Write Single Register ([req](packet/writesingleregisterrequest.go)/[resp](packet/writesingleregisterresponse.go))
 * FC15 - Write Multiple Coils ([req](packet/writemultiplecoilsrequest.go)/[resp](packet/writemultiplecoilsresponse.go))
 * FC16 - Write Multiple Registers ([req](packet/writemultipleregistersrequest.go)/[resp](packet/writemultipleregistersresponse.go))
+* FC17 - Read Server ID ([req](packet/readserveridrequest.go)/[resp](packet/readserveridresponse.go))
 * FC23 - Read / Write Multiple Registers ([req](packet/readwritemultipleregistersrequest.go)/[resp](packet/readwritemultipleregistersresponse.go))
 
 ## Goals
@@ -118,6 +119,7 @@ req, err := packet.NewReadInputRegistersRequestTCP(0, 10, 9)
 req, err := packet.NewWriteSingleCoilRequestTCP(0, 10, true)
 req, err := packet.NewWriteSingleRegisterRequestTCP(0, 10, []byte{0xCA, 0xFE})
 req, err := packet.NewWriteMultipleCoilsRequestTCP(0, 10, []bool{true, false, true})
+req, err := packet.NewReadServerIDRequestTCP(0)
 req, err := packet.NewWriteMultipleRegistersRequestTCP(0, 10, []byte{0xCA, 0xFE, 0xBA, 0xBE})
 ```
 
