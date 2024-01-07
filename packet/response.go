@@ -16,7 +16,7 @@ type Response interface {
 
 // ParseTCPResponse parses given bytes into modbus TCP response packet or into ErrorResponseTCP or returns error
 func ParseTCPResponse(data []byte) (Response, error) {
-	if len(data) < 9 {
+	if len(data) < 8 {
 		return nil, errors.New("data is too short to be a Modbus TCP packet")
 	}
 	if err := AsTCPErrorPacket(data); err != nil {
@@ -43,6 +43,8 @@ func ParseTCPResponse(data []byte) (Response, error) {
 		return ParseWriteMultipleRegistersResponseTCP(data)
 	case FunctionReadWriteMultipleRegisters: // 0x17
 		return ParseReadWriteMultipleRegistersResponseTCP(data)
+	case FunctionReadServerID: // 0x11
+		return ParseReadServerIDResponseTCP(data)
 	default:
 		return nil, fmt.Errorf("unknown function code parsed: %v", functionCode)
 	}
@@ -51,7 +53,7 @@ func ParseTCPResponse(data []byte) (Response, error) {
 // ParseRTUResponseWithCRC checks packet CRC and parses given bytes into modbus RTU response packet or into ErrorResponseRTU or returns error
 func ParseRTUResponseWithCRC(data []byte) (Response, error) {
 	dataLen := len(data)
-	if dataLen < 5 {
+	if dataLen < 4 {
 		return nil, errors.New("data is too short to be a Modbus RTU packet")
 	}
 	packetCRC := binary.LittleEndian.Uint16(data[dataLen-2:])
@@ -64,7 +66,7 @@ func ParseRTUResponseWithCRC(data []byte) (Response, error) {
 
 // ParseRTUResponse parses given bytes into modbus RTU response packet or into ErrorResponseRTU or returns error
 func ParseRTUResponse(data []byte) (Response, error) {
-	if len(data) < 5 {
+	if len(data) < 4 {
 		return nil, errors.New("data is too short to be a Modbus RTU packet")
 	}
 	if err := AsRTUErrorPacket(data); err != nil {
@@ -91,6 +93,8 @@ func ParseRTUResponse(data []byte) (Response, error) {
 		return ParseWriteMultipleRegistersResponseRTU(data)
 	case FunctionReadWriteMultipleRegisters: // 0x17
 		return ParseReadWriteMultipleRegistersResponseRTU(data)
+	case FunctionReadServerID: // 0x11
+		return ParseReadServerIDResponseRTU(data)
 	default:
 		return nil, fmt.Errorf("unknown function code parsed: %v", functionCode)
 	}

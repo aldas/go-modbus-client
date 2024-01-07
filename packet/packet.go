@@ -30,11 +30,13 @@ const (
 	FunctionWriteMultipleCoils = uint8(15) // 0x0f
 	// FunctionWriteMultipleRegisters is function code for Write Multiple Registers (FC16)
 	FunctionWriteMultipleRegisters = uint8(16) // 0x10
+	// FunctionReadServerID is function code for Read Server ID (FC16)
+	FunctionReadServerID = uint8(17) // 0x11
 	// FunctionReadWriteMultipleRegisters is function code for Read / Write Multiple Registers (FC23)
 	FunctionReadWriteMultipleRegisters = uint8(23) // 0x17
 )
 
-var supportedFunctionCodes = [9]byte{
+var supportedFunctionCodes = [10]byte{
 	FunctionReadCoils,
 	FunctionReadDiscreteInputs,
 	FunctionReadHoldingRegisters,
@@ -43,6 +45,7 @@ var supportedFunctionCodes = [9]byte{
 	FunctionWriteSingleRegister,
 	FunctionWriteMultipleCoils,
 	FunctionWriteMultipleRegisters,
+	FunctionReadServerID,
 	FunctionReadWriteMultipleRegisters,
 }
 
@@ -105,12 +108,12 @@ func LooksLikeModbusTCP(data []byte, allowUnSupportedFunctionCodes bool) (expect
 	// Example of first 8 bytes
 	// 0x81 0x80 - transaction id (0,1)
 	// 0x00 0x00 - protocol id (2,3)
-	// 0x00 0x06 - number of bytes in the message (PDU = ProtocolDataUnit) to follow (4,5)
+	// 0x00 0x02 - number of bytes in the message (PDU = ProtocolDataUnit) to follow (4,5)
 	// 0x10 - unit id (6)
-	// 0x01 - function code (7)
+	// 0x11 - function code (7)
 
-	// minimal amount is 9 bytes (header + unit id + function code + 1 byte of something ala error code)
-	if len(data) < 9 {
+	// minimal amount is 8 bytes (header + unit id + function code)
+	if len(data) < 8 {
 		return 0, ErrTCPDataTooShort
 	}
 	if !(data[2] == 0x0 && data[3] == 0x0) { // check protocol id

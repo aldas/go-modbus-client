@@ -9,6 +9,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+* Added support for FC17 (0x11) Read Server ID.
 * Added `packet.LooksLikeModbusTCP()` to check if given bytes are possibly TCP packet or start of packet.
 * Added `Parse*Request*` for every function type to help implement Modbus servers.
 * Added `Server` package to implement your own modbus server

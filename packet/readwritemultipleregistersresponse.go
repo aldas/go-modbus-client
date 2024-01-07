@@ -83,7 +83,7 @@ func (r ReadWriteMultipleRegistersResponseRTU) Bytes() []byte {
 	return result
 }
 
-// ParseReadWriteMultipleRegistersResponseRTU parses given bytes into ReadWriteMultipleRegistersResponseTCP
+// ParseReadWriteMultipleRegistersResponseRTU parses given bytes into ReadWriteMultipleRegistersResponseRTU
 func ParseReadWriteMultipleRegistersResponseRTU(data []byte) (*ReadWriteMultipleRegistersResponseRTU, error) {
 	dLen := len(data)
 	if dLen < 7 {

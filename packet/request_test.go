@@ -172,8 +172,21 @@ func TestParseTCPRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "ok, FunctionReadServerID",
+			when: []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x2, 0x1, 0x11},
+			expect: &ReadServerIDRequestTCP{
+				MBAPHeader: MBAPHeader{
+					TransactionID: 0x1234,
+					ProtocolID:    0,
+				},
+				ReadServerIDRequest: ReadServerIDRequest{
+					UnitID: 0x1,
+				},
+			},
+		},
+		{
 			name:        "nok, too short",
-			when:        []byte{0x01, 0x02, 0x00, 0x00, 0x00, 0x06, 0x10, 0x01},
+			when:        []byte{0x01, 0x02, 0x00, 0x00, 0x00, 0x06, 0x10},
 			expect:      nil,
 			expectError: "data is too short to be a Modbus TCP packet",
 		},
@@ -311,8 +324,17 @@ func TestParseRTURequestWithCRC(t *testing.T) {
 			},
 		},
 		{
+			name: "ok, parse ReadServerIDRequestRTU with crc",
+			when: []byte{0x10, 0x11, 0xcc, 0x7c},
+			expect: &ReadServerIDRequestRTU{
+				ReadServerIDRequest: ReadServerIDRequest{
+					UnitID: 0x10,
+				},
+			},
+		},
+		{
 			name:        "nok, too short",
-			when:        []byte{0x10, 0x01, 0x00, 0x6B},
+			when:        []byte{0x10, 0x00, 0x6B},
 			expect:      nil,
 			expectError: "data is too short to be a Modbus RTU packet",
 		},
@@ -364,7 +386,7 @@ func TestParseRTURequest(t *testing.T) {
 		},
 		{
 			name:        "nok, too short",
-			when:        []byte{0x10, 0x01, 0x00, 0x6B},
+			when:        []byte{0x10, 0x01, 0x00},
 			expect:      nil,
 			expectError: "data is too short to be a Modbus RTU packet",
 		},
