@@ -26,12 +26,12 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
 
       - name: Checkout code of this branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Execute Go lint, check, test
         run: |
