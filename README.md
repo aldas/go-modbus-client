@@ -66,7 +66,7 @@ for _, req := range requests {
     fmt.Printf("int64 @ address 18: %v", alarmDo1)
     
     // or extract values to FieldValue struct
-    fields, _ := req.ExtractFields(resp.(modbus.RegistersResponse), true)
+    fields, _ := req.ExtractFields(resp, true)
     assert.Equal(t, uint16(1), fields[0].Value)
     assert.Equal(t, "alarm_do_1", fields[1].Field.Name)
 }

@@ -10,6 +10,168 @@ import (
 	"time"
 )
 
+func TestBuilder_ReadCoilsTCP(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	receivedChan := make(chan []byte, 1)
+	handler := func(received []byte, bytesRead int) (response []byte, closeConnection bool) {
+		receivedChan <- received
+		resp := packet.ReadCoilsResponseTCP{
+			MBAPHeader: packet.MBAPHeader{TransactionID: 123, ProtocolID: 0},
+			ReadCoilsResponse: packet.ReadCoilsResponse{
+				UnitID:          0,
+				CoilsByteLength: 1,
+				Data:            []byte{0xff},
+			},
+		}
+		return resp.Bytes(), true
+	}
+	addr, err := modbustest.RunServerOnRandomPort(ctx, handler)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b := NewRequestBuilder(addr, 1)
+
+	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadCoilsTCP()
+	assert.NoError(t, err)
+	assert.Len(t, reqs, 1)
+
+	client := NewTCPClient()
+	err = client.Connect(context.Background(), addr)
+	assert.NoError(t, err)
+
+	request := reqs[0]
+	resp, err := client.Do(context.Background(), request)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	received := <-receivedChan
+	assert.Equal(t, []byte{0, 0, 0, 6, 0, 1, 0, 0xa, 0, 1}, received[2:]) // trim transaction ID
+}
+
+func TestBuilder_ReadCoilsRTU(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	receivedChan := make(chan []byte, 1)
+	handler := func(received []byte, bytesRead int) (response []byte, closeConnection bool) {
+		receivedChan <- received
+		resp := packet.ReadCoilsResponseRTU{
+			ReadCoilsResponse: packet.ReadCoilsResponse{
+				UnitID:          0,
+				CoilsByteLength: 1,
+				Data:            []byte{0xff},
+			},
+		}
+		return resp.Bytes(), true
+	}
+	addr, err := modbustest.RunServerOnRandomPort(ctx, handler)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b := NewRequestBuilder(addr, 1)
+
+	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadCoilsRTU()
+	assert.NoError(t, err)
+	assert.Len(t, reqs, 1)
+
+	client := NewRTUClient()
+	err = client.Connect(context.Background(), addr)
+	assert.NoError(t, err)
+
+	request := reqs[0]
+	resp, err := client.Do(context.Background(), request)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	received := <-receivedChan
+	assert.Equal(t, []byte{0x0, 0x1, 0x0, 0xa, 0x0, 0x1, 0xdc, 0x19}, received)
+}
+
+func TestBuilder_ReadDiscreteInputsTCP(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	receivedChan := make(chan []byte, 1)
+	handler := func(received []byte, bytesRead int) (response []byte, closeConnection bool) {
+		receivedChan <- received
+		resp := packet.ReadCoilsResponseTCP{
+			MBAPHeader: packet.MBAPHeader{TransactionID: 123, ProtocolID: 0},
+			ReadCoilsResponse: packet.ReadCoilsResponse{
+				UnitID:          0,
+				CoilsByteLength: 1,
+				Data:            []byte{0xff},
+			},
+		}
+		return resp.Bytes(), true
+	}
+	addr, err := modbustest.RunServerOnRandomPort(ctx, handler)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b := NewRequestBuilder(addr, 1)
+
+	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadDiscreteInputsTCP()
+	assert.NoError(t, err)
+	assert.Len(t, reqs, 1)
+
+	client := NewTCPClient()
+	err = client.Connect(context.Background(), addr)
+	assert.NoError(t, err)
+
+	request := reqs[0]
+	resp, err := client.Do(context.Background(), request)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	received := <-receivedChan
+	assert.Equal(t, []byte{0, 0, 0, 6, 0, 2, 0, 0xa, 0, 1}, received[2:]) // trim transaction ID
+}
+
+func TestBuilder_ReadDiscreteInputsRTU(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	receivedChan := make(chan []byte, 1)
+	handler := func(received []byte, bytesRead int) (response []byte, closeConnection bool) {
+		receivedChan <- received
+		resp := packet.ReadCoilsResponseRTU{
+			ReadCoilsResponse: packet.ReadCoilsResponse{
+				UnitID:          0,
+				CoilsByteLength: 1,
+				Data:            []byte{0xff},
+			},
+		}
+		return resp.Bytes(), true
+	}
+	addr, err := modbustest.RunServerOnRandomPort(ctx, handler)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b := NewRequestBuilder(addr, 1)
+
+	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadDiscreteInputsRTU()
+	assert.NoError(t, err)
+	assert.Len(t, reqs, 1)
+
+	client := NewRTUClient()
+	err = client.Connect(context.Background(), addr)
+	assert.NoError(t, err)
+
+	request := reqs[0]
+	resp, err := client.Do(context.Background(), request)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	received := <-receivedChan
+	assert.Equal(t, []byte{0x0, 0x2, 0x0, 0xa, 0x0, 0x1, 0x98, 0x19}, received)
+}
+
 func TestBuilder_ReadHoldingRegistersTCP(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -233,12 +395,12 @@ func TestBuilder_Bit(t *testing.T) {
 	b.Add(b.Bit(256, 4).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeBit,
-		RegisterAddress: 256,
-		Bit:             4,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeBit,
+		Address:       256,
+		Bit:           4,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -249,12 +411,12 @@ func TestBuilder_Byte(t *testing.T) {
 	b.Add(b.Byte(256, true).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeByte,
-		RegisterAddress: 256,
-		FromHighByte:    true,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeByte,
+		Address:       256,
+		FromHighByte:  true,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -265,12 +427,12 @@ func TestBuilder_Uint8(t *testing.T) {
 	b.Add(b.Uint8(256, true).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeUint8,
-		RegisterAddress: 256,
-		FromHighByte:    true,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeUint8,
+		Address:       256,
+		FromHighByte:  true,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -281,12 +443,12 @@ func TestBuilder_Int8(t *testing.T) {
 	b.Add(b.Int8(256, true).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeInt8,
-		RegisterAddress: 256,
-		FromHighByte:    true,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeInt8,
+		Address:       256,
+		FromHighByte:  true,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -297,11 +459,11 @@ func TestBuilder_Uint16(t *testing.T) {
 	b.Add(b.Uint16(256).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeUint16,
-		RegisterAddress: 256,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeUint16,
+		Address:       256,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -312,11 +474,11 @@ func TestBuilder_Int16(t *testing.T) {
 	b.Add(b.Int16(256).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeInt16,
-		RegisterAddress: 256,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeInt16,
+		Address:       256,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -327,11 +489,11 @@ func TestBuilder_Uint32(t *testing.T) {
 	b.Add(b.Uint32(256).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeUint32,
-		RegisterAddress: 256,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeUint32,
+		Address:       256,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -342,11 +504,11 @@ func TestBuilder_Int32(t *testing.T) {
 	b.Add(b.Int32(256).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeInt32,
-		RegisterAddress: 256,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeInt32,
+		Address:       256,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -357,11 +519,11 @@ func TestBuilder_Uint64(t *testing.T) {
 	b.Add(b.Uint64(256).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeUint64,
-		RegisterAddress: 256,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeUint64,
+		Address:       256,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -372,11 +534,11 @@ func TestBuilder_Int64(t *testing.T) {
 	b.Add(b.Int64(256).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeInt64,
-		RegisterAddress: 256,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeInt64,
+		Address:       256,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -387,11 +549,11 @@ func TestBuilder_Float32(t *testing.T) {
 	b.Add(b.Float32(256).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeFloat32,
-		RegisterAddress: 256,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeFloat32,
+		Address:       256,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -402,11 +564,11 @@ func TestBuilder_Float64(t *testing.T) {
 	b.Add(b.Float64(256).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeFloat64,
-		RegisterAddress: 256,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeFloat64,
+		Address:       256,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -417,12 +579,27 @@ func TestBuilder_String(t *testing.T) {
 	b.Add(b.String(256, 10).Name("fire_alarm_di"))
 
 	expect := Field{
-		ServerAddress:   ":5020",
-		UnitID:          2,
-		Type:            FieldTypeString,
-		RegisterAddress: 256,
-		Length:          10,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeString,
+		Address:       256,
+		Length:        10,
+		Name:          "fire_alarm_di",
+	}
+	assert.Equal(t, expect, b.fields[0])
+}
+
+func TestBuilder_Coil(t *testing.T) {
+	b := NewRequestBuilder(":5020", 2)
+
+	b.Add(b.Coil(256).Name("fire_alarm_di"))
+
+	expect := Field{
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeCoil,
+		Address:       256,
+		Name:          "fire_alarm_di",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -437,28 +614,28 @@ func TestBuilder_AddAll(t *testing.T) {
 			name: "ok",
 			when: Fields{
 				{
-					ServerAddress:   ":502",
-					UnitID:          1,
-					RegisterAddress: 100,
-					Type:            FieldTypeString,
-					Bit:             1,
-					FromHighByte:    true,
-					Length:          10,
-					ByteOrder:       packet.BigEndian,
-					Name:            "added",
+					ServerAddress: ":502",
+					UnitID:        1,
+					Address:       100,
+					Type:          FieldTypeString,
+					Bit:           1,
+					FromHighByte:  true,
+					Length:        10,
+					ByteOrder:     packet.BigEndian,
+					Name:          "added",
 				},
 			},
 			expect: Fields{
 				{
-					ServerAddress:   ":502",
-					UnitID:          1,
-					RegisterAddress: 100,
-					Type:            FieldTypeString,
-					Bit:             1,
-					FromHighByte:    true,
-					Length:          10,
-					ByteOrder:       packet.BigEndian,
-					Name:            "added",
+					ServerAddress: ":502",
+					UnitID:        1,
+					Address:       100,
+					Type:          FieldTypeString,
+					Bit:           1,
+					FromHighByte:  true,
+					Length:        10,
+					ByteOrder:     packet.BigEndian,
+					Name:          "added",
 				},
 			},
 		},
@@ -492,7 +669,7 @@ func TestBuilder_AddAll(t *testing.T) {
 }
 
 func TestRegisterRequest_Fields(t *testing.T) {
-	given := RegisterRequest{
+	given := BuilderRequest{
 		Request:       nil,
 		ServerAddress: ":502",
 		UnitID:        1,
@@ -527,7 +704,7 @@ func TestRegisterRequest_Fields(t *testing.T) {
 }
 
 func TestRegisterRequest_AsRegisters(t *testing.T) {
-	rr := RegisterRequest{
+	rr := BuilderRequest{
 		Request:       nil,
 		ServerAddress: ":502",
 		UnitID:        1,
@@ -557,46 +734,47 @@ func TestRegisterRequest_ExtractFields(t *testing.T) {
 		name                           string
 		givenFields                    Fields
 		givenResponseData              []byte
+		givenResponseFC                uint8
 		whenContinueOnExtractionErrors bool
 		expect                         []FieldValue
 		expectErr                      string
 	}{
 		{
-			name: "ok",
+			name: "ok, extract registers",
 			givenFields: Fields{
 				{
-					UnitID:          1,
-					RegisterAddress: 21,
-					Type:            FieldTypeInt16,
-					Name:            "f1",
+					UnitID:  1,
+					Address: 21,
+					Type:    FieldTypeInt16,
+					Name:    "f1",
 				},
 				{
-					UnitID:          1,
-					RegisterAddress: 22,
-					Type:            FieldTypeBit,
-					Bit:             8,
-					Name:            "f2",
+					UnitID:  1,
+					Address: 22,
+					Type:    FieldTypeBit,
+					Bit:     8,
+					Name:    "f2",
 				},
 			},
 			givenResponseData: []byte{0x0, 0x0, 0x0, 0x1, 0b00010001, 0x0},
 			expect: []FieldValue{
 				{
 					Field: Field{
-						UnitID:          1,
-						RegisterAddress: 21,
-						Type:            FieldTypeInt16,
-						Name:            "f1",
+						UnitID:  1,
+						Address: 21,
+						Type:    FieldTypeInt16,
+						Name:    "f1",
 					},
 					Value: int16(1),
 					Error: nil,
 				},
 				{
 					Field: Field{
-						UnitID:          1,
-						RegisterAddress: 22,
-						Type:            FieldTypeBit,
-						Bit:             8,
-						Name:            "f2",
+						UnitID:  1,
+						Address: 22,
+						Type:    FieldTypeBit,
+						Bit:     8,
+						Name:    "f2",
 					},
 					Value: true,
 					Error: nil,
@@ -604,19 +782,60 @@ func TestRegisterRequest_ExtractFields(t *testing.T) {
 			},
 		},
 		{
-			name: "nok, had errors, ContinueOnExtractionErrors=true",
+			name: "ok, extract coils",
 			givenFields: Fields{
 				{
-					UnitID:          1,
-					RegisterAddress: 21,
-					Type:            FieldTypeInt16,
-					Name:            "f1",
+					UnitID:  1,
+					Address: 20,
+					Type:    FieldTypeCoil,
+					Name:    "f1",
 				},
 				{
-					UnitID:          1,
-					RegisterAddress: 22,
-					Type:            FieldTypeFloat64,
-					Name:            "f2",
+					UnitID:  1,
+					Address: 21,
+					Type:    FieldTypeCoil,
+					Name:    "f2",
+				},
+			},
+			givenResponseData: []byte{0b0000_0101},
+			givenResponseFC:   packet.FunctionReadCoils,
+			expect: []FieldValue{
+				{
+					Field: Field{
+						UnitID:  1,
+						Address: 20,
+						Type:    FieldTypeCoil,
+						Name:    "f1",
+					},
+					Value: true,
+					Error: nil,
+				},
+				{
+					Field: Field{
+						UnitID:  1,
+						Address: 21,
+						Type:    FieldTypeCoil,
+						Name:    "f2",
+					},
+					Value: false,
+					Error: nil,
+				},
+			},
+		},
+		{
+			name: "nok, register packet had errors, ContinueOnExtractionErrors=true",
+			givenFields: Fields{
+				{
+					UnitID:  1,
+					Address: 21,
+					Type:    FieldTypeInt16,
+					Name:    "f1",
+				},
+				{
+					UnitID:  1,
+					Address: 22,
+					Type:    FieldTypeFloat64,
+					Name:    "f2",
 				},
 			},
 			givenResponseData:              []byte{0x0, 0x0, 0x0, 0x1, 0b00010001, 0x0},
@@ -624,20 +843,20 @@ func TestRegisterRequest_ExtractFields(t *testing.T) {
 			expect: []FieldValue{
 				{
 					Field: Field{
-						UnitID:          1,
-						RegisterAddress: 21,
-						Type:            FieldTypeInt16,
-						Name:            "f1",
+						UnitID:  1,
+						Address: 21,
+						Type:    FieldTypeInt16,
+						Name:    "f1",
 					},
 					Value: int16(1),
 					Error: nil,
 				},
 				{
 					Field: Field{
-						UnitID:          1,
-						RegisterAddress: 22,
-						Type:            FieldTypeFloat64,
-						Name:            "f2",
+						UnitID:  1,
+						Address: 22,
+						Type:    FieldTypeFloat64,
+						Name:    "f2",
 					},
 					Value: float64(0),
 					Error: errors.New("address over startAddress+quantity bounds"),
@@ -646,19 +865,62 @@ func TestRegisterRequest_ExtractFields(t *testing.T) {
 			expectErr: ErrorFieldExtractHadError.Error(),
 		},
 		{
+			name: "nok, coils packet had errors, ContinueOnExtractionErrors=true",
+			givenFields: Fields{
+				{
+					UnitID:  1,
+					Address: 20,
+					Type:    FieldTypeCoil,
+					Name:    "f1",
+				},
+				{
+					UnitID:  1,
+					Address: 0,
+					Type:    FieldTypeCoil,
+					Name:    "f2",
+				},
+			},
+			givenResponseData:              []byte{0b0000_0101},
+			givenResponseFC:                packet.FunctionReadCoils,
+			whenContinueOnExtractionErrors: true,
+			expect: []FieldValue{
+				{
+					Field: Field{
+						UnitID:  1,
+						Address: 20,
+						Type:    FieldTypeCoil,
+						Name:    "f1",
+					},
+					Value: true,
+					Error: nil,
+				},
+				{
+					Field: Field{
+						UnitID:  1,
+						Address: 0,
+						Type:    FieldTypeCoil,
+						Name:    "f2",
+					},
+					Value: false,
+					Error: errors.New("bit can not be before startBit"),
+				},
+			},
+			expectErr: ErrorFieldExtractHadError.Error(),
+		},
+		{
 			name: "nok, had errors, ContinueOnExtractionErrors=false",
 			givenFields: Fields{
 				{
-					UnitID:          1,
-					RegisterAddress: 21,
-					Type:            FieldTypeInt16,
-					Name:            "f1",
+					UnitID:  1,
+					Address: 21,
+					Type:    FieldTypeInt16,
+					Name:    "f1",
 				},
 				{
-					UnitID:          1,
-					RegisterAddress: 22,
-					Type:            FieldTypeFloat64,
-					Name:            "f2",
+					UnitID:  1,
+					Address: 22,
+					Type:    FieldTypeFloat64,
+					Name:    "f2",
 				},
 			},
 			givenResponseData:              []byte{0x0, 0x0, 0x0, 0x1, 0b00010001, 0x0},
@@ -670,16 +932,16 @@ func TestRegisterRequest_ExtractFields(t *testing.T) {
 			name: "nok, error creating registers",
 			givenFields: Fields{
 				{
-					UnitID:          1,
-					RegisterAddress: 21,
-					Type:            FieldTypeInt16,
-					Name:            "f1",
+					UnitID:  1,
+					Address: 21,
+					Type:    FieldTypeInt16,
+					Name:    "f1",
 				},
 				{
-					UnitID:          1,
-					RegisterAddress: 22,
-					Type:            FieldTypeFloat64,
-					Name:            "f2",
+					UnitID:  1,
+					Address: 22,
+					Type:    FieldTypeFloat64,
+					Name:    "f2",
 				},
 			},
 			givenResponseData:              []byte{0x0, 0x0, 0x0, 0x1, 0b00010001},
@@ -691,20 +953,33 @@ func TestRegisterRequest_ExtractFields(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := RegisterRequest{
+			req := BuilderRequest{
 				Request:       nil,
 				ServerAddress: ":502",
 				UnitID:        1,
 				StartAddress:  20,
 				Fields:        tc.givenFields,
 			}
-			response := packet.ReadHoldingRegistersResponseTCP{
-				MBAPHeader: packet.MBAPHeader{},
-				ReadHoldingRegistersResponse: packet.ReadHoldingRegistersResponse{
-					UnitID:          1,
-					RegisterByteLen: uint8(len(tc.givenResponseData)),
-					Data:            tc.givenResponseData,
-				},
+			var response packet.Response
+			switch tc.givenResponseFC {
+			case packet.FunctionReadCoils:
+				response = packet.ReadCoilsResponseTCP{
+					MBAPHeader: packet.MBAPHeader{},
+					ReadCoilsResponse: packet.ReadCoilsResponse{
+						UnitID:          1,
+						CoilsByteLength: uint8(len(tc.givenResponseData)),
+						Data:            tc.givenResponseData,
+					},
+				}
+			default:
+				response = packet.ReadHoldingRegistersResponseTCP{
+					MBAPHeader: packet.MBAPHeader{},
+					ReadHoldingRegistersResponse: packet.ReadHoldingRegistersResponse{
+						UnitID:          1,
+						RegisterByteLen: uint8(len(tc.givenResponseData)),
+						Data:            tc.givenResponseData,
+					},
+				}
 			}
 
 			fields, err := req.ExtractFields(response, tc.whenContinueOnExtractionErrors)
@@ -901,6 +1176,12 @@ func TestField_ExtractFrom(t *testing.T) {
 			expect:            "SVC",
 		},
 		{
+			name:              "nok, coil can not be extracted from registers",
+			whenType:          FieldTypeCoil,
+			givenRegisterData: []byte{0x0, 0x0, 0x53, 0x56, 0x43, 0x83},
+			expectErr:         "extraction failure due unknown field type",
+		},
+		{
 			name:      "nok, unknown type",
 			whenType:  0,
 			expect:    nil,
@@ -911,15 +1192,15 @@ func TestField_ExtractFrom(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			f := Field{
-				ServerAddress:   ":502",
-				UnitID:          1,
-				RegisterAddress: 1,
-				Type:            tc.whenType,
-				Bit:             8,
-				FromHighByte:    true,
-				Length:          3,
-				ByteOrder:       tc.whenByteOrder,
-				Name:            "test",
+				ServerAddress: ":502",
+				UnitID:        1,
+				Address:       1,
+				Type:          tc.whenType,
+				Bit:           8,
+				FromHighByte:  true,
+				Length:        3,
+				ByteOrder:     tc.whenByteOrder,
+				Name:          "test",
 			}
 
 			registers, _ := packet.NewRegisters(tc.givenRegisterData, 0)
@@ -938,15 +1219,15 @@ func TestField_ExtractFrom(t *testing.T) {
 
 func TestField_Validate(t *testing.T) {
 	example := Field{
-		ServerAddress:   ":502",
-		UnitID:          1,
-		RegisterAddress: 100,
-		Type:            FieldTypeString,
-		Bit:             0,
-		FromHighByte:    false,
-		Length:          10,
-		ByteOrder:       0,
-		Name:            "fire_alarm_di",
+		ServerAddress: ":502",
+		UnitID:        1,
+		Address:       100,
+		Type:          FieldTypeString,
+		Bit:           0,
+		FromHighByte:  false,
+		Length:        10,
+		ByteOrder:     0,
+		Name:          "fire_alarm_di",
 	}
 	var testCases = []struct {
 		name      string
@@ -969,7 +1250,7 @@ func TestField_Validate(t *testing.T) {
 		},
 		{
 			name:      "nok, type is invalid value",
-			given:     func(f *Field) { f.Type = 14 },
+			given:     func(f *Field) { f.Type = 15 },
 			expectErr: "field type has invalid value",
 		},
 		{

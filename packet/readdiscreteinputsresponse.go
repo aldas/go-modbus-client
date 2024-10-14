@@ -131,3 +131,8 @@ func (r ReadDiscreteInputsResponse) bytes(data []byte) []byte {
 func (r ReadDiscreteInputsResponse) IsInputSet(startAddress uint16, inputAddress uint16) (bool, error) {
 	return isBitSet(r.Data, startAddress, inputAddress)
 }
+
+// IsCoilSet checks if N-th discrete input is set in response data. It is alias to IsInputSet method.
+func (r ReadDiscreteInputsResponse) IsCoilSet(startAddress uint16, inputAddress uint16) (bool, error) {
+	return r.IsInputSet(startAddress, inputAddress)
+}
