@@ -254,7 +254,7 @@ func (c *connection) handle(ctx context.Context) {
 		}
 		if n > 0 {
 			lastReceived = time.Now()
-		} else if time.Now().Sub(lastReceived) > idleTimeout {
+		} else if time.Since(lastReceived) > idleTimeout {
 			c.onErrorFunc(ErrServerIdleTimeout)
 			return // close idle connection
 		} else {

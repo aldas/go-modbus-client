@@ -91,6 +91,9 @@ func doRequest(ctx context.Context, serverAddress string) error {
 		return err
 	}
 	uint16Var, err := registers.Uint16(11) // extract uint16 value from register 11
+	if err != nil {
+		return err
+	}
 	log.Printf("Received as register 11 value: %v (hex: %X)\n", uint16Var, uint16Var)
 
 	return nil

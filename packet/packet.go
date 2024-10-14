@@ -11,6 +11,8 @@ const (
 
 	// MaxRegistersInReadResponse is maximum quantity of registers that can be returned by read request (fc03/fc04)
 	MaxRegistersInReadResponse = uint16(125)
+	// MaxCoilsInReadResponse is maximum quantity of discretes/coils that can be returned by read request (fc01/fc02)
+	MaxCoilsInReadResponse = uint16(2000) // 2000/8=250 bytes
 )
 
 const (

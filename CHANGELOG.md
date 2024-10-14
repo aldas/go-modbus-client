@@ -5,7 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.2] - unreleased
+## [0.3.0] - unreleased
+
+Breaking changes to following structs/methods/functions
+
+* struct field `modbus.Field.RegisterAddress` was renamed to `Address`
+* struct `modbus.RegisterRequest` was renamed to `BuilderRequest`
+* method `BuilderRequest.ExtractFields()` signature changed
+
+### Added
+
+* Added FC1/FC2 support to builder. You can register coils with `b.Coild(address)` to be requested and extracted.
+  Builder has now following methods for splitting:
+    * `ReadCoilsTCP` combines fields into TCP Read Coils (FC1) requests
+    * `ReadCoilsRTU` combines fields into RTU Read Coils (FC1) requests
+    * `ReadDiscreteInputsTCP` combines fields into TCP Read Discrete Inputs (FC2) requests
+    * `ReadDiscreteInputsRTU` combines fields into RTU Read Discrete Inputs (FC2) requests
+
+
+## [0.2.0] - unreleased
 
 ### Added
 

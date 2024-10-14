@@ -43,7 +43,7 @@ type ReadCoilsRequest struct {
 
 // NewReadCoilsRequestTCP creates new instance of Read Coils TCP request
 func NewReadCoilsRequestTCP(unitID uint8, startAddress uint16, quantity uint16) (*ReadCoilsRequestTCP, error) {
-	if quantity == 0 || quantity > 2000 {
+	if quantity == 0 || quantity > MaxCoilsInReadResponse {
 		// 2000 coils is due that in response data size field is 1 byte so max 250*8=2000 coils can be returned
 		return nil, fmt.Errorf("quantity is out of range (1-2000): %v", quantity)
 	}
@@ -112,7 +112,7 @@ func ParseReadCoilsRequestTCP(data []byte) (*ReadCoilsRequestTCP, error) {
 
 // NewReadCoilsRequestRTU creates new instance of Read Coils RTU request
 func NewReadCoilsRequestRTU(unitID uint8, startAddress uint16, quantity uint16) (*ReadCoilsRequestRTU, error) {
-	if quantity == 0 || quantity > 2000 {
+	if quantity == 0 || quantity > MaxCoilsInReadResponse {
 		// 2000 coils is due that in response data size field is 1 byte so max 250*8=2000 coils can be returned
 		return nil, fmt.Errorf("quantity is out of range (1-2000): %v", quantity)
 	}
