@@ -5,7 +5,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/aldas/go-modbus-client)](https://goreportcard.com/report/github.com/aldas/go-modbus-client)
 [![Codecov](https://codecov.io/gh/aldas/go-modbus-client/branch/main/graph/badge.svg)](https://codecov.io/gh/aldas/go-modbus-client)
 
-Modbus client (TCP/RTU) over TCP/Serial for Golang.
+Modbus client (TCP/RTU) over TCP/UDP/Serial for Golang.
 
 * Modbus TCP/IP specification: http://www.modbus.org/specs.php
 * Modbus TCP/IP and RTU simpler description: http://www.simplymodbus.ca/TCP.htm
@@ -34,7 +34,7 @@ go get github.com/aldas/go-modbus-client
 ## Goals
 
 * Packets separate from Client implementation
-* Client (TCP/RTU) separated from Modbus packets
+* Client (TCP/UDP +RTU) separated from Modbus packets
 * Convenience methods to convert register data to/from different data types (with endianess/word order)
 * Builders to group multiple fields into request batches
 
@@ -43,15 +43,17 @@ go get github.com/aldas/go-modbus-client
 Higher level API allows you to compose register requests out of arbitrary number of fields and extract those
 field values from response registers with convenience methods
 
+Addresses without scheme (i.e. `localhost:5020`) are considered as TCP addresses. For UDP unicast use `udp://localhost:5020`.
+
 ```go
-b := modbus.NewRequestBuilder("localhost:5020", 1)
+b := modbus.NewRequestBuilder("tcp://localhost:5020", 1)
 
 requests, _ := b.Add(b.Uint16(18).UnitID(0).Name("test_do")).
     Add(b.Int64(18).Name("alarm_do_1").UnitID(0)).
     ReadHoldingRegistersTCP() // split added fields into multiple requests with suitable quantity size
 
 client := modbus.NewTCPClient()
-if err := client.Connect(context.Background(), "localhost:5020"); err != nil {
+if err := client.Connect(context.Background(), "tcp://localhost:5020"); err != nil {
     return err
 }
 for _, req := range requests {
@@ -75,6 +77,8 @@ for _, req := range requests {
 ### RTU over serial port
 
 RTU examples to interact with serial port can be found from [serial.md](serial.md)
+
+Addresses without scheme (i.e. `localhost:5020`) are considered as TCP addresses. For UDP unicast use `udp://localhost:5020`.
 
 ### Low level packets
 
