@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 )
 
 // ReadDiscreteInputsRequestTCP is TCP Request for Read Discrete Inputs (FC=02)
@@ -50,7 +50,7 @@ func NewReadDiscreteInputsRequestTCP(unitID uint8, startAddress uint16, quantity
 
 	return &ReadDiscreteInputsRequestTCP{
 		MBAPHeader: MBAPHeader{
-			TransactionID: uint16(1 + rand.Intn(65534)),
+			TransactionID: 1 + rand.N(uint16(65534)), // #nosec G404
 			ProtocolID:    0,
 		},
 		ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{
@@ -139,8 +139,8 @@ func (r ReadDiscreteInputsRequestRTU) Bytes() []byte {
 
 // ExpectedResponseLength returns length of bytes that valid response to this request would be
 func (r ReadDiscreteInputsRequestRTU) ExpectedResponseLength() int {
-	// response = 1 UnitID + 1 functionCode + 2 coils byte count + N coils data
-	return 4 + r.coilByteLength()
+	// response = 1 UnitID + 1 functionCode + 1 coils byte count + N coils data + 2 CRC
+	return 3 + r.coilByteLength() + 2
 }
 
 // ParseReadDiscreteInputsRequestRTU parses given bytes into ReadDiscreteInputsRequestRTU

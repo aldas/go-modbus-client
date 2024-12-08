@@ -1,28 +1,15 @@
 package modbus
 
 import (
-	"fmt"
+	"errors"
 	"github.com/aldas/go-modbus-client/packet"
 	"sort"
-)
-
-type splitToFuncType uint8
-
-const (
-	splitToFC1TCP splitToFuncType = iota
-	splitToFC1RTU
-	splitToFC2TCP
-	splitToFC2RTU
-	splitToFC3TCP
-	splitToFC3RTU
-	splitToFC4TCP
-	splitToFC4RTU
+	"time"
 )
 
 // split groups (by host:port+UnitID, "optimized" max amount of fields for max quantity) fields into packets
-func split(fields []Field, funcType splitToFuncType) ([]BuilderRequest, error) {
-	onlyCoils := funcType == splitToFC1TCP || funcType == splitToFC1RTU || funcType == splitToFC2TCP || funcType == splitToFC2RTU
-	connectionGroup, err := groupForSingleConnection(fields, onlyCoils)
+func split(fields []Field, functionCode uint8, protocol ProtocolType) ([]BuilderRequest, error) {
+	connectionGroup, err := groupForSingleConnection(fields, functionCode, protocol)
 	if err != nil {
 		return nil, err
 	}
@@ -30,28 +17,43 @@ func split(fields []Field, funcType splitToFuncType) ([]BuilderRequest, error) {
 
 	result := make([]BuilderRequest, 0, len(batches))
 	for _, b := range batches {
+		if b.Protocol == protocolAny || b.FunctionCode == 0 {
+			continue
+		}
 		var req packet.Request
 		var err error
-		switch funcType {
-		case splitToFC1TCP:
-			req, err = packet.NewReadCoilsRequestTCP(b.UnitID, b.StartAddress, b.Quantity)
-		case splitToFC1RTU:
-			req, err = packet.NewReadCoilsRequestRTU(b.UnitID, b.StartAddress, b.Quantity)
+		switch b.FunctionCode {
+		case packet.FunctionReadCoils: // fc1
+			switch b.Protocol {
+			case ProtocolTCP:
+				req, err = packet.NewReadCoilsRequestTCP(b.UnitID, b.StartAddress, b.Quantity)
+			case ProtocolRTU:
+				req, err = packet.NewReadCoilsRequestRTU(b.UnitID, b.StartAddress, b.Quantity)
+			}
 
-		case splitToFC2TCP:
-			req, err = packet.NewReadDiscreteInputsRequestTCP(b.UnitID, b.StartAddress, b.Quantity)
-		case splitToFC2RTU:
-			req, err = packet.NewReadDiscreteInputsRequestRTU(b.UnitID, b.StartAddress, b.Quantity)
+		case packet.FunctionReadDiscreteInputs: // fc2
+			switch b.Protocol {
+			case ProtocolTCP:
+				req, err = packet.NewReadDiscreteInputsRequestTCP(b.UnitID, b.StartAddress, b.Quantity)
+			case ProtocolRTU:
+				req, err = packet.NewReadDiscreteInputsRequestRTU(b.UnitID, b.StartAddress, b.Quantity)
+			}
 
-		case splitToFC3TCP:
-			req, err = packet.NewReadHoldingRegistersRequestTCP(b.UnitID, b.StartAddress, b.Quantity)
-		case splitToFC3RTU:
-			req, err = packet.NewReadHoldingRegistersRequestRTU(b.UnitID, b.StartAddress, b.Quantity)
+		case packet.FunctionReadHoldingRegisters: // fc3
+			switch b.Protocol {
+			case ProtocolTCP:
+				req, err = packet.NewReadHoldingRegistersRequestTCP(b.UnitID, b.StartAddress, b.Quantity)
+			case ProtocolRTU:
+				req, err = packet.NewReadHoldingRegistersRequestRTU(b.UnitID, b.StartAddress, b.Quantity)
+			}
 
-		case splitToFC4TCP:
-			req, err = packet.NewReadInputRegistersRequestTCP(b.UnitID, b.StartAddress, b.Quantity)
-		case splitToFC4RTU:
-			req, err = packet.NewReadInputRegistersRequestRTU(b.UnitID, b.StartAddress, b.Quantity)
+		case packet.FunctionReadInputRegisters: // fc4
+			switch b.Protocol {
+			case ProtocolTCP:
+				req, err = packet.NewReadInputRegistersRequestTCP(b.UnitID, b.StartAddress, b.Quantity)
+			case ProtocolRTU:
+				req, err = packet.NewReadInputRegistersRequestRTU(b.UnitID, b.StartAddress, b.Quantity)
+			}
 		}
 		if err != nil {
 			return nil, err
@@ -59,38 +61,70 @@ func split(fields []Field, funcType splitToFuncType) ([]BuilderRequest, error) {
 		result = append(result, BuilderRequest{
 			Request: req,
 
-			ServerAddress: b.Address,
-			UnitID:        b.UnitID,
-			StartAddress:  b.StartAddress,
-			Fields:        b.fields,
+			ServerAddress:   b.ServerAddress,
+			UnitID:          b.UnitID,
+			StartAddress:    b.StartAddress,
+			Protocol:        b.Protocol,
+			RequestInterval: time.Duration(b.RequestInterval),
+
+			Fields: b.fields,
 		})
+	}
+	if len(result) == 0 {
+		return nil, errors.New("splitting resulted 0 requests")
 	}
 	return result, nil
 }
 
-// groupForSingleConnection groups fields into groups what can be requested potentially by same request (same server + unit ID + function)
-func groupForSingleConnection(fields []Field, onlyCoils bool) ([]builderSlotGroup, error) {
-	groups := map[string]builderSlotGroup{}
+// groupForSingleConnection groups fields into groups what can be requested potentially by same request
+// (same server + function + unit ID + protocol + interval)
+func groupForSingleConnection(fields []Field, functionCode uint8, protocol ProtocolType) ([]builderSlotGroup, error) {
+	onlyCoils := functionCode == packet.FunctionReadCoils || functionCode == packet.FunctionReadDiscreteInputs
+
+	groups := map[groupID]builderSlotGroup{}
 	for _, f := range fields {
+		// adjust field fc and protocol to any cases
+		isCoil := f.Type == FieldTypeCoil
+		if (!isCoil && functionCode != 0 && f.FunctionCode == 0) || (isCoil && onlyCoils) {
+			f.FunctionCode = functionCode
+		}
+		if protocol != protocolAny && f.Protocol == protocolAny {
+			f.Protocol = protocol
+		}
+
 		if err := f.Validate(); err != nil {
 			return nil, err
 		}
-		// create groups by modbus server Address + unitID + isCoil
-		isCoil := f.Type == FieldTypeCoil
+
+		if !onlyCoils && functionCode != 0 && functionCode != f.FunctionCode {
+			// when functionCode is provided and field does not have it set - consider field included
+			continue
+		}
+		if protocol != protocolAny && f.Protocol != protocolAny && protocol != f.Protocol {
+			// when protocol is provided and field does not have it set - consider field included
+			continue
+		}
+
 		if onlyCoils && !isCoil {
 			continue
 		} else if !onlyCoils && isCoil {
 			continue
 		}
 
-		gID := fmt.Sprintf("%v_%v_%v", f.ServerAddress, f.UnitID, isCoil)
+		// create groups by modbus server ServerAddress + fc + unitID + isCoil
+		gID := groupID{
+			serverAddress: f.ServerAddress,
+			functionCode:  f.FunctionCode,
+			unitID:        f.UnitID,
+			protocol:      f.Protocol,
+			interval:      f.RequestInterval,
+		}
 		group, ok := groups[gID]
 		if !ok {
 			group = builderSlotGroup{
-				serverAddress: f.ServerAddress,
-				unitID:        f.UnitID,
-				isForCoils:    isCoil,
-				slots:         make([]builderSlot, 0),
+				group:      gID,
+				isForCoils: isCoil,
+				slots:      make([]builderSlot, 0),
 			}
 			groups[gID] = group
 		}
@@ -116,37 +150,42 @@ func batchToRequests(connectionGroup []builderSlotGroup) []requestBatch {
 
 	var result = make([]requestBatch, 0)
 	for _, slotGroup := range connectionGroup {
-		address := slotGroup.serverAddress
-		unitID := slotGroup.unitID
+		if len(slotGroup.slots) == 0 {
+			continue
+		}
 		addressLimit := packet.MaxRegistersInReadResponse
 		if slotGroup.isForCoils {
 			addressLimit = packet.MaxCoilsInReadResponse
 		}
 		sort.Sort(slotsSorter(slotGroup.slots))
 
-		batch := requestBatch{}
-		isFirstSeen := false
-		var firstAddress uint16
+		firstAddress := slotGroup.slots[0].address
+		batch := requestBatch{
+			ServerAddress:   slotGroup.group.serverAddress,
+			FunctionCode:    slotGroup.group.functionCode,
+			UnitID:          slotGroup.group.unitID,
+			Protocol:        slotGroup.group.protocol,
+			RequestInterval: slotGroup.group.interval,
+
+			StartAddress: firstAddress,
+			Quantity:     slotGroup.slots[0].size,
+		}
 		for _, slot := range slotGroup.slots {
 			slotAddress := slot.address
-			if !isFirstSeen {
-				firstAddress = slotAddress
-				isFirstSeen = true
-
-				batch.StartAddress = firstAddress
-				batch.Address = address
-				batch.UnitID = unitID
-			}
-
 			slotEndAddress := slotAddress + slot.size
 			addressDiff := slotEndAddress - firstAddress
 			if addressDiff > addressLimit {
 				result = append(result, batch)
 
 				batch = requestBatch{
-					Address:      address,
-					UnitID:       unitID,
+					ServerAddress:   slotGroup.group.serverAddress,
+					FunctionCode:    slotGroup.group.functionCode,
+					UnitID:          slotGroup.group.unitID,
+					Protocol:        slotGroup.group.protocol,
+					RequestInterval: slotGroup.group.interval,
+
 					StartAddress: slotAddress,
+					Quantity:     slot.size,
 				}
 				firstAddress = slotAddress
 				addressDiff = slot.size
@@ -187,10 +226,18 @@ func (a slotsSorter) Less(i, j int) bool {
 	return a[i].address < a[j].address
 }
 
-type builderSlotGroup struct {
+type groupID struct {
 	serverAddress string
+	functionCode  uint8
 	unitID        uint8
-	isForCoils    bool
+	protocol      ProtocolType
+	interval      Duration
+}
+
+type builderSlotGroup struct {
+	group groupID
+
+	isForCoils bool
 
 	slots builderSlots
 }
@@ -217,12 +264,16 @@ func (g *builderSlotGroup) AddField(f Field) {
 }
 
 type requestBatch struct {
-	Address      string
-	UnitID       uint8
+	ServerAddress string
+	FunctionCode  uint8
+	UnitID        uint8
+	Protocol      ProtocolType
+
 	StartAddress uint16
 	Quantity     uint16
 
-	IsForCoils bool
+	IsForCoils      bool
+	RequestInterval Duration
 
 	fields Fields
 }

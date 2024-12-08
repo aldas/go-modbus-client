@@ -32,10 +32,10 @@ const (
 )
 
 // ErrPacketTooLong is error indicating that modbus server sent amount of data that is bigger than any modbus packet could be
-var ErrPacketTooLong = ClientError{Err: errors.New("received more bytes than valid Modbus packet size can be")}
+var ErrPacketTooLong = &ClientError{Err: errors.New("received more bytes than valid Modbus packet size can be")}
 
 // ErrClientNotConnected is error indicating that Client has not yet connected to the modbus server
-var ErrClientNotConnected = ClientError{Err: errors.New("client is not connected")}
+var ErrClientNotConnected = &ClientError{Err: errors.New("client is not connected")}
 
 // Client provides mechanisms to send requests to modbus server over network connection
 type Client struct {
@@ -144,6 +144,13 @@ func NewClient(conf ClientConfig) *Client {
 
 // Connect opens network connection to Client to server. Context lifetime is only meant for this call.
 // ctx is to be used for to cancel connection attempt.
+//
+// `address` should be formatted as url.URL scheme `[scheme:][//[userinfo@]host][/]path[?query]`
+// Example:
+// * `127.0.0.1:502` (library defaults to `tcp` as scheme)
+// * `udp://127.0.0.1:502`
+// * `/dev/ttyS0?BaudRate=4800`
+// * `file:///dev/ttyUSB?BaudRate=4800`
 func (c *Client) Connect(ctx context.Context, address string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -210,7 +217,7 @@ func (c *Client) Do(ctx context.Context, req packet.Request) (packet.Response, e
 		return nil, errors.New("request can not be nil")
 	}
 	if c.conn == nil {
-		return nil, &ErrClientNotConnected
+		return nil, ErrClientNotConnected
 	}
 
 	resp, err := c.do(ctx, req.Bytes(), req.ExpectedResponseLength())
@@ -261,7 +268,7 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 		}
 		total += n
 		if total > tcpPacketMaxLen {
-			return nil, &ErrPacketTooLong
+			return nil, ErrPacketTooLong
 		}
 		// check if we have exactly the error packet. Error packets are shorter than regulars packets
 		if errPacket := c.asProtocolErrorFunc(received[0:total]); errPacket != nil {

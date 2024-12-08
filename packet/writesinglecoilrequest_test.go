@@ -255,7 +255,7 @@ func TestWriteSingleCoilRequestRTU_ExpectedResponseLength(t *testing.T) {
 		{
 			name:          "ok",
 			whenCoilState: 8,
-			expect:        6,
+			expect:        8,
 		},
 	}
 

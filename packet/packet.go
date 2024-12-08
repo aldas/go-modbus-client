@@ -84,20 +84,6 @@ func ParseMBAPHeader(data []byte) (MBAPHeader, error) {
 	}, nil
 }
 
-// LooksLikeType is enum for classifying what given slice of bytes could potentially could be parsed to
-type LooksLikeType int
-
-const (
-	// DataTooShort is case when slice of bytes is too short to determine result
-	DataTooShort LooksLikeType = 0
-	// IsNotTPCPacket is case when slice of bytes can not be Modbus TCP packet
-	IsNotTPCPacket LooksLikeType = 1
-	// LooksLikeTCPPacket is case when slice of bytes looks like Modbus TCP packet with supported function code
-	LooksLikeTCPPacket LooksLikeType = 2
-	// UnsupportedFunctionCode is case when slice of bytes looks like Modbus TCP packet but function code value is not supported
-	UnsupportedFunctionCode LooksLikeType = 3
-)
-
 var (
 	// ErrTCPDataTooShort is returned when received data is still too short to be actual Modbus TCP packet.
 	ErrTCPDataTooShort = NewErrorParseTCP(ErrUnknown, "data is too short to be a Modbus TCP packet")

@@ -2,6 +2,7 @@ package modbus
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/aldas/go-modbus-client/modbustest"
 	"github.com/aldas/go-modbus-client/packet"
@@ -113,7 +114,10 @@ func TestBuilder_ReadDiscreteInputsTCP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadDiscreteInputsTCP()
 	assert.NoError(t, err)
@@ -153,7 +157,10 @@ func TestBuilder_ReadDiscreteInputsRTU(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadDiscreteInputsRTU()
 	assert.NoError(t, err)
@@ -170,6 +177,36 @@ func TestBuilder_ReadDiscreteInputsRTU(t *testing.T) {
 
 	received := <-receivedChan
 	assert.Equal(t, []byte{0x0, 0x2, 0x0, 0xa, 0x0, 0x1, 0x98, 0x19}, received)
+}
+
+func TestBuilder_Split(t *testing.T) {
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: "addr",
+		UnitID:        1,
+	})
+
+	reqs, err := b.AddAll(Fields{
+		{
+			Name:          "x",
+			ServerAddress: "addr",
+			FunctionCode:  1,
+			UnitID:        1,
+			Protocol:      ProtocolTCP,
+			Address:       1,
+			Type:          FieldTypeInt16,
+		},
+		{
+			Name:          "y",
+			ServerAddress: "addr",
+			FunctionCode:  1,
+			UnitID:        1,
+			Protocol:      ProtocolRTU, // different protocol
+			Address:       1,
+			Type:          FieldTypeInt16,
+		},
+	}).Split()
+	assert.NoError(t, err)
+	assert.Len(t, reqs, 2)
 }
 
 func TestBuilder_ReadHoldingRegistersTCP(t *testing.T) {
@@ -194,7 +231,10 @@ func TestBuilder_ReadHoldingRegistersTCP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadHoldingRegistersTCP()
 	assert.NoError(t, err)
@@ -242,7 +282,10 @@ func TestBuilder_ReadHoldingRegistersRTU(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadHoldingRegistersRTU()
 	assert.NoError(t, err)
@@ -283,7 +326,10 @@ func TestBuilder_ReadInputRegistersTCP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadInputRegistersTCP()
 	assert.NoError(t, err)
@@ -323,7 +369,10 @@ func TestBuilder_ReadInputRegistersRTU(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadInputRegistersRTU()
 	assert.NoError(t, err)
@@ -342,7 +391,7 @@ func TestBuilder_ReadInputRegistersRTU(t *testing.T) {
 	assert.Equal(t, []byte{0x0, 0x4, 0x0, 0x12, 0x0, 0x4, 0x50, 0x1d}, received)
 }
 
-func TestField_ModbusAddress(t *testing.T) {
+func TestBField_ServerAddress(t *testing.T) {
 	given := &BField{}
 
 	given.ServerAddress(":502")
@@ -350,7 +399,31 @@ func TestField_ModbusAddress(t *testing.T) {
 	assert.Equal(t, ":502", given.Field.ServerAddress)
 }
 
-func TestField_UnitID(t *testing.T) {
+func TestBField_FunctionCode(t *testing.T) {
+	given := &BField{}
+
+	given.FunctionCode(0x2)
+
+	assert.Equal(t, uint8(0x2), given.Field.FunctionCode)
+}
+
+func TestBField_Protocol(t *testing.T) {
+	given := &BField{}
+
+	given.Protocol(ProtocolTCP)
+
+	assert.Equal(t, ProtocolTCP, given.Field.Protocol)
+}
+
+func TestBField_RequestInterval(t *testing.T) {
+	given := &BField{}
+
+	given.RequestInterval(1 * time.Second)
+
+	assert.Equal(t, Duration(1*time.Second), given.Field.RequestInterval)
+}
+
+func TestBField_UnitID(t *testing.T) {
 	given := &BField{}
 
 	given.UnitID(1)
@@ -358,7 +431,7 @@ func TestField_UnitID(t *testing.T) {
 	assert.Equal(t, uint8(1), given.Field.UnitID)
 }
 
-func TestField_ByteOrder(t *testing.T) {
+func TestBField_ByteOrder(t *testing.T) {
 	given := &BField{}
 
 	given.ByteOrder(packet.BigEndian)
@@ -366,7 +439,7 @@ func TestField_ByteOrder(t *testing.T) {
 	assert.Equal(t, packet.BigEndian, given.Field.ByteOrder)
 }
 
-func TestField_Name(t *testing.T) {
+func TestBField_Name(t *testing.T) {
 	given := &BField{}
 
 	given.Name("fire_alarm_do")
@@ -377,8 +450,24 @@ func TestField_Name(t *testing.T) {
 func TestNewBuilder(t *testing.T) {
 	b := NewRequestBuilder(":5020", 2)
 
-	assert.Equal(t, ":5020", b.serverAddress)
-	assert.Equal(t, uint8(2), b.unitID)
+	assert.Equal(t, ":5020", b.config.ServerAddress)
+	assert.Equal(t, uint8(2), b.config.UnitID)
+}
+
+func TestNewRequestBuilderWithConfig(t *testing.T) {
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: ":5020",
+		FunctionCode:  1,
+		UnitID:        2,
+		Protocol:      ProtocolTCP,
+		Interval:      Duration(1 * time.Second),
+	})
+
+	assert.Equal(t, ":5020", b.config.ServerAddress)
+	assert.Equal(t, uint8(1), b.config.FunctionCode)
+	assert.Equal(t, uint8(2), b.config.UnitID)
+	assert.Equal(t, ProtocolTCP, b.config.Protocol)
+	assert.Equal(t, Duration(1*time.Second), b.config.Interval)
 }
 
 func TestBuilder_Add(t *testing.T) {
@@ -387,6 +476,26 @@ func TestBuilder_Add(t *testing.T) {
 
 	assert.Equal(t, "test", b.fields[0].ServerAddress)
 	assert.Equal(t, uint8(1), b.fields[0].UnitID)
+}
+
+func TestBuilder_AddField(t *testing.T) {
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: "test",
+		FunctionCode:  1,
+		UnitID:        1,
+		Protocol:      ProtocolTCP,
+		Interval:      Duration(1 * time.Minute),
+	})
+	b.AddField(Field{
+		Name: "X",
+	})
+
+	assert.Equal(t, "X", b.fields[0].Name)
+	assert.Equal(t, "test", b.fields[0].ServerAddress)
+	assert.Equal(t, uint8(1), b.fields[0].FunctionCode)
+	assert.Equal(t, ProtocolTCP, b.fields[0].Protocol)
+	assert.Equal(t, uint8(1), b.fields[0].UnitID)
+	assert.Equal(t, Duration(1*time.Minute), b.fields[0].RequestInterval)
 }
 
 func TestBuilder_Bit(t *testing.T) {
@@ -585,6 +694,22 @@ func TestBuilder_String(t *testing.T) {
 		Address:       256,
 		Length:        10,
 		Name:          "fire_alarm_di",
+	}
+	assert.Equal(t, expect, b.fields[0])
+}
+
+func TestBuilder_Bytes(t *testing.T) {
+	b := NewRequestBuilder(":5020", 2)
+
+	b.Add(b.Bytes(256, 10).Name("raw_bytes"))
+
+	expect := Field{
+		ServerAddress: ":5020",
+		UnitID:        2,
+		Type:          FieldTypeRawBytes,
+		Address:       256,
+		Length:        10,
+		Name:          "raw_bytes",
 	}
 	assert.Equal(t, expect, b.fields[0])
 }
@@ -995,217 +1120,38 @@ func TestRegisterRequest_ExtractFields(t *testing.T) {
 	}
 }
 
-func TestField_registerSize(t *testing.T) {
+func TestProtocolType_UnmarshalJSON(t *testing.T) {
 	var testCases = []struct {
-		name   string
-		when   Field
-		expect uint16
+		name      string
+		given     string
+		expect    []ProtocolType
+		expectErr string
 	}{
 		{
-			name:   "bit",
-			when:   Field{Type: FieldTypeBit, Bit: 1},
-			expect: 1,
+			name:   "ok, case",
+			given:  `["tcp", "tCP", "TCP"]`,
+			expect: []ProtocolType{ProtocolTCP, ProtocolTCP, ProtocolTCP},
 		},
 		{
-			name:   "byte",
-			when:   Field{Type: FieldTypeByte, FromHighByte: true},
-			expect: 1,
-		},
-		{
-			name:   "uint8",
-			when:   Field{Type: FieldTypeUint8, FromHighByte: false},
-			expect: 1,
-		},
-		{
-			name:   "int8",
-			when:   Field{Type: FieldTypeInt8, FromHighByte: true},
-			expect: 1,
-		},
-		{
-			name:   "uint16",
-			when:   Field{Type: FieldTypeUint16},
-			expect: 1,
-		},
-		{
-			name:   "int16",
-			when:   Field{Type: FieldTypeInt16},
-			expect: 1,
-		},
-		{
-			name:   "uint32",
-			when:   Field{Type: FieldTypeUint32},
-			expect: 2,
-		},
-		{
-			name:   "int32",
-			when:   Field{Type: FieldTypeInt32},
-			expect: 2,
-		},
-		{
-			name:   "uint64",
-			when:   Field{Type: FieldTypeUint64},
-			expect: 4,
-		},
-		{
-			name:   "int64",
-			when:   Field{Type: FieldTypeInt64},
-			expect: 4,
-		},
-		{
-			name:   "float32",
-			when:   Field{Type: FieldTypeFloat32},
-			expect: 2,
-		},
-		{
-			name:   "float64",
-			when:   Field{Type: FieldTypeFloat64},
-			expect: 4,
-		},
-		{
-			name:   "string odd size",
-			when:   Field{Type: FieldTypeString, Length: 5},
-			expect: 3,
-		},
-		{
-			name:   "string even size",
-			when:   Field{Type: FieldTypeString, Length: 6},
-			expect: 3,
-		},
-		{
-			name:   "string even size2",
-			when:   Field{Type: FieldTypeString, Length: 4},
-			expect: 2,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.expect, tc.when.registerSize())
-		})
-	}
-}
-
-func TestField_ExtractFrom(t *testing.T) {
-	var testCases = []struct {
-		name              string
-		givenRegisterData []byte
-		whenType          FieldType
-		whenByteOrder     packet.ByteOrder
-		expect            interface{}
-		expectErr         string
-	}{
-		{
-			name:              "bit",
-			givenRegisterData: []byte{0x0, 0x0, 0b00010001, 0x0},
-			whenType:          FieldTypeBit,
-			expect:            true,
-		},
-		{
-			name:              "byte",
-			givenRegisterData: []byte{0x0, 0x0, 0x1, 0x0},
-			whenType:          FieldTypeByte,
-			expect:            byte(1),
-		},
-		{
-			name:              "uint8",
-			whenType:          FieldTypeUint8,
-			givenRegisterData: []byte{0x0, 0x0, 0xFF, 0x0},
-			expect:            uint8(255),
-		},
-		{
-			name:              "int8",
-			whenType:          FieldTypeInt8,
-			givenRegisterData: []byte{0x0, 0x0, 0xFF, 0x0},
-			expect:            int8(-1),
-		},
-		{
-			name:              "uint16",
-			whenType:          FieldTypeUint16,
-			givenRegisterData: []byte{0x0, 0x0, 0x0, 0xFF},
-			expect:            uint16(255),
-		},
-		{
-			name:              "int16",
-			whenType:          FieldTypeInt16,
-			givenRegisterData: []byte{0x0, 0x0, 0xFF, 0xFF},
-			expect:            int16(-1),
-		},
-		{
-			name:              "uint32",
-			whenType:          FieldTypeUint32,
-			givenRegisterData: []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x1},
-			expect:            uint32(1),
-		},
-		{
-			name:              "int32",
-			whenType:          FieldTypeInt32,
-			givenRegisterData: []byte{0x0, 0x0, 0xFF, 0xFF, 0xFF, 0xFF},
-			expect:            int32(-1),
-		},
-		{
-			name:              "uint64",
-			whenType:          FieldTypeUint64,
-			givenRegisterData: []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1},
-			expect:            uint64(1),
-		},
-		{
-			name:              "int64",
-			whenType:          FieldTypeInt64,
-			givenRegisterData: []byte{0x0, 0x0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
-			expect:            int64(-1),
-		},
-		{
-			name:              "float32",
-			whenType:          FieldTypeFloat32,
-			whenByteOrder:     packet.BigEndianLowWordFirst,
-			givenRegisterData: []byte{0x0, 0x0, 0xcc, 0xcd, 0x3f, 0xec},
-			expect:            float32(1.85),
-		},
-		{
-			name:              "float64",
-			whenType:          FieldTypeFloat64,
-			whenByteOrder:     packet.BigEndianLowWordFirst,
-			givenRegisterData: []byte{0x0, 0x0, 0x99, 0x9a, 0x99, 0x99, 0x99, 0x99, 0x3f, 0xfd},
-			expect:            float64(1.85),
-		},
-		{
-			name:              "string odd size",
-			whenType:          FieldTypeString,
-			whenByteOrder:     packet.LittleEndian,
-			givenRegisterData: []byte{0x0, 0x0, 0x53, 0x56, 0x43, 0x83},
-			expect:            "SVC",
-		},
-		{
-			name:              "nok, coil can not be extracted from registers",
-			whenType:          FieldTypeCoil,
-			givenRegisterData: []byte{0x0, 0x0, 0x53, 0x56, 0x43, 0x83},
-			expectErr:         "extraction failure due unknown field type",
+			name:  "ok, all variants",
+			given: `["tcp", "rtu"]`,
+			expect: []ProtocolType{
+				ProtocolTCP,
+				ProtocolRTU,
+			},
 		},
 		{
 			name:      "nok, unknown type",
-			whenType:  0,
-			expect:    nil,
-			expectErr: "extraction failure due unknown field type",
+			given:     `["tcp", "unknown"]`,
+			expect:    []ProtocolType{ProtocolTCP, 0x0},
+			expectErr: `unknown protocol value, given: '"unknown"'`,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := Field{
-				ServerAddress: ":502",
-				UnitID:        1,
-				Address:       1,
-				Type:          tc.whenType,
-				Bit:           8,
-				FromHighByte:  true,
-				Length:        3,
-				ByteOrder:     tc.whenByteOrder,
-				Name:          "test",
-			}
-
-			registers, _ := packet.NewRegisters(tc.givenRegisterData, 0)
-
-			result, err := f.ExtractFrom(registers)
+			var result []ProtocolType
+			err := json.Unmarshal([]byte(tc.given), &result)
 
 			assert.Equal(t, tc.expect, result)
 			if tc.expectErr != "" {
@@ -1217,64 +1163,61 @@ func TestField_ExtractFrom(t *testing.T) {
 	}
 }
 
-func TestField_Validate(t *testing.T) {
-	example := Field{
-		ServerAddress: ":502",
-		UnitID:        1,
-		Address:       100,
-		Type:          FieldTypeString,
-		Bit:           0,
-		FromHighByte:  false,
-		Length:        10,
-		ByteOrder:     0,
-		Name:          "fire_alarm_di",
-	}
+func TestDuration_MarshalJSON(t *testing.T) {
+	result, err := Duration.MarshalJSON(Duration(time.Second))
+	assert.NoError(t, err)
+	assert.Equal(t, []byte(`"1s"`), result)
+}
+
+func TestDuration_UnmarshalJSON(t *testing.T) {
 	var testCases = []struct {
 		name      string
-		given     func(f *Field)
+		given     string
+		expect    Duration
 		expectErr string
 	}{
 		{
-			name:  "ok",
-			given: func(f *Field) {},
+			name:   "ok, string",
+			given:  `"1s"`,
+			expect: Duration(time.Second),
 		},
 		{
-			name:      "nok, server address is empty",
-			given:     func(f *Field) { f.ServerAddress = "" },
-			expectErr: "field server address can not be empty",
+			name:   "ok, number",
+			given:  `1000000000`,
+			expect: Duration(time.Second),
 		},
 		{
-			name:      "nok, type is not set",
-			given:     func(f *Field) { f.Type = 0 },
-			expectErr: "field type must be set",
+			name:      "nok, wrong case",
+			given:     `"1S"`,
+			expect:    Duration(0),
+			expectErr: `could not parse Duration from string, err: time: unknown unit "S" in duration "1S"`,
 		},
 		{
-			name:      "nok, type is invalid value",
-			given:     func(f *Field) { f.Type = 15 },
-			expectErr: "field type has invalid value",
+			name:      "nok, invalid type",
+			given:     `null`,
+			expect:    Duration(0),
+			expectErr: `could not parse Duration as int, err: strconv.ParseInt: parsing "null": invalid syntax`,
 		},
 		{
-			name:      "nok, bit out of range",
-			given:     func(f *Field) { f.Bit = 16 },
-			expectErr: "field bit value must be in range (0-15)",
+			name:      "nok, too short",
+			given:     `""`,
+			expect:    Duration(0),
+			expectErr: `duration value too short, given: '""'`,
 		},
 		{
-			name: "nok, string type must have length",
-			given: func(f *Field) {
-				f.Type = FieldTypeString
-				f.Length = 0
-			},
-			expectErr: "field with type string must have length set",
+			name:      "nok, wrong end",
+			given:     `"1S`,
+			expect:    Duration(0),
+			expectErr: `duration value does not end with quote mark, given: '"1S'`,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := example
+			var result Duration
+			err := result.UnmarshalJSON([]byte(tc.given))
 
-			tc.given(&f)
-
-			err := f.Validate()
+			assert.Equal(t, tc.expect, result)
 			if tc.expectErr != "" {
 				assert.EqualError(t, err, tc.expectErr)
 			} else {

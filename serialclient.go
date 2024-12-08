@@ -133,7 +133,7 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 			if err := c.flush(); err != nil {
 				return nil, &ClientError{Err: err}
 			}
-			return nil, &ErrPacketTooLong
+			return nil, ErrPacketTooLong
 		}
 		// check if we have exactly the error packet. Error packets are shorter than regulars packets
 		if errPacket := c.asProtocolErrorFunc(received[0:total]); errPacket != nil {

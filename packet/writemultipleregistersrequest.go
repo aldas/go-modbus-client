@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 )
 
 // WriteMultipleRegistersRequestTCP is TCP Request for Write Multiple Registers (FC=16)
@@ -61,7 +61,7 @@ func NewWriteMultipleRegistersRequestTCP(unitID uint8, startAddress uint16, data
 
 	return &WriteMultipleRegistersRequestTCP{
 		MBAPHeader: MBAPHeader{
-			TransactionID: uint16(1 + rand.Intn(65534)),
+			TransactionID: 1 + rand.N(uint16(65534)), // #nosec G404
 			ProtocolID:    0,
 		},
 		WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{

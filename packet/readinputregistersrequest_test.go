@@ -251,17 +251,17 @@ func TestReadInputRegistersRequestRTU_ExpectedResponseLength(t *testing.T) {
 		{
 			name:         "ok, 2 byte",
 			whenQuantity: 1,
-			expect:       4 + 2,
+			expect:       3 + 2 + 2,
 		},
 		{
 			name:         "ok, 4 bytes",
 			whenQuantity: 2,
-			expect:       4 + 4,
+			expect:       3 + 4 + 2,
 		},
 		{
 			name:         "ok, 250 bytes",
 			whenQuantity: 125,
-			expect:       4 + 250,
+			expect:       3 + 250 + 2,
 		},
 	}
 

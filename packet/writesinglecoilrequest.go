@@ -2,7 +2,7 @@ package packet
 
 import (
 	"encoding/binary"
-	"math/rand"
+	"math/rand/v2"
 )
 
 // WriteSingleCoilRequestTCP is TCP Request for Write Single Coil (FC=05)
@@ -51,7 +51,7 @@ type WriteSingleCoilRequest struct {
 func NewWriteSingleCoilRequestTCP(unitID uint8, address uint16, coilState bool) (*WriteSingleCoilRequestTCP, error) {
 	return &WriteSingleCoilRequestTCP{
 		MBAPHeader: MBAPHeader{
-			TransactionID: uint16(1 + rand.Intn(65534)),
+			TransactionID: 1 + rand.N(uint16(65534)), // #nosec G404
 			ProtocolID:    0,
 		},
 		WriteSingleCoilRequest: WriteSingleCoilRequest{
@@ -135,8 +135,8 @@ func (r WriteSingleCoilRequestRTU) Bytes() []byte {
 
 // ExpectedResponseLength returns length of bytes that valid response to this request would be
 func (r WriteSingleCoilRequestRTU) ExpectedResponseLength() int {
-	// response = 1 UnitID + 1 functionCode + 2 coils byte count + 2 coils data
-	return 6
+	// response = 1 UnitID + 1 functionCode + 2 coils byte count + 2 coils data + 2 CRC
+	return 6 + 2
 }
 
 // ParseWriteSingleCoilRequestRTU parses given bytes into WriteSingleCoilRequestRTU

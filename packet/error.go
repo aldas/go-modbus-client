@@ -14,7 +14,7 @@ const (
 	// ErrIllegalFunction is The function code received in the query is not an allowable action for the server.
 	// This may be because the function code is only applicable to newer devices, and was not implemented in the
 	// unit selected. It could also indicate that the server is in the wrong state to process a request of this
-	// type, for example because it is unconfigured and is being asked to return register values.
+	// type, for example because it is not configured and is being asked to return register values.
 	// Quote from: `MODBUS Application Protocol Specification V1.1b3`, page 48
 	ErrIllegalFunction = 1
 	// ErrIllegalDataAddress is The data address received in the query is not an allowable address for the server.
