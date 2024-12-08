@@ -3,7 +3,7 @@ package packet
 import (
 	"encoding/binary"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 )
 
 // WriteMultipleCoilsRequestTCP is TCP Request for Write Multiple Coils (FC=15)
@@ -56,7 +56,7 @@ func NewWriteMultipleCoilsRequestTCP(unitID uint8, startAddress uint16, coils []
 	coilsBytes := CoilsToBytes(coils)
 	return &WriteMultipleCoilsRequestTCP{
 		MBAPHeader: MBAPHeader{
-			TransactionID: uint16(1 + rand.Intn(65534)),
+			TransactionID: 1 + rand.N(uint16(65534)), // #nosec G404
 			ProtocolID:    0,
 		},
 		WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{

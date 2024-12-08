@@ -2,7 +2,7 @@ package packet
 
 import (
 	"encoding/binary"
-	"math/rand"
+	"math/rand/v2"
 )
 
 // WriteSingleRegisterRequestTCP is TCP Request for Write Single Register (FC=06)
@@ -45,7 +45,7 @@ type WriteSingleRegisterRequest struct {
 func NewWriteSingleRegisterRequestTCP(unitID uint8, address uint16, data []byte) (*WriteSingleRegisterRequestTCP, error) {
 	w := &WriteSingleRegisterRequestTCP{
 		MBAPHeader: MBAPHeader{
-			TransactionID: uint16(1 + rand.Intn(65534)),
+			TransactionID: 1 + rand.N(uint16(65534)), // #nosec G404
 			ProtocolID:    0,
 		},
 		WriteSingleRegisterRequest: WriteSingleRegisterRequest{
@@ -124,8 +124,8 @@ func (r WriteSingleRegisterRequestRTU) Bytes() []byte {
 
 // ExpectedResponseLength returns length of bytes that valid response to this request would be
 func (r WriteSingleRegisterRequestRTU) ExpectedResponseLength() int {
-	// response = 1 UnitID + 1 functionCode + 2 address + 2 register data
-	return 6
+	// response = 1 UnitID + 1 functionCode + 2 address + 2 register data + 2 CRC
+	return 6 + 2
 }
 
 // ParseWriteSingleRegisterRequestRTU parses given bytes into WriteSingleRegisterRequestRTU

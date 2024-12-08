@@ -3,7 +3,7 @@ package packet
 import (
 	"encoding/binary"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 )
 
 // ReadHoldingRegistersRequestTCP is TCP Request for Read Holding Registers (FC=03)
@@ -48,7 +48,7 @@ func NewReadHoldingRegistersRequestTCP(unitID uint8, startAddress uint16, quanti
 
 	return &ReadHoldingRegistersRequestTCP{
 		MBAPHeader: MBAPHeader{
-			TransactionID: uint16(1 + rand.Intn(65534)),
+			TransactionID: 1 + rand.N(uint16(65534)), // #nosec G404
 			ProtocolID:    0,
 		},
 		ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{
@@ -165,9 +165,9 @@ func ParseReadHoldingRegistersRequestRTU(data []byte) (*ReadHoldingRegistersRequ
 }
 
 // ExpectedResponseLength returns length of bytes that valid response to this request would be
-func (r ReadHoldingRegistersRequest) ExpectedResponseLength() int {
-	// response = 1 UnitID + 1 functionCode + 2 register byte count + N register data
-	return 4 + 2*int(r.Quantity)
+func (r ReadHoldingRegistersRequestRTU) ExpectedResponseLength() int {
+	// response = 1 UnitID + 1 functionCode + 1 register byte count + N register data + 2 crc
+	return 3 + 2*int(r.Quantity) + 2
 }
 
 // FunctionCode returns function code of this request

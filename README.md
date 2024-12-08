@@ -37,6 +37,7 @@ go get github.com/aldas/go-modbus-client
 * Client (TCP/UDP +RTU) separated from Modbus packets
 * Convenience methods to convert register data to/from different data types (with endianess/word order)
 * Builders to group multiple fields into request batches
+* Poller to request batches request and parse response to field values with long-running process.
 
 ## Examples
 
@@ -73,6 +74,10 @@ for _, req := range requests {
     assert.Equal(t, "alarm_do_1", fields[1].Field.Name)
 }
 ```
+
+### Polling values with long-running process
+
+See simple poller implementation [cmd/modbus-poller/main.go](cmd/modbus-poller/main.go).
 
 ### RTU over serial port
 

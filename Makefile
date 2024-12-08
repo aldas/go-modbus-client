@@ -39,6 +39,8 @@ coverage: ## Generate global code coverage report
 coverhtml: ## Generate global code coverage report in HTML
 	./scripts/coverage.sh html;
 
+build-poller: ## build modbus-poller for current machine Arch
+	@go build -o modbus-poller cmd/modbus-poller/main.go
 
 help: ## Display this help screen
 	@grep -h -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

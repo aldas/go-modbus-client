@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 )
 
 // ReadWriteMultipleRegistersRequestTCP is TCP Request for Read / Write Multiple Registers (FC=23)
@@ -78,7 +78,7 @@ func NewReadWriteMultipleRegistersRequestTCP(
 
 	return &ReadWriteMultipleRegistersRequestTCP{
 		MBAPHeader: MBAPHeader{
-			TransactionID: uint16(1 + rand.Intn(65534)),
+			TransactionID: 1 + rand.N(uint16(65534)), // #nosec G404
 			ProtocolID:    0,
 		},
 		ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
