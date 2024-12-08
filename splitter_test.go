@@ -18,20 +18,17 @@ func TestSplit_validationError(t *testing.T) {
 		},
 	}
 
-	batched, err := split(given, splitToFC3TCP)
+	batched, err := split(given, 3, ProtocolTCP)
 	assert.EqualError(t, err, "field server address can not be empty")
 	assert.Nil(t, batched)
 }
 
 func TestSplit_single(t *testing.T) {
 	given := []Field{
-		{
-			ServerAddress: ":502", UnitID: 0,
-			Address: 1, Type: FieldTypeInt8,
-		},
+		{ServerAddress: ":502", UnitID: 0, Address: 1, Type: FieldTypeInt8},
 	}
 
-	batched, err := split(given, splitToFC3TCP)
+	batched, err := split(given, 3, ProtocolTCP)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 1)
 
@@ -42,10 +39,7 @@ func TestSplit_single(t *testing.T) {
 		StartAddress:  1,
 		Request:       pReq,
 		Fields: []Field{
-			{
-				ServerAddress: ":502", UnitID: 0,
-				Address: 1, Type: FieldTypeInt8,
-			},
+			{ServerAddress: ":502", UnitID: 0, Address: 1, Type: FieldTypeInt8, FunctionCode: 3, Protocol: ProtocolTCP},
 		},
 	}
 	batched[0].Request.(*packet.ReadHoldingRegistersRequestTCP).TransactionID = 123
@@ -76,7 +70,7 @@ func TestSplit_many(t *testing.T) {
 		},
 	}
 
-	batched, err := split(given, splitToFC3TCP)
+	batched, err := split(given, 3, ProtocolTCP)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 1)
 
@@ -89,29 +83,29 @@ func TestSplit_many(t *testing.T) {
 
 func TestSplit_to2RegisterBatches(t *testing.T) {
 	given := []Field{
-		{
+		{Name: "F1",
 			ServerAddress: ":502", UnitID: 0,
 			Address: 1, Type: FieldTypeInt8,
 		},
-		{
+		{Name: "F2",
 			ServerAddress: ":502", UnitID: 0,
 			Address: 119, Length: 15, Type: FieldTypeString, // 119,120,121,122, 123,124,125,126 == new request
 		},
-		{
+		{Name: "F3",
 			ServerAddress: ":502", UnitID: 0,
 			Address: 121, Type: FieldTypeUint64, // 121,122,123,124
 		},
-		{
+		{Name: "F4",
 			ServerAddress: ":502", UnitID: 0,
 			Address: 122, Type: FieldTypeFloat32, // 122, 123
 		},
-		{
+		{Name: "F5",
 			ServerAddress: ":502", UnitID: 0,
 			Address: 1, Type: FieldTypeCoil, // should be ignored
 		},
 	}
 
-	batched, err := split(given, splitToFC3TCP)
+	batched, err := split(given, 3, ProtocolTCP)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 2)
 
@@ -156,7 +150,7 @@ func TestSplit_to2CoilsBatches(t *testing.T) {
 		},
 	}
 
-	batched, err := split(given, splitToFC1TCP)
+	batched, err := split(given, 1, ProtocolTCP)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 2)
 

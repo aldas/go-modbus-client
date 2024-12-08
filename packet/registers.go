@@ -452,36 +452,9 @@ func (r Registers) String(address uint16, length uint8) (string, error) {
 // StringWithByteOrder returns register data as string starting from given address to given length and byte order.
 // Data is interpreted as ASCII 0x0 (null) terminated string.
 func (r Registers) StringWithByteOrder(address uint16, length uint8, byteOrder ByteOrder) (string, error) {
-	if byteOrder == useDefaultByteOrder {
-		byteOrder = r.defaultByteOrder
-	}
-	if address < r.startAddress {
-		return "", errors.New("address under startAddress bounds")
-	}
-	startIndex := (address - r.startAddress) * 2
-	endIndex := startIndex + uint16(length)
-	// length is bytes. but data is sent in registers (2 bytes) and in big endian format. so last character for odd size
-	// needs 1 more byte (it needs to be swapped)
-	if length%2 != 0 {
-		endIndex++
-	}
-	if int(endIndex) > len(r.data) {
-		return "", errors.New("address over data bounds")
-	}
-
-	// TODO: clean these loops up to single for loop
-
-	rawBytes := r.data[startIndex:endIndex]
-	if byteOrder&BigEndian != 0 {
-		for i := 1; i < len(rawBytes); i++ {
-			// data is in BIG ENDIAN format in register (register is 2 bytes). so every 2 bytes needs to have their bytes swapped
-			// to get little endian order
-			if i%2 != 0 {
-				previous := rawBytes[i-1]
-				rawBytes[i-1] = rawBytes[i]
-				rawBytes[i] = previous
-			}
-		}
+	rawBytes, err := r.BytesWithByteOrder(address, length, byteOrder)
+	if err != nil {
+		return "", err
 	}
 
 	builder := new(strings.Builder)
@@ -493,6 +466,54 @@ func (r Registers) StringWithByteOrder(address uint16, length uint8, byteOrder B
 		// what we create here is ASCII string
 		_, _ = fmt.Fprintf(builder, "%c", rune(b))
 	}
-
 	return builder.String(), nil
+}
+
+// Bytes returns register data as byte slice starting from given address to given length in bytes.
+func (r Registers) Bytes(address uint16, length uint8) ([]byte, error) {
+	return r.BytesWithByteOrder(address, length, useDefaultByteOrder)
+}
+
+// BytesWithByteOrder returns register data as byte slice starting from given address to given length in bytes and byte order.
+func (r Registers) BytesWithByteOrder(address uint16, length uint8, byteOrder ByteOrder) ([]byte, error) {
+	if byteOrder == useDefaultByteOrder {
+		byteOrder = r.defaultByteOrder
+	}
+	if address < r.startAddress {
+		return nil, errors.New("address under startAddress bounds")
+	}
+	startIndex := (address - r.startAddress) * 2
+	endIndex := startIndex + uint16(length)
+	// length is bytes. but data is sent in registers (2 bytes) and in big endian format. so last character for odd size
+	// needs 1 more byte (it needs to be swapped)
+	isOddSize := length%2 != 0
+	neededLength := length
+	if isOddSize {
+		neededLength++
+		endIndex++
+	}
+	if int(endIndex) > len(r.data) {
+		return nil, errors.New("address over data bounds")
+	}
+
+	// TODO: clean these loops up to single for loop
+
+	rawBytes := make([]byte, neededLength)
+	copy(rawBytes, r.data[startIndex:endIndex])
+
+	if byteOrder&BigEndian != 0 {
+		for i := 1; i < len(rawBytes); i++ {
+			// data is in BIG ENDIAN format in register (register is 2 bytes). so every 2 bytes needs to have their bytes swapped
+			// to get little endian order
+			if i%2 != 0 {
+				previous := rawBytes[i-1]
+				rawBytes[i-1] = rawBytes[i]
+				rawBytes[i] = previous
+			}
+		}
+	}
+	if isOddSize {
+		return rawBytes[0:length], nil
+	}
+	return rawBytes, nil
 }

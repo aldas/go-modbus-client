@@ -113,7 +113,10 @@ func TestBuilder_ReadDiscreteInputsTCP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadDiscreteInputsTCP()
 	assert.NoError(t, err)
@@ -153,7 +156,10 @@ func TestBuilder_ReadDiscreteInputsRTU(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadDiscreteInputsRTU()
 	assert.NoError(t, err)
@@ -194,7 +200,10 @@ func TestBuilder_ReadHoldingRegistersTCP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadHoldingRegistersTCP()
 	assert.NoError(t, err)
@@ -242,7 +251,10 @@ func TestBuilder_ReadHoldingRegistersRTU(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadHoldingRegistersRTU()
 	assert.NoError(t, err)
@@ -283,7 +295,10 @@ func TestBuilder_ReadInputRegistersTCP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadInputRegistersTCP()
 	assert.NoError(t, err)
@@ -323,7 +338,10 @@ func TestBuilder_ReadInputRegistersRTU(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b := NewRequestBuilder(addr, 1)
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: addr,
+		UnitID:        1,
+	})
 
 	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadInputRegistersRTU()
 	assert.NoError(t, err)
@@ -377,8 +395,24 @@ func TestField_Name(t *testing.T) {
 func TestNewBuilder(t *testing.T) {
 	b := NewRequestBuilder(":5020", 2)
 
-	assert.Equal(t, ":5020", b.serverAddress)
-	assert.Equal(t, uint8(2), b.unitID)
+	assert.Equal(t, ":5020", b.config.ServerAddress)
+	assert.Equal(t, uint8(2), b.config.UnitID)
+}
+
+func TestNewRequestBuilderWithConfig(t *testing.T) {
+	b := NewRequestBuilderWithConfig(BuilderDefaults{
+		ServerAddress: ":5020",
+		FunctionCode:  1,
+		UnitID:        2,
+		Protocol:      ProtocolTCP,
+		Interval:      1 * time.Second,
+	})
+
+	assert.Equal(t, ":5020", b.config.ServerAddress)
+	assert.Equal(t, uint8(1), b.config.FunctionCode)
+	assert.Equal(t, uint8(2), b.config.UnitID)
+	assert.Equal(t, ProtocolTCP, b.config.Protocol)
+	assert.Equal(t, 1*time.Second, b.config.Interval)
 }
 
 func TestBuilder_Add(t *testing.T) {
@@ -1250,7 +1284,7 @@ func TestField_Validate(t *testing.T) {
 		},
 		{
 			name:      "nok, type is invalid value",
-			given:     func(f *Field) { f.Type = 15 },
+			given:     func(f *Field) { f.Type = 16 },
 			expectErr: "field type has invalid value",
 		},
 		{
