@@ -1530,33 +1530,52 @@ func TestRegisters_string(t *testing.T) {
 		expectedErr          string
 	}{
 		{
-			name:     "BigEndian: string, string is in the middle of data",
-			given:    Registers{data: []byte{0x0, 0x0, 0x56, 0x53, 0x0, 0x43, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x83, 0x83}},
-			address:  1,
-			length:   10, // 10 bytes = 5 registers
-			expected: "SVC",
+			name: "BigEndian to LittleEndian: string, string is in the middle of data",
+			given: Registers{data: []byte{
+				0x0, 0x0, // register 0
+				0x41 /*A*/, 0x42, /*B*/ // register 1 [A,B] -> LE -> [B,A]
+				0x0, 0x43, /*C*/ // register 2 [ ,C] -> LE -> [C, ]
+				0x0, 0x0, // register 3
+				0x0, 0x0, // register 4
+				0x0, 0x0, // register 5
+				0x83, 0x83, // register 6
+			}},
+			whenDefaultByteOrder: LittleEndian,
+			address:              1,
+			length:               10, // 10 bytes = 5 registers
+			expected:             "BAC",
 		},
 		{
-			name:     "BigEndian: string, string is in the end of data, odd length",
-			given:    Registers{data: []byte{0x0, 0x0, 0x56, 0x53, 0x83, 0x43}},
-			address:  1,
-			length:   3, // 3 bytes = 2 registers
-			expected: "SVC",
-		},
-		{
-			name:                 "LittleEndian: string, string is in the end of data, odd length",
-			given:                Registers{data: []byte{0x0, 0x0, 0x53, 0x56, 0x43, 0x83}},
+			name: "BigEndian to LittleEndian: string, string is in the end of data, odd length",
+			given: Registers{data: []byte{
+				0x0, 0x0, // register 0
+				0x41, 0x42, // register 1 [A,B] -> LE -> [B,A]
+				0x43, 0x44, // register 2 [C,D] -> LE -> [D,C]
+			}},
 			whenDefaultByteOrder: LittleEndian,
 			address:              1,
 			length:               3, // 3 bytes = 2 registers
-			expected:             "SVC",
+			expected:             "BAD",
 		},
 		{
-			name:     "BigEndian: string, string is in the end of data",
-			given:    Registers{data: []byte{0x0, 0x0, 0x56, 0x53, 0x43, 0x43}},
-			address:  1,
-			length:   2, // 2 bytes = 1 registers
-			expected: "SV",
+			name: "leave as BigEndian: string, string is in the end of data, odd length",
+			given: Registers{data: []byte{
+				0x0, 0x0, // register 0
+				0x41, 0x42, // register 1 [A,B]
+				0x43, 0x44, // register 2 [C,D]
+			}},
+			whenDefaultByteOrder: BigEndian,
+			address:              1,
+			length:               3, // 3 bytes = 2 registers
+			expected:             "ABC",
+		},
+		{
+			name:                 "leave as BigEndian: string, string is in the end of data",
+			given:                Registers{data: []byte{0x0, 0x0, 0x56, 0x53, 0x43, 0x43}},
+			whenDefaultByteOrder: BigEndian,
+			address:              1,
+			length:               2, // 2 bytes = 1 registers
+			expected:             "VS",
 		},
 		{
 			name:        "BigEndian: address before start",
@@ -1585,6 +1604,158 @@ func TestRegisters_string(t *testing.T) {
 			}
 
 			result, err := r.String(tc.address, tc.length)
+
+			if err != nil || tc.expectedErr != "" {
+				assert.EqualError(t, err, tc.expectedErr)
+			}
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestRegisters_bytes(t *testing.T) {
+	var testCases = []struct {
+		name                 string
+		given                Registers
+		whenDefaultByteOrder ByteOrder
+		address              uint16
+		length               uint8
+		expected             []byte
+		expectedErr          string
+	}{
+		{
+			name: "BigEndian to LittleEndian: string, string is in the middle of data",
+			given: Registers{data: []byte{
+				0x0, 0x0, // register 0
+				0x41, 0x42, // register 1 [A,B] -> LE -> [B,A]
+				0x0, 0x43, // register 2 [ ,C] -> LE -> [C, ]
+				0x0, 0x0, // register 3
+			}},
+			whenDefaultByteOrder: LittleEndian,
+			address:              1,
+			length:               3,
+			expected:             []byte{0x42, 0x41, 0x43},
+		},
+		{
+			name: "BigEndian: string, string is in the middle of data",
+			given: Registers{data: []byte{
+				0x0, 0x0, // register 0
+				0x41, 0x42, // register 1
+				0x43, 0x0, // register 2
+				0x0, 0x0, // register 3
+			}},
+			address:  1,
+			length:   3,
+			expected: []byte{0x41, 0x42, 0x43},
+		},
+		{
+			name:        "BigEndian: address before start",
+			given:       Registers{startAddress: 2, data: []byte{0x0, 0x0, 0x56, 0x53, 0x43, 0x43}},
+			address:     1,
+			length:      2,
+			expected:    nil,
+			expectedErr: "address under startAddress bounds",
+		},
+		{
+			name:        "BigEndian: length over data bounds",
+			given:       Registers{startAddress: 1, data: []byte{0x0, 0x0, 0x56, 0x53, 0x43, 0x43}},
+			address:     1,
+			length:      7,
+			expected:    nil,
+			expectedErr: "address over data bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := tc.given
+			r.defaultByteOrder = BigEndianHighWordFirst
+			if tc.whenDefaultByteOrder != 0 {
+				r.WithByteOrder(tc.whenDefaultByteOrder)
+			}
+
+			result, err := r.Bytes(tc.address, tc.length)
+
+			if err != nil || tc.expectedErr != "" {
+				assert.EqualError(t, err, tc.expectedErr)
+			}
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestRegisters_IsEqualBytes(t *testing.T) {
+	var testCases = []struct {
+		name            string
+		given           Registers
+		registerAddress uint16
+		length          uint8
+		toEqual         []byte
+		expected        bool
+		expectedErr     string
+	}{
+		{
+			name:            "ok, address is at the start of data",
+			given:           Registers{data: []byte{0x41, 0x42, 0x0, 0x0}},
+			registerAddress: 0,
+			length:          2,
+			toEqual:         []byte{0x41, 0x42},
+			expected:        true,
+		},
+		{
+			name:            "ok, address is at the start of data, length is longer than bytes",
+			given:           Registers{data: []byte{0x41, 0x42, 0x0, 0x0}},
+			registerAddress: 0,
+			length:          2, // only first 2 bytes are checked
+			toEqual:         []byte{0x41, 0x42, 0x43},
+			expected:        true,
+		},
+		{
+			name:            "ok, ends is at the end of data",
+			given:           Registers{data: []byte{0x0, 0x0, 0xff, 0xff}},
+			registerAddress: 1,
+			length:          2,
+			toEqual:         []byte{0xff, 0xff},
+			expected:        true,
+		},
+		{
+			name:            "ok, ends is at the end of data and bytes is longer than end",
+			given:           Registers{data: []byte{0x0, 0x0, 0xff, 0xff}},
+			registerAddress: 1,
+			length:          2,
+			toEqual:         []byte{0xff, 0xff, 0xff},
+			expected:        true,
+		},
+		{
+			name:            "nok, address is at the start of data",
+			given:           Registers{data: []byte{0xff, 0x0, 0x0, 0x0}},
+			registerAddress: 0,
+			length:          2,
+			toEqual:         []byte{0xff, 0xff},
+			expected:        false,
+		},
+		{
+			name:            "nok: address before start",
+			given:           Registers{data: []byte{0x1, 0xff, 0xff, 0x4, 0x5}, startAddress: 10},
+			registerAddress: 9,
+			length:          2,
+			toEqual:         []byte{0xff, 0xff},
+			expectedErr:     "address under startAddress bounds",
+		},
+		{
+			name:            "nok: length over data bounds",
+			given:           Registers{data: []byte{0x1, 0xff, 0xff, 0x4, 0x5}, startAddress: 10},
+			registerAddress: 11,
+			length:          5,
+			toEqual:         []byte{0xff, 0xff, 0xff, 0xff},
+			expectedErr:     "address+length over data bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := tc.given
+			result, err := r.IsEqualBytes(tc.registerAddress, tc.length, tc.toEqual)
 
 			if err != nil || tc.expectedErr != "" {
 				assert.EqualError(t, err, tc.expectedErr)

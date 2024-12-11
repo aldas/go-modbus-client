@@ -144,6 +144,13 @@ func NewClient(conf ClientConfig) *Client {
 
 // Connect opens network connection to Client to server. Context lifetime is only meant for this call.
 // ctx is to be used for to cancel connection attempt.
+//
+// `address` should be formatted as url.URL scheme `[scheme:][//[userinfo@]host][/]path[?query]`
+// Example:
+// * `127.0.0.1:502` (library defaults to `tcp` as scheme)
+// * `udp://127.0.0.1:502`
+// * `/dev/ttyS0?BaudRate=4800`
+// * `file:///dev/ttyUSB?BaudRate=4800`
 func (c *Client) Connect(ctx context.Context, address string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()

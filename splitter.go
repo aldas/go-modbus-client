@@ -84,7 +84,8 @@ func groupForSingleConnection(fields []Field, functionCode uint8, protocol Proto
 	groups := map[groupID]builderSlotGroup{}
 	for _, f := range fields {
 		// adjust field fc and protocol to any cases
-		if functionCode != 0 && f.FunctionCode == 0 {
+		isCoil := f.Type == FieldTypeCoil
+		if (!isCoil && functionCode != 0 && f.FunctionCode == 0) || (isCoil && onlyCoils) {
 			f.FunctionCode = functionCode
 		}
 		if protocol != protocolAny && f.Protocol == protocolAny {
@@ -104,7 +105,6 @@ func groupForSingleConnection(fields []Field, functionCode uint8, protocol Proto
 			continue
 		}
 
-		isCoil := f.Type == FieldTypeCoil
 		if onlyCoils && !isCoil {
 			continue
 		} else if !onlyCoils && isCoil {

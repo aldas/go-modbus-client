@@ -1,6 +1,8 @@
 package modbus
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -45,9 +47,13 @@ const (
 	maxFieldTypeValue = uint8(15)
 )
 
+// ErrInvalidValue is returned when extracted value for Field resulted invalid value (Field.Invalid).
+var ErrInvalidValue = errors.New("invalid value")
+
 // FieldType is enum type for data types that Field can represent
 type FieldType uint8
 
+// UnmarshalJSON converts raw bytes from JSON to FieldType
 func (ft *FieldType) UnmarshalJSON(raw []byte) error {
 	t := string(raw)
 	switch strings.ToLower(t) {
@@ -83,20 +89,29 @@ func (ft *FieldType) UnmarshalJSON(raw []byte) error {
 		*ft = FieldTypeCoil
 
 	default:
-		return fmt.Errorf("unknown field type value, given: `%s`", t)
+		return fmt.Errorf("unknown field type value, given: '%s'", t)
 	}
 	return nil
 }
 
 const (
-	protocolAny ProtocolType = 0
+	protocolAny ProtocolType = 0 // any or unknown protocol
 
+	// ProtocolTCP represents Modbus TCP encoding which could be transferred over TCP/UDP connection.
 	ProtocolTCP ProtocolType = 1
+	// ProtocolRTU represents Modbus RTU encoding with a Cyclic-Redundant Checksum. Could be transferred
+	// over TCP/UDP and serial connection.
 	ProtocolRTU ProtocolType = 2
+	// protocolASCII represents Modbus ASCII encoding where each data byte is split into the two bytes
+	// representing the two ASCII characters in the Hexadecimal value
+	// NOTE: NOT YET IMPLEMENTED
+	// protocolASCII ProtocolType = 3
 )
 
+// ProtocolType represents which Modbus encoding is being used.
 type ProtocolType uint8
 
+// UnmarshalJSON converts raw bytes from JSON to Invalid
 func (pt *ProtocolType) UnmarshalJSON(raw []byte) error {
 	t := string(raw)
 	switch strings.ToLower(t) {
@@ -106,7 +121,7 @@ func (pt *ProtocolType) UnmarshalJSON(raw []byte) error {
 		*pt = ProtocolRTU
 
 	default:
-		return fmt.Errorf("unknown protocol value, given: `%s`", t)
+		return fmt.Errorf("unknown protocol value, given: '%s'", t)
 	}
 	return nil
 }
@@ -137,6 +152,10 @@ type Field struct {
 	FromHighByte bool             `json:"from_high_byte" mapstructure:"from_high_byte"`
 	Length       uint8            `json:"length" mapstructure:"length"`
 	ByteOrder    packet.ByteOrder `json:"byte_order" mapstructure:"byte_order"`
+
+	// Invalid that represents not existent value in modbus. Given value (presented in hex) when encountered is converted to ErrInvalidValue error.
+	// for example your energy meter ac power is uint32 value of which `0xffffffff` should be treated as error/invalid value.
+	Invalid Invalid `json:"invalid,omitempty" mapstructure:"invalid"`
 }
 
 // registerSize returns how many register/words does this field would take in modbus response
@@ -196,6 +215,10 @@ func (f *Field) Validate() error {
 
 // ExtractFrom extracts field value from given registers data
 func (f *Field) ExtractFrom(registers *packet.Registers) (interface{}, error) {
+	if err := f.CheckInvalid(registers); err != nil {
+		return nil, err
+	}
+
 	switch f.Type {
 	case FieldTypeBit:
 		return registers.Bit(f.Address, f.Bit)
@@ -229,6 +252,49 @@ func (f *Field) ExtractFrom(registers *packet.Registers) (interface{}, error) {
 	return nil, errors.New("extraction failure due unknown field type")
 }
 
+// CheckInvalid compares Invalid value to bytes in fields registers. When raw data in response
+// equal to Invalid the ErrInvalidValue error is returned. Nil return value means no problems occurred.
+func (f *Field) CheckInvalid(registers *packet.Registers) error {
+	if f.Invalid == nil {
+		return nil
+	}
+	ok, err := registers.IsEqualBytes(f.Address, uint8(f.registerSize()*2), f.Invalid)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return ErrInvalidValue
+	}
+	return nil
+}
+
+// Invalid that represents not existent value in modbus. Given value (presented in hex) when encountered is converted to ErrInvalidValue error.
+// for example your energy meter ac power is uint32 value of which `0xffffffff` should be treated as error/invalid value.
+type Invalid []byte
+
+// MarshalJSON converts Invalid to JSON bytes
+func (i Invalid) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hex.EncodeToString(i))
+}
+
+// UnmarshalJSON converts raw bytes from JSON to Invalid
+func (i *Invalid) UnmarshalJSON(b []byte) error {
+	l := len(b)
+	if l < 3 { // minimum is `"0"
+		return errors.New("could not unmarshal Invalid, raw value too short")
+	}
+	if b[0] != '"' || b[l-1] != '"' {
+		return errors.New("could not unmarshal Invalid, raw value does not seems to be string")
+	}
+
+	b, err := hex.DecodeString(string(b[1 : l-1]))
+	if err != nil {
+		return fmt.Errorf("could not unmarshal Invalid hex string, err: %w", err)
+	}
+	*i = b
+	return nil
+}
+
 // BField is distinct field be requested and extracted from response
 type BField struct {
 	Field
@@ -248,8 +314,8 @@ func (f *BField) FunctionCode(functionCode uint8) *BField {
 }
 
 // RequestInterval sets RequestInterval for Field
-func (f *BField) RequestInterval(requestInterval Duration) *BField {
-	f.Field.RequestInterval = requestInterval
+func (f *BField) RequestInterval(requestInterval time.Duration) *BField {
+	f.Field.RequestInterval = Duration(requestInterval)
 	return f
 }
 
@@ -277,16 +343,24 @@ func (f *BField) Name(name string) *BField {
 	return f
 }
 
+// A Duration represents the elapsed time between two instants. This library type extends time.Duration
+// with JSON marshalling and unmarshalling support to/from string. i.e. "1s" unmarshalled to `1 * time.Second`
 type Duration time.Duration
 
+// MarshalJSON converts Duration to JSON bytes
 func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String())
+	buf := bytes.Buffer{}
+	buf.WriteRune('"')
+	buf.WriteString(time.Duration(d).String())
+	buf.WriteRune('"')
+	return buf.Bytes(), nil
 }
 
+// UnmarshalJSON converts raw bytes from JSON to Duration
 func (d *Duration) UnmarshalJSON(b []byte) error {
 	var v any
 	if err := json.Unmarshal(b, &v); err != nil {
-		return err
+		return fmt.Errorf("could not parse Duration, err: %w", err)
 	}
 	switch value := v.(type) {
 	case float64:
@@ -295,7 +369,7 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	case string:
 		tmp, err := time.ParseDuration(value)
 		if err != nil {
-			return err
+			return fmt.Errorf("could not parse Duration from string, err: %w", err)
 		}
 		*d = Duration(tmp)
 		return nil
@@ -310,8 +384,14 @@ type Builder struct {
 	config BuilderDefaults
 }
 
+// BuilderDefaults holds Builder default values for adding/creating Fields
 type BuilderDefaults struct {
-	// format as URL: `scheme://host:port` or file `/dev/ttyS0?BaudRate=4800`
+	// Should be formatted as url.URL scheme `[scheme:][//[userinfo@]host][/]path[?query]`
+	// Example:
+	// * `127.0.0.1:502` (library defaults to `tcp` as scheme)
+	// * `udp://127.0.0.1:502`
+	// * `/dev/ttyS0?BaudRate=4800`
+	// * `file:///dev/ttyUSB?BaudRate=4800`
 	ServerAddress string       `json:"server_address" mapstructure:"server_address"`
 	FunctionCode  uint8        `json:"function_code" mapstructure:"function_code"`
 	UnitID        uint8        `json:"unit_id" mapstructure:"unit_id"`
@@ -351,7 +431,8 @@ func (b *Builder) AddField(field Field) *Builder {
 
 // Add adds field into Builder
 func (b *Builder) Add(field *BField) *Builder {
-	return b.add(field.Field)
+	b.fields = append(b.fields, field.Field)
+	return b
 }
 
 // Add adds field into Builder
@@ -674,7 +755,20 @@ func (r BuilderRequest) AsRegisters(response RegistersResponse) (*packet.Registe
 // FieldValue is concrete value extracted from register data using field data type and byte order
 type FieldValue struct {
 	Field Field
+
+	// Value contains extracted value
+	// possible types:
+	// * bool
+	// * byte
+	// * []byte
+	// * uint[8/16/32/64]
+	// * int[8/16/32/64]
+	// * float[32/64]
+	// * string
 	Value any
+
+	// Error contains error that occurred during extracting field from response.
+	// In case Field.Invalid was set and response data contained it the Error is set to modbus.ErrInvalidValue
 	Error error
 }
 

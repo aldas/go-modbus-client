@@ -475,9 +475,9 @@ func (r Registers) Bytes(address uint16, length uint8) ([]byte, error) {
 }
 
 // BytesWithByteOrder returns register data as byte slice starting from given address to given length in bytes and byte order.
-func (r Registers) BytesWithByteOrder(address uint16, length uint8, byteOrder ByteOrder) ([]byte, error) {
-	if byteOrder == useDefaultByteOrder {
-		byteOrder = r.defaultByteOrder
+func (r Registers) BytesWithByteOrder(address uint16, length uint8, wantByteOrder ByteOrder) ([]byte, error) {
+	if wantByteOrder == useDefaultByteOrder {
+		wantByteOrder = r.defaultByteOrder
 	}
 	if address < r.startAddress {
 		return nil, errors.New("address under startAddress bounds")
@@ -501,7 +501,9 @@ func (r Registers) BytesWithByteOrder(address uint16, length uint8, byteOrder By
 	rawBytes := make([]byte, neededLength)
 	copy(rawBytes, r.data[startIndex:endIndex])
 
-	if byteOrder&BigEndian != 0 {
+	// on the wire, modbus data is considered assumed to be in big endian order
+	// when we want to interpret dat as Little endian we need to switch bytes in each register
+	if wantByteOrder&LittleEndian != 0 {
 		for i := 1; i < len(rawBytes); i++ {
 			// data is in BIG ENDIAN format in register (register is 2 bytes). so every 2 bytes needs to have their bytes swapped
 			// to get little endian order
@@ -516,4 +518,29 @@ func (r Registers) BytesWithByteOrder(address uint16, length uint8, byteOrder By
 		return rawBytes[0:length], nil
 	}
 	return rawBytes, nil
+}
+
+// IsEqualBytes checks if data at given address, to given length, is equal to given bytes
+// Equality check is done against raw data from request which is in Big Endian format
+func (r Registers) IsEqualBytes(registerAddress uint16, addressLengthInBytes uint8, bytes []byte) (bool, error) {
+	if registerAddress < r.startAddress {
+		return false, errors.New("address under startAddress bounds")
+	}
+	startIndex := (registerAddress - r.startAddress) * 2
+
+	l := int(addressLengthInBytes)
+	if len(bytes) < l {
+		l = len(bytes)
+	}
+	endIndex := startIndex + uint16(l)
+	if int(endIndex) > len(r.data) {
+		return false, errors.New("address+length over data bounds")
+	}
+	data := r.data[startIndex:endIndex]
+	for i := 0; i < l; i++ {
+		if bytes[i] != data[i] {
+			return false, nil
+		}
+	}
+	return true, nil
 }
