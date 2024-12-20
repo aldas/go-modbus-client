@@ -19,6 +19,10 @@ type Poller struct {
 	logger      *slog.Logger
 	connectFunc func(ctx context.Context, batchProtocol modbus.ProtocolType, address string) (*modbus.Client, error)
 
+	statsLock     sync.RWMutex
+	statsInterval time.Duration
+	batchStats    []BatchStatistics
+
 	batches []modbus.BuilderRequest
 
 	ResultChan chan Result
@@ -26,19 +30,29 @@ type Poller struct {
 
 // Config is configuration for Poller
 type Config struct {
-	Logger      *slog.Logger
+	// Logger is logger instance used by poller to log. Defaults to slog.Default
+	Logger *slog.Logger
+	// StatisticsInterval is interval used by poller job to update statistics
+	StatisticsInterval time.Duration
+	// ConnectFunc is used by poller jobs to open connection to modbus server
 	ConnectFunc func(ctx context.Context, batchProtocol modbus.ProtocolType, address string) (*modbus.Client, error)
 }
 
 // NewPollerWithConfig creates new instance of Poller with given configuration
 func NewPollerWithConfig(batches []modbus.BuilderRequest, conf Config) *Poller {
 	p := &Poller{
-		timeNow:     time.Now,
-		logger:      conf.Logger,
-		connectFunc: conf.ConnectFunc,
-		ResultChan:  make(chan Result, len(batches)),
+		timeNow:       time.Now,
+		logger:        conf.Logger,
+		connectFunc:   conf.ConnectFunc,
+		statsLock:     sync.RWMutex{},
+		statsInterval: 60 * time.Second,
+		batchStats:    make([]BatchStatistics, len(batches)),
+		ResultChan:    make(chan Result, 2*len(batches)),
 
 		batches: batches,
+	}
+	if conf.StatisticsInterval > 0 {
+		p.statsInterval = conf.StatisticsInterval
 	}
 	if conf.Logger == nil {
 		p.logger = slog.Default()
@@ -46,6 +60,15 @@ func NewPollerWithConfig(batches []modbus.BuilderRequest, conf Config) *Poller {
 	if conf.ConnectFunc == nil {
 		p.connectFunc = DefaultConnectClient
 	}
+	for i, batch := range batches {
+		p.batchStats[i] = BatchStatistics{
+			BatchIndex:    i,
+			FunctionCode:  batch.FunctionCode(),
+			Protocol:      batch.Protocol,
+			ServerAddress: batch.ServerAddress,
+		}
+	}
+
 	return p
 }
 
@@ -56,7 +79,19 @@ func NewPoller(batches []modbus.BuilderRequest) *Poller {
 
 // Poll starts polling until context is cancelled
 func (p *Poller) Poll(ctx context.Context) error {
+	if len(p.batches) == 0 {
+		<-ctx.Done()
+		return nil
+	}
+
 	wg := new(sync.WaitGroup)
+	jobStatsChan := make(chan BatchStatistics, 2)
+	wg.Add(1)
+	go func(ctx context.Context, wg *sync.WaitGroup, statsChan chan BatchStatistics) {
+		defer wg.Done()
+		p.runJobStatistics(ctx, jobStatsChan)
+	}(ctx, wg, jobStatsChan)
+
 	result := p.ResultChan
 	for i, batch := range p.batches {
 		wg.Add(1)
@@ -64,11 +99,10 @@ func (p *Poller) Poll(ctx context.Context) error {
 			timeNow:     p.timeNow,
 			logger:      p.logger,
 			connectFunc: p.connectFunc,
-			stats: jobStatistics{
-				FunctionCode:  batch.FunctionCode(),
-				Protocol:      batch.Protocol,
-				ServerAddress: batch.ServerAddress,
-			},
+
+			statsInterval:  p.statsInterval,
+			stats:          p.batchStats[i],
+			statisticsChan: jobStatsChan,
 
 			batchIndex:  i,
 			batch:       batch,
@@ -88,25 +122,13 @@ type job struct {
 	logger      *slog.Logger
 	connectFunc func(ctx context.Context, batchProtocol modbus.ProtocolType, address string) (*modbus.Client, error)
 
-	batchIndex int
-	batch      modbus.BuilderRequest
-	stats      jobStatistics
+	statsInterval time.Duration
+	batchIndex    int
+	batch         modbus.BuilderRequest
+	stats         BatchStatistics
 
-	resultsChan chan Result
-}
-
-type jobStatistics struct {
-	BatchIndex int
-
-	FunctionCode  uint8
-	Protocol      modbus.ProtocolType
-	ServerAddress string
-
-	IsPolling       bool
-	StartCount      uint64
-	RequestOKCount  uint64
-	RequestErrCount uint64
-	SendSkipCount   uint64
+	resultsChan    chan Result
+	statisticsChan chan BatchStatistics
 }
 
 func (j *job) Start(ctx context.Context) {
@@ -119,8 +141,12 @@ func (j *job) Start(ctx context.Context) {
 		start := j.timeNow()
 		j.stats.IsPolling = true
 		j.stats.StartCount++
+		j.statisticsChan <- j.stats
+
 		err := j.poll(ctx)
 		j.stats.IsPolling = false
+		j.statisticsChan <- j.stats
+
 		if err == nil || ctx.Err() != nil {
 			return
 		}
@@ -164,11 +190,12 @@ func (j *job) poll(ctx context.Context) error {
 	}
 	defer client.Close()
 
-	statsTicker := time.NewTicker(60 * time.Second)
+	statsTicker := time.NewTicker(j.statsInterval)
 	defer statsTicker.Stop()
 	ticker := time.NewTicker(batch.RequestInterval)
 	defer ticker.Stop()
 
+	functionCode := batch.FunctionCode()
 	const maxDoRetryCount = 5
 	countDoErr := 0
 	for {
@@ -184,7 +211,7 @@ func (j *job) poll(ctx context.Context) error {
 				j.logger.Error("request failed",
 					"err", err,
 					"req_duration", reqDuration,
-					"fc", batch.FunctionCode(),
+					"fc", functionCode,
 					"server", batch.ServerAddress,
 					"err_count", countDoErr,
 				)
@@ -201,7 +228,7 @@ func (j *job) poll(ctx context.Context) error {
 			if err != nil && !errors.Is(err, modbus.ErrorFieldExtractHadError) {
 				j.logger.Error("request extraction failed",
 					"err", err,
-					"fc", batch.FunctionCode(),
+					"fc", functionCode,
 					"server", batch.ServerAddress,
 				)
 				continue
@@ -225,14 +252,16 @@ func (j *job) poll(ctx context.Context) error {
 				)
 			}
 		case <-statsTicker.C:
-			j.logger.Info("statistics tick",
-				"fc", batch.FunctionCode(),
+			j.statisticsChan <- j.stats
+
+			j.logger.Debug("statistics tick",
+				"fc", functionCode,
 				"server", batch.ServerAddress,
 				"stats", j.stats,
 			)
 		case <-ctx.Done():
 			j.logger.Info("poll done",
-				"fc", batch.FunctionCode(),
+				"fc", functionCode,
 				"server", batch.ServerAddress,
 			)
 			return ctx.Err()
@@ -241,8 +270,8 @@ func (j *job) poll(ctx context.Context) error {
 }
 
 // DefaultConnectClient is default implementation to create and connect to Modbus server
-func DefaultConnectClient(ctx context.Context, protocol modbus.ProtocolType, address string) (*modbus.Client, error) {
-	u, err := url.Parse(address)
+func DefaultConnectClient(ctx context.Context, protocol modbus.ProtocolType, addressURL string) (*modbus.Client, error) {
+	u, err := url.Parse(addressURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse server address, err: %w", err)
 	}
@@ -286,4 +315,44 @@ func durationParam(queryParams url.Values, param string, defaultValue time.Durat
 		return dur, nil
 	}
 	return defaultValue, nil
+}
+
+// BatchStatistics holds statistics about specific Poller batch internal state. Batch is identified by BatchIndex.
+type BatchStatistics struct {
+	BatchIndex int
+
+	FunctionCode  uint8
+	Protocol      modbus.ProtocolType
+	ServerAddress string
+
+	// IsPolling shows if that batch job currently in polling or waiting for retry
+	IsPolling bool
+	// StartCount is count how many times the poll job has (re)started
+	StartCount uint64
+	// RequestOKCount is count how many modbus request have succeeded for that job
+	RequestOKCount uint64
+	// RequestErrCount is count how many modbus request have failed for that job
+	RequestErrCount uint64
+	// SendSkipCount is count how many ResultChan sends were skipped due blocked Result channel
+	SendSkipCount uint64
+}
+
+// BatchStatistics returns statistics of all Poller batches. These are updated when batch job state changes, mostly at Config.StatisticsInterval interval.
+func (p *Poller) BatchStatistics() []BatchStatistics {
+	p.statsLock.RLock()
+	defer p.statsLock.RUnlock()
+	return append([]BatchStatistics{}, p.batchStats...)
+}
+
+func (p *Poller) runJobStatistics(ctx context.Context, statsChan chan BatchStatistics) {
+	for {
+		select {
+		case jobStatistics := <-statsChan:
+			p.statsLock.Lock()
+			p.batchStats[jobStatistics.BatchIndex] = jobStatistics
+			p.statsLock.Unlock()
+		case <-ctx.Done():
+			return
+		}
+	}
 }

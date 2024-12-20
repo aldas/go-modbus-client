@@ -1463,47 +1463,153 @@ func TestFieldType_UnmarshalJSON(t *testing.T) {
 	var testCases = []struct {
 		name      string
 		given     string
-		expect    []FieldType
+		expect    FieldType
 		expectErr string
 	}{
 		{
 			name:   "ok, case",
-			given:  `["bit", "bIT", "BIT"]`,
-			expect: []FieldType{FieldTypeBit, FieldTypeBit, FieldTypeBit},
+			given:  `"bIT"`,
+			expect: FieldTypeBit,
 		},
 		{
-			name:  "ok, all variants",
-			given: `["bit", "byte", "uint8", "int8", "uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "float64", "string", "coil", "bytes"]`,
-			expect: []FieldType{
-				FieldTypeBit,
-				FieldTypeByte,
-				FieldTypeUint8,
-				FieldTypeInt8,
-				FieldTypeUint16,
-				FieldTypeInt16,
-				FieldTypeUint32,
-				FieldTypeInt32,
-				FieldTypeUint64,
-				FieldTypeInt64,
-				FieldTypeFloat32,
-				FieldTypeFloat64,
-				FieldTypeString,
-				FieldTypeCoil,
-				FieldTypeRawBytes,
-			},
+			name:   "ok, all variants",
+			given:  `"byte"`,
+			expect: FieldTypeByte,
 		},
 		{
 			name:      "nok, unknown type",
-			given:     `["bit", "unknown"]`,
-			expect:    []FieldType{FieldTypeBit, 0x0},
+			given:     `"unknown"`,
+			expect:    0,
+			expectErr: `unknown field type value, given: 'unknown'`,
+		},
+		{
+			name:      "nok, too short",
+			given:     `""`,
+			expect:    0,
+			expectErr: `field type value too short, given: '""'`,
+		},
+		{
+			name:      "nok, wrong start",
+			given:     `unknown"`,
+			expect:    0,
+			expectErr: `field type value does not start with quote mark, given: 'unknown"'`,
+		},
+		{
+			name:      "nok, wrong end",
+			given:     `"unknown`,
+			expect:    0,
+			expectErr: `field type value does not end with quote mark, given: '"unknown'`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var result FieldType
+			err := result.UnmarshalJSON([]byte(tc.given))
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestParseFieldType(t *testing.T) {
+	var testCases = []struct {
+		name      string
+		given     string
+		expect    FieldType
+		expectErr string
+	}{
+		{
+			name:   "ok, case",
+			given:  `bIT`,
+			expect: FieldTypeBit,
+		},
+		{
+			name:   "ok, byte",
+			given:  `byte`,
+			expect: FieldTypeByte,
+		},
+		{
+			name:   "ok, uint8",
+			given:  `uint8`,
+			expect: FieldTypeUint8,
+		},
+		{
+			name:   "ok, int8",
+			given:  `int8`,
+			expect: FieldTypeInt8,
+		},
+		{
+			name:   "ok, uint16",
+			given:  `uint16`,
+			expect: FieldTypeUint16,
+		},
+		{
+			name:   "ok, int16",
+			given:  `int16`,
+			expect: FieldTypeInt16,
+		},
+		{
+			name:   "ok, uint32",
+			given:  `uint32`,
+			expect: FieldTypeUint32,
+		},
+		{
+			name:   "ok, int32",
+			given:  `int32`,
+			expect: FieldTypeInt32,
+		},
+		{
+			name:   "ok, uint64",
+			given:  `uint64`,
+			expect: FieldTypeUint64,
+		},
+		{
+			name:   "ok, int64",
+			given:  `int64`,
+			expect: FieldTypeInt64,
+		},
+		{
+			name:   "ok, float32",
+			given:  `float32`,
+			expect: FieldTypeFloat32,
+		},
+		{
+			name:   "ok, float64",
+			given:  `float64`,
+			expect: FieldTypeFloat64,
+		},
+		{
+			name:   "ok, string",
+			given:  `string`,
+			expect: FieldTypeString,
+		},
+		{
+			name:   "ok, coil",
+			given:  `coil`,
+			expect: FieldTypeCoil,
+		},
+		{
+			name:   "ok, bytes",
+			given:  `bytes`,
+			expect: FieldTypeRawBytes,
+		},
+		{
+			name:      "nok, unknown type",
+			given:     `"unknown"`,
+			expect:    0,
 			expectErr: `unknown field type value, given: '"unknown"'`,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var result []FieldType
-			err := json.Unmarshal([]byte(tc.given), &result)
+			result, err := ParseFieldType(tc.given)
 
 			assert.Equal(t, tc.expect, result)
 			if tc.expectErr != "" {
@@ -1644,14 +1750,26 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 			name:      "nok, invalid type",
 			given:     `null`,
 			expect:    Duration(0),
-			expectErr: `invalid duration`,
+			expectErr: `could not parse Duration as int, err: strconv.ParseInt: parsing "null": invalid syntax`,
+		},
+		{
+			name:      "nok, too short",
+			given:     `""`,
+			expect:    Duration(0),
+			expectErr: `duration value too short, given: '""'`,
+		},
+		{
+			name:      "nok, wrong end",
+			given:     `"1S`,
+			expect:    Duration(0),
+			expectErr: `duration value does not end with quote mark, given: '"1S'`,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			var result Duration
-			err := json.Unmarshal([]byte(tc.given), &result)
+			err := result.UnmarshalJSON([]byte(tc.given))
 
 			assert.Equal(t, tc.expect, result)
 			if tc.expectErr != "" {

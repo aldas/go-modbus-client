@@ -15,7 +15,7 @@ import (
 )
 
 func TestRequestToServer(t *testing.T) {
-	mbs := new(mbServer)
+	mbs := new(mbHandler)
 
 	serverAddrCh := make(chan string)
 	s := server.Server{
@@ -99,10 +99,10 @@ func doRequest(ctx context.Context, serverAddress string) error {
 	return nil
 }
 
-type mbServer struct {
+type mbHandler struct {
 }
 
-func (s *mbServer) Handle(ctx context.Context, received packet.Request) (packet.Response, error) {
+func (s *mbHandler) Handle(ctx context.Context, received packet.Request) (packet.Response, error) {
 	switch req := received.(type) {
 	case *packet.ReadHoldingRegistersRequestTCP:
 		p := packet.ReadHoldingRegistersResponseTCP{

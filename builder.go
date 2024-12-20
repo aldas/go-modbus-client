@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aldas/go-modbus-client/packet"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -55,43 +56,63 @@ type FieldType uint8
 
 // UnmarshalJSON converts raw bytes from JSON to FieldType
 func (ft *FieldType) UnmarshalJSON(raw []byte) error {
-	t := string(raw)
-	switch strings.ToLower(t) {
-	case `"bit"`:
-		*ft = FieldTypeBit
-	case `"byte"`:
-		*ft = FieldTypeByte
-	case `"uint8"`:
-		*ft = FieldTypeUint8
-	case `"int8"`:
-		*ft = FieldTypeInt8
-	case `"uint16"`:
-		*ft = FieldTypeUint16
-	case `"int16"`:
-		*ft = FieldTypeInt16
-	case `"uint32"`:
-		*ft = FieldTypeUint32
-	case `"int32"`:
-		*ft = FieldTypeInt32
-	case `"uint64"`:
-		*ft = FieldTypeUint64
-	case `"int64"`:
-		*ft = FieldTypeInt64
-	case `"float32"`:
-		*ft = FieldTypeFloat32
-	case `"float64"`:
-		*ft = FieldTypeFloat64
-	case `"string"`:
-		*ft = FieldTypeString
-	case `"bytes"`:
-		*ft = FieldTypeRawBytes
-	case `"coil"`:
-		*ft = FieldTypeCoil
-
-	default:
-		return fmt.Errorf("unknown field type value, given: '%s'", t)
+	if len(raw) < 3 {
+		return fmt.Errorf("field type value too short, given: '%s'", raw)
 	}
+	if raw[0] != '"' {
+		return fmt.Errorf("field type value does not start with quote mark, given: '%s'", raw)
+	}
+	e := len(raw) - 1
+	if raw[e] != '"' {
+		return fmt.Errorf("field type value does not end with quote mark, given: '%s'", raw)
+	}
+
+	tmp, err := ParseFieldType(string(raw[1:e]))
+	if err != nil {
+		return err
+	}
+	*ft = tmp
 	return nil
+}
+
+// ParseFieldType parses given string to FieldType
+func ParseFieldType(raw string) (FieldType, error) {
+	var ft FieldType = 0
+	switch strings.ToLower(raw) {
+	case `bit`:
+		ft = FieldTypeBit
+	case `byte`:
+		ft = FieldTypeByte
+	case `uint8`:
+		ft = FieldTypeUint8
+	case `int8`:
+		ft = FieldTypeInt8
+	case `uint16`:
+		ft = FieldTypeUint16
+	case `int16`:
+		ft = FieldTypeInt16
+	case `uint32`:
+		ft = FieldTypeUint32
+	case `int32`:
+		ft = FieldTypeInt32
+	case `uint64`:
+		ft = FieldTypeUint64
+	case `int64`:
+		ft = FieldTypeInt64
+	case `float32`:
+		ft = FieldTypeFloat32
+	case `float64`:
+		ft = FieldTypeFloat64
+	case `string`:
+		ft = FieldTypeString
+	case `bytes`:
+		ft = FieldTypeRawBytes
+	case `coil`:
+		ft = FieldTypeCoil
+	default:
+		return ft, fmt.Errorf("unknown field type value, given: '%s'", raw)
+	}
+	return ft, nil
 }
 
 const (
@@ -357,25 +378,29 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON converts raw bytes from JSON to Duration
-func (d *Duration) UnmarshalJSON(b []byte) error {
-	var v any
-	if err := json.Unmarshal(b, &v); err != nil {
-		return fmt.Errorf("could not parse Duration, err: %w", err)
-	}
-	switch value := v.(type) {
-	case float64:
-		*d = Duration(time.Duration(value))
-		return nil
-	case string:
-		tmp, err := time.ParseDuration(value)
+func (d *Duration) UnmarshalJSON(raw []byte) error {
+	if raw[0] != '"' {
+		v, err := strconv.ParseInt(string(raw), 10, 64)
 		if err != nil {
-			return fmt.Errorf("could not parse Duration from string, err: %w", err)
+			return fmt.Errorf("could not parse Duration as int, err: %w", err)
 		}
-		*d = Duration(tmp)
+		*d = Duration(v)
 		return nil
-	default:
-		return errors.New("invalid duration")
 	}
+
+	if len(raw) < 3 {
+		return fmt.Errorf("duration value too short, given: '%s'", raw)
+	}
+	e := len(raw) - 1
+	if raw[e] != '"' {
+		return fmt.Errorf("duration value does not end with quote mark, given: '%s'", raw)
+	}
+	tmp, err := time.ParseDuration(string(raw[1:e]))
+	if err != nil {
+		return fmt.Errorf("could not parse Duration from string, err: %w", err)
+	}
+	*d = Duration(tmp)
+	return nil
 }
 
 // Builder helps to group extractable field values of different types into modbus requests with minimal amount of separate requests produced

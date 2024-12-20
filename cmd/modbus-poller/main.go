@@ -104,7 +104,7 @@ func main() {
 }
 
 func scaleValue(scale float64, value any) any {
-	// when scale=1 value will be converted to float64 type - this is a deliberate feature
+	// when scale!=0 value will be converted to float64 type - this is a deliberate feature
 	if scale == 0 {
 		return value
 	}
