@@ -240,7 +240,7 @@ func (j *job) poll(ctx context.Context) error {
 			}
 			select {
 			case j.resultsChan <- result:
-				j.logger.Debug("request success",
+				j.logger.Log(ctx, slog.Level(-8), "request success",
 					"count_ok", j.stats.RequestOKCount,
 					"req_duration", reqDuration,
 					"values", values,
