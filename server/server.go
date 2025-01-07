@@ -291,6 +291,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.isShutdown.Store(true)
+	if s.listener == nil {
+		return ErrServerClosed
+	}
 
 	err := s.listener.Close()
 
