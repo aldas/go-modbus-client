@@ -402,3 +402,35 @@ func TestParseRTUResponseWithCRC(t *testing.T) {
 		})
 	}
 }
+
+func TestIsBitSet(t *testing.T) {
+	var testCases = []struct {
+		name         string
+		givenData    []byte
+		whenStartBit uint16
+		whenBit      uint16
+		expect       bool
+		expectError  string
+	}{
+		{
+			name:         "ok", // 16 = 0000000000010000
+			givenData:    []byte{16, 0, 0, 128, 0, 33, 192, 128, 29, 0, 0, 32, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 40, 0, 0, 128, 144, 0},
+			whenStartBit: 6161,
+			whenBit:      6165, // idx=4 bit, in first byte
+			expect:       true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := isBitSet(tc.givenData, tc.whenStartBit, tc.whenBit)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
