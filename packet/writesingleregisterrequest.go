@@ -124,8 +124,8 @@ func (r WriteSingleRegisterRequestRTU) Bytes() []byte {
 
 // ExpectedResponseLength returns length of bytes that valid response to this request would be
 func (r WriteSingleRegisterRequestRTU) ExpectedResponseLength() int {
-	// response = 1 UnitID + 1 functionCode + 2 address + 2 register data
-	return 6
+	// response = 1 UnitID + 1 functionCode + 2 address + 2 register data + 2 CRC
+	return 6 + 2
 }
 
 // ParseWriteSingleRegisterRequestRTU parses given bytes into WriteSingleRegisterRequestRTU

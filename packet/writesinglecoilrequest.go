@@ -135,8 +135,8 @@ func (r WriteSingleCoilRequestRTU) Bytes() []byte {
 
 // ExpectedResponseLength returns length of bytes that valid response to this request would be
 func (r WriteSingleCoilRequestRTU) ExpectedResponseLength() int {
-	// response = 1 UnitID + 1 functionCode + 2 coils byte count + 2 coils data
-	return 6
+	// response = 1 UnitID + 1 functionCode + 2 coils byte count + 2 coils data + 2 CRC
+	return 6 + 2
 }
 
 // ParseWriteSingleCoilRequestRTU parses given bytes into WriteSingleCoilRequestRTU

@@ -102,7 +102,7 @@ func TestReadServerIDRequestTCP_ExpectedResponseLength(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, 8, example.ExpectedResponseLength())
+	assert.Equal(t, 10, example.ExpectedResponseLength())
 }
 
 func TestNewReadServerIDRequestRTU(t *testing.T) {
@@ -184,7 +184,7 @@ func TestReadServerIDRequestRTU_ExpectedResponseLength(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, 2, example.ExpectedResponseLength())
+	assert.Equal(t, 6, example.ExpectedResponseLength())
 }
 
 func TestReadServerIDRequest_FunctionCode(t *testing.T) {

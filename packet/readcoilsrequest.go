@@ -139,8 +139,8 @@ func (r ReadCoilsRequestRTU) Bytes() []byte {
 
 // ExpectedResponseLength returns length of bytes that valid response to this request would be
 func (r ReadCoilsRequestRTU) ExpectedResponseLength() int {
-	// response = 1 UnitID + 1 functionCode + 2 coils byte count + N coils data
-	return 4 + r.coilByteLength()
+	// response = 1 UnitID + 1 functionCode + 1 coils byte count + N coils data + 2 CRC
+	return 3 + r.coilByteLength() + 2
 }
 
 // ParseReadCoilsRequestRTU parses given bytes into ReadCoilsRequestRTU

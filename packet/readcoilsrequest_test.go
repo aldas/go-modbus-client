@@ -256,22 +256,22 @@ func TestReadCoilsRequestRTU_ExpectedResponseLength(t *testing.T) {
 		{
 			name:         "ok, 1 byte",
 			whenQuantity: 8,
-			expect:       4 + 1,
+			expect:       3 + 1 + 2,
 		},
 		{
 			name:         "ok, 2 bytes",
 			whenQuantity: 9,
-			expect:       4 + 2,
+			expect:       3 + 2 + 2,
 		},
 		{
 			name:         "ok, 11 bytes",
 			whenQuantity: 8*10 + 7,
-			expect:       4 + 11,
+			expect:       3 + 11 + 2,
 		},
 		{
 			name:         "ok, 253 bytes",
 			whenQuantity: 8 * 253,
-			expect:       4 + 253,
+			expect:       3 + 253 + 2,
 		},
 	}
 

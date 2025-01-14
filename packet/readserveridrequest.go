@@ -56,8 +56,8 @@ func (r ReadServerIDRequestTCP) Bytes() []byte {
 
 // ExpectedResponseLength returns length of bytes that valid response to this request would be
 func (r ReadServerIDRequestTCP) ExpectedResponseLength() int {
-	// response = 6 header len + 1 unitID + 1 fc
-	return 6 + 2
+	// response = 6 header len + 1 unitID + 1 fc + 1 byte count + N (unknown amount of bytes, at least 1)
+	return 6 + 4 // at least this amount
 }
 
 // ParseReadServerIDRequestTCP parses given bytes into ReadServerIDRequestTCP
@@ -103,8 +103,8 @@ func (r ReadServerIDRequestRTU) Bytes() []byte {
 
 // ExpectedResponseLength returns length of bytes that valid response to this request would be
 func (r ReadServerIDRequestRTU) ExpectedResponseLength() int {
-	// response = 1 UnitID + 1 functionCode
-	return 2
+	// response = 1 UnitID + 1 functionCode + 1 byte count for server id + 1 run status + 2 CRC
+	return 2 + 2 + 2 // at least this amount
 }
 
 // ParseReadServerIDRequestRTU parses given bytes into ReadServerIDRequestRTU
