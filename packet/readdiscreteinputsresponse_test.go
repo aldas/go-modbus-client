@@ -308,7 +308,7 @@ func TestReadDiscreteInputsResponse_IsInputSet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			given := ReadDiscreteInputsResponse{
 				InputsByteLength: 2,
-				Data:             []byte{0b10000001, 0b00010010},
+				Data:             []byte{0b00010010, 0b10000001},
 			}
 			result, err := given.IsInputSet(tc.whenStartAddress, tc.whenCoilAddress)
 
@@ -369,7 +369,7 @@ func TestReadDiscreteInputsResponse_IsCoilSet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			given := ReadDiscreteInputsResponse{
 				InputsByteLength: 2,
-				Data:             []byte{0b10000001, 0b00010010},
+				Data:             []byte{0b00010010, 0b10000001},
 			}
 			result, err := given.IsCoilSet(tc.whenStartAddress, tc.whenCoilAddress)
 

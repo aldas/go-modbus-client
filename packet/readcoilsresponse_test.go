@@ -275,7 +275,8 @@ func TestReadCoilsResponse_IsCoilSet(t *testing.T) {
 		},
 		{
 			name:             "ok, first byte, second bit, start 1",
-			whenStartAddress: 1, whenCoilAddress: 2, expect: true},
+			whenStartAddress: 1, whenCoilAddress: 2, expect: true,
+		},
 		{
 			name:             "ok, first byte, second bit, start 100",
 			whenStartAddress: 100, whenCoilAddress: 101, expect: true,
@@ -308,7 +309,7 @@ func TestReadCoilsResponse_IsCoilSet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			given := ReadCoilsResponse{
 				CoilsByteLength: 2,
-				Data:            []byte{0b10000001, 0b00010010},
+				Data:            []byte{0b00010010, 0b10000001}, // byte0, byte1 - bytes are read left to right
 			}
 			result, err := given.IsCoilSet(tc.whenStartAddress, tc.whenCoilAddress)
 

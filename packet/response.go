@@ -100,16 +100,16 @@ func ParseRTUResponse(data []byte) (Response, error) {
 	}
 }
 
-// isBitSet checks if N-th bit is set in data. NB: Bits are counted from `startBit` and right to left.
+// isBitSet checks if N-th bit is set in data. NB: Bits are counted from `startBit` and left to right (bytes).
 func isBitSet(data []byte, startBit uint16, bit uint16) (bool, error) {
-	targetBit := bit - startBit
+	targetBit := int(bit) - int(startBit)
 	if bit < startBit {
 		return false, errors.New("bit can not be before startBit")
 	}
-	if len(data)*8 <= int(targetBit) {
+	if len(data)*8 <= targetBit {
 		return false, errors.New("bit value more than data contains bits")
 	}
-	nThByte := len(data) - 1 - int(targetBit/8)
+	nThByte := targetBit / 8
 	nThBit := targetBit % 8
 	b := data[nThByte]
 	return b&(1<<nThBit) != 0, nil
