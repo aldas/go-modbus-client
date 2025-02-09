@@ -35,7 +35,8 @@ func TestBuilder_ReadCoilsTCP(t *testing.T) {
 
 	b := NewRequestBuilder(addr, 1)
 
-	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadCoilsTCP()
+	f := Field{Type: FieldTypeCoil, Address: 10, UnitID: 0, Name: "f1"}
+	reqs, err := b.AddField(f).ReadCoilsTCP()
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
@@ -49,7 +50,7 @@ func TestBuilder_ReadCoilsTCP(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	received := <-receivedChan
-	assert.Equal(t, []byte{0, 0, 0, 6, 0, 1, 0, 0xa, 0, 1}, received[2:]) // trim transaction ID
+	assert.Equal(t, []byte{0, 0, 0, 6, 1, 1, 0, 0xa, 0, 1}, received[2:]) // trim transaction ID
 }
 
 func TestBuilder_ReadCoilsRTU(t *testing.T) {
@@ -75,7 +76,8 @@ func TestBuilder_ReadCoilsRTU(t *testing.T) {
 
 	b := NewRequestBuilder(addr, 1)
 
-	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadCoilsRTU()
+	f := Field{Type: FieldTypeCoil, Address: 10, UnitID: 0, Name: "f1"}
+	reqs, err := b.AddField(f).ReadCoilsRTU()
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
@@ -89,7 +91,7 @@ func TestBuilder_ReadCoilsRTU(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	received := <-receivedChan
-	assert.Equal(t, []byte{0x0, 0x1, 0x0, 0xa, 0x0, 0x1, 0xdc, 0x19}, received)
+	assert.Equal(t, []byte{0x1, 0x1, 0x0, 0xa, 0x0, 0x1, 0xdd, 0xc8}, received)
 }
 
 func TestBuilder_ReadDiscreteInputsTCP(t *testing.T) {
@@ -119,7 +121,8 @@ func TestBuilder_ReadDiscreteInputsTCP(t *testing.T) {
 		UnitID:        1,
 	})
 
-	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadDiscreteInputsTCP()
+	f := Field{Type: FieldTypeCoil, Address: 10, UnitID: 0, Name: "f1"}
+	reqs, err := b.AddField(f).ReadDiscreteInputsTCP()
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
@@ -133,7 +136,7 @@ func TestBuilder_ReadDiscreteInputsTCP(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	received := <-receivedChan
-	assert.Equal(t, []byte{0, 0, 0, 6, 0, 2, 0, 0xa, 0, 1}, received[2:]) // trim transaction ID
+	assert.Equal(t, []byte{0, 0, 0, 6, 1, 2, 0, 0xa, 0, 1}, received[2:]) // trim transaction ID
 }
 
 func TestBuilder_ReadDiscreteInputsRTU(t *testing.T) {
@@ -162,7 +165,8 @@ func TestBuilder_ReadDiscreteInputsRTU(t *testing.T) {
 		UnitID:        1,
 	})
 
-	reqs, err := b.Add(b.Coil(10).UnitID(0)).ReadDiscreteInputsRTU()
+	f := Field{Type: FieldTypeCoil, Address: 10, UnitID: 0, Name: "f1"}
+	reqs, err := b.AddField(f).ReadDiscreteInputsRTU()
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
@@ -176,7 +180,7 @@ func TestBuilder_ReadDiscreteInputsRTU(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	received := <-receivedChan
-	assert.Equal(t, []byte{0x0, 0x2, 0x0, 0xa, 0x0, 0x1, 0x98, 0x19}, received)
+	assert.Equal(t, []byte{0x1, 0x2, 0x0, 0xa, 0x0, 0x1, 0x99, 0xc8}, received)
 }
 
 func TestBuilder_Split(t *testing.T) {
@@ -236,7 +240,8 @@ func TestBuilder_ReadHoldingRegistersTCP(t *testing.T) {
 		UnitID:        1,
 	})
 
-	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadHoldingRegistersTCP()
+	f := Field{Type: FieldTypeFloat64, Address: 18, UnitID: 0, Name: "f1"}
+	reqs, err := b.AddField(f).ReadHoldingRegistersTCP()
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
@@ -254,7 +259,7 @@ func TestBuilder_ReadHoldingRegistersTCP(t *testing.T) {
 
 	select {
 	case received := <-receivedChan:
-		assert.Equal(t, []byte{0, 0, 0, 6, 0, 3, 0, 18, 0, 4}, received[2:]) // trim transaction ID
+		assert.Equal(t, []byte{0, 0, 0, 6, 1, 3, 0, 18, 0, 4}, received[2:]) // trim transaction ID
 	default:
 		t.Errorf("nothing received")
 	}
@@ -287,7 +292,8 @@ func TestBuilder_ReadHoldingRegistersRTU(t *testing.T) {
 		UnitID:        1,
 	})
 
-	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadHoldingRegistersRTU()
+	f := Field{Type: FieldTypeFloat64, Address: 18, UnitID: 0, Name: "f1"}
+	reqs, err := b.AddField(f).ReadHoldingRegistersRTU()
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
@@ -301,7 +307,7 @@ func TestBuilder_ReadHoldingRegistersRTU(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	received := <-receivedChan
-	assert.Equal(t, []byte{0x0, 0x3, 0x0, 0x12, 0x0, 0x4, 0xe5, 0xdd}, received)
+	assert.Equal(t, []byte{0x1, 0x3, 0x0, 0x12, 0x0, 0x4, 0xe4, 0xc}, received)
 }
 
 func TestBuilder_ReadInputRegistersTCP(t *testing.T) {
@@ -331,7 +337,8 @@ func TestBuilder_ReadInputRegistersTCP(t *testing.T) {
 		UnitID:        1,
 	})
 
-	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadInputRegistersTCP()
+	f := Field{Type: FieldTypeFloat64, Address: 18, UnitID: 0, Name: "f1"}
+	reqs, err := b.AddField(f).ReadInputRegistersTCP()
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
@@ -345,7 +352,7 @@ func TestBuilder_ReadInputRegistersTCP(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	received := <-receivedChan
-	assert.Equal(t, []byte{0, 0, 0, 6, 0, 4, 0, 18, 0, 4}, received[2:]) // trim transaction ID
+	assert.Equal(t, []byte{0, 0, 0, 6, 1, 4, 0, 18, 0, 4}, received[2:]) // trim transaction ID
 }
 
 func TestBuilder_ReadInputRegistersRTU(t *testing.T) {
@@ -374,7 +381,8 @@ func TestBuilder_ReadInputRegistersRTU(t *testing.T) {
 		UnitID:        1,
 	})
 
-	reqs, err := b.Add(b.Int64(18).UnitID(0)).ReadInputRegistersRTU()
+	f := Field{Type: FieldTypeFloat64, Address: 18, UnitID: 0, Name: "f1"}
+	reqs, err := b.AddField(f).ReadInputRegistersRTU()
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
 
@@ -388,63 +396,7 @@ func TestBuilder_ReadInputRegistersRTU(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	received := <-receivedChan
-	assert.Equal(t, []byte{0x0, 0x4, 0x0, 0x12, 0x0, 0x4, 0x50, 0x1d}, received)
-}
-
-func TestBField_ServerAddress(t *testing.T) {
-	given := &BField{}
-
-	given.ServerAddress(":502")
-
-	assert.Equal(t, ":502", given.Field.ServerAddress)
-}
-
-func TestBField_FunctionCode(t *testing.T) {
-	given := &BField{}
-
-	given.FunctionCode(0x2)
-
-	assert.Equal(t, uint8(0x2), given.Field.FunctionCode)
-}
-
-func TestBField_Protocol(t *testing.T) {
-	given := &BField{}
-
-	given.Protocol(ProtocolTCP)
-
-	assert.Equal(t, ProtocolTCP, given.Field.Protocol)
-}
-
-func TestBField_RequestInterval(t *testing.T) {
-	given := &BField{}
-
-	given.RequestInterval(1 * time.Second)
-
-	assert.Equal(t, Duration(1*time.Second), given.Field.RequestInterval)
-}
-
-func TestBField_UnitID(t *testing.T) {
-	given := &BField{}
-
-	given.UnitID(1)
-
-	assert.Equal(t, uint8(1), given.Field.UnitID)
-}
-
-func TestBField_ByteOrder(t *testing.T) {
-	given := &BField{}
-
-	given.ByteOrder(packet.BigEndian)
-
-	assert.Equal(t, packet.BigEndian, given.Field.ByteOrder)
-}
-
-func TestBField_Name(t *testing.T) {
-	given := &BField{}
-
-	given.Name("fire_alarm_do")
-
-	assert.Equal(t, "fire_alarm_do", given.Field.Name)
+	assert.Equal(t, []byte{0x1, 0x4, 0x0, 0x12, 0x0, 0x4, 0x51, 0xcc}, received)
 }
 
 func TestNewBuilder(t *testing.T) {
@@ -470,14 +422,6 @@ func TestNewRequestBuilderWithConfig(t *testing.T) {
 	assert.Equal(t, Duration(1*time.Second), b.config.Interval)
 }
 
-func TestBuilder_Add(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-	b.Add(&BField{Field{ServerAddress: "test", UnitID: 1}})
-
-	assert.Equal(t, "test", b.fields[0].ServerAddress)
-	assert.Equal(t, uint8(1), b.fields[0].UnitID)
-}
-
 func TestBuilder_AddField(t *testing.T) {
 	b := NewRequestBuilderWithConfig(BuilderDefaults{
 		ServerAddress: "test",
@@ -496,237 +440,6 @@ func TestBuilder_AddField(t *testing.T) {
 	assert.Equal(t, ProtocolTCP, b.fields[0].Protocol)
 	assert.Equal(t, uint8(1), b.fields[0].UnitID)
 	assert.Equal(t, Duration(1*time.Minute), b.fields[0].RequestInterval)
-}
-
-func TestBuilder_Bit(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Bit(256, 4).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeBit,
-		Address:       256,
-		Bit:           4,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Byte(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Byte(256, true).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeByte,
-		Address:       256,
-		FromHighByte:  true,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Uint8(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Uint8(256, true).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeUint8,
-		Address:       256,
-		FromHighByte:  true,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Int8(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Int8(256, true).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeInt8,
-		Address:       256,
-		FromHighByte:  true,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Uint16(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Uint16(256).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeUint16,
-		Address:       256,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Int16(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Int16(256).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeInt16,
-		Address:       256,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Uint32(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Uint32(256).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeUint32,
-		Address:       256,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Int32(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Int32(256).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeInt32,
-		Address:       256,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Uint64(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Uint64(256).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeUint64,
-		Address:       256,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Int64(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Int64(256).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeInt64,
-		Address:       256,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Float32(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Float32(256).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeFloat32,
-		Address:       256,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Float64(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Float64(256).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeFloat64,
-		Address:       256,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_String(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.String(256, 10).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeString,
-		Address:       256,
-		Length:        10,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Bytes(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Bytes(256, 10).Name("raw_bytes"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeRawBytes,
-		Address:       256,
-		Length:        10,
-		Name:          "raw_bytes",
-	}
-	assert.Equal(t, expect, b.fields[0])
-}
-
-func TestBuilder_Coil(t *testing.T) {
-	b := NewRequestBuilder(":5020", 2)
-
-	b.Add(b.Coil(256).Name("fire_alarm_di"))
-
-	expect := Field{
-		ServerAddress: ":5020",
-		UnitID:        2,
-		Type:          FieldTypeCoil,
-		Address:       256,
-		Name:          "fire_alarm_di",
-	}
-	assert.Equal(t, expect, b.fields[0])
 }
 
 func TestBuilder_AddAll(t *testing.T) {

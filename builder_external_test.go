@@ -35,8 +35,9 @@ func TestExternalUsage(t *testing.T) {
 
 	b := modbus.NewRequestBuilder(addr, 1)
 
-	reqs, err := b.Add(b.Uint16(18).UnitID(0).Name("test_do")).
-		Add(b.Int64(19).Name("alarm_do_1").UnitID(0)).
+	reqs, err := b.
+		AddField(modbus.Field{Name: "test_do", Type: modbus.FieldTypeUint16, Address: 18}).
+		AddField(modbus.Field{Name: "alarm_do_1", Type: modbus.FieldTypeInt64, Address: 19}).
 		ReadHoldingRegistersTCP()
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 1)
