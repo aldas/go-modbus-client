@@ -13,6 +13,27 @@ import (
 	"time"
 )
 
+/*
+Example `config.json` content to poll "Victron Energy Meter VM-3P75CT" over UDP
+
+{
+  "defaults": {
+    "server_address": "udp://192.168.0.200:502",
+    "function_code": 3,
+    "unit_id": 1,
+    "protocol": "tcp",
+    "interval": "1s"
+  },
+  "fields": [
+    {"name": "AcL1Voltage", "address": 12352, "type": "Int16", "scale": 0.01},
+    {"name": "AcL1Current", "address": 12353, "type": "Int16", "scale": 0.01},
+    {"name": "AcL1EnergyForward", "address": 12354, "type": "Uint32", "scale": 0.01},
+    {"name": "AcL1EnergyReverse", "address": 12356, "type": "Uint32", "scale": 0.01},
+    {"name": "AcL1ErrorCode", "address": 12358, "type": "Uint16"},
+  ]
+}
+*/
+
 type config struct {
 	Defaults modbus.BuilderDefaults `json:"defaults"  mapstructure:"defaults"`
 	Fields   []field                `json:"fields"  mapstructure:"fields"`
