@@ -49,8 +49,9 @@ Addresses without scheme (i.e. `localhost:5020`) are considered as TCP addresses
 ```go
 b := modbus.NewRequestBuilder("tcp://localhost:5020", 1)
 
-requests, _ := b.Add(b.Uint16(18).UnitID(0).Name("test_do")).
-    Add(b.Int64(18).Name("alarm_do_1").UnitID(0)).
+requests, _ := b.
+	AddField(modbus.Field{Name: "test_do", Type: modbus.FieldTypeUint16, Address: 18}).
+    AddField(modbus.Field{Name: "alarm_do_1", Type: modbus.FieldTypeInt64, Address: 19}).
     ReadHoldingRegistersTCP() // split added fields into multiple requests with suitable quantity size
 
 client := modbus.NewTCPClient()
@@ -65,8 +66,8 @@ for _, req := range requests {
     // extract response as packet.Registers instance to have access to convenience methods to 
     // extracting registers as different data types
     registers, _ := resp.(*packet.ReadHoldingRegistersResponseTCP).AsRegisters(req.StartAddress)
-    alarmDo1, _ := registers.Int64(18)
-    fmt.Printf("int64 @ address 18: %v", alarmDo1)
+    alarmDo1, _ := registers.Int64(19)
+    fmt.Printf("int64 @ address 19: %v", alarmDo1)
     
     // or extract values to FieldValue struct
     fields, _ := req.ExtractFields(resp, true)
@@ -137,8 +138,9 @@ req, err := packet.NewWriteMultipleRegistersRequestTCP(0, 10, []byte{0xCA, 0xFE,
 ```go
 b := modbus.NewRequestBuilder("localhost:5020", 1)
 
-requests, _ := b.Add(b.Int64(18).UnitID(0).Name("test_do")).
-   Add(b.Int64(18).Name("alarm_do_1").UnitID(0)).
+requests, _ := b.
+   AddField(modbus.Field{Name: "test_do", Type: modbus.FieldTypeUint16, Address: 18}).
+   AddField(modbus.Field{Name: "alarm_do_1", Type: modbus.FieldTypeInt64, Address: 19}).
    ReadHoldingRegistersTCP() // split added fields into multiple requests with suitable quantity size
 ```
 
