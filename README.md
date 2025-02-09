@@ -80,6 +80,44 @@ for _, req := range requests {
 
 See simple poller implementation [cmd/modbus-poller/main.go](cmd/modbus-poller/main.go).
 
+```go
+func main() {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	b := modbus.NewRequestBuilderWithConfig(modbus.BuilderDefaults{
+		ServerAddress: "tcp://127.0.0.1:5022",
+		FunctionCode:  packet.FunctionReadHoldingRegisters, // fc3
+		UnitID:        1,
+		Protocol:      modbus.ProtocolTCP,
+		Interval:      modbus.Duration(1 * time.Second), // send request every 1 second
+	})
+
+	batches, _ := b.
+		AddField(modbus.Field{Name: "test_do", Type: modbus.FieldTypeUint16, Address: 18}).
+		AddField(modbus.Field{Name: "alarm_do_1", Type: modbus.FieldTypeInt64, Address: 19}).
+		Split() // split added fields into multiple requests with suitable quantity size
+
+	p := poller.NewPoller(batches)
+
+	go func() {
+		for {
+			select {
+			case result := <-p.ResultChan:
+				slog.Info("polled values", "values", result)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	if err := p.Poll(ctx); err != nil {
+		slog.Error("polling ended with failure", "err", err)
+		return
+	}
+}
+```
+
 ### RTU over serial port
 
 RTU examples to interact with serial port can be found from [serial.md](serial.md)
