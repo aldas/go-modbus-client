@@ -50,7 +50,7 @@ Addresses without scheme (i.e. `localhost:5020`) are considered as TCP addresses
 b := modbus.NewRequestBuilder("tcp://localhost:5020", 1)
 
 requests, _ := b.
-	AddField(modbus.Field{Name: "test_do", Type: modbus.FieldTypeUint16, Address: 18}).
+    AddField(modbus.Field{Name: "test_do", Type: modbus.FieldTypeUint16, Address: 18}).
     AddField(modbus.Field{Name: "alarm_do_1", Type: modbus.FieldTypeInt64, Address: 19}).
     ReadHoldingRegistersTCP() // split added fields into multiple requests with suitable quantity size
 
