@@ -14,14 +14,14 @@ permissions:
 
 env:
   # run coverage only with the latest Go version
-  LATEST_GO_VERSION: "1.23"
+  LATEST_GO_VERSION: "1.24"
 
 
 jobs:
   test:
     strategy:
       matrix:
-        go-version: [ "1.22", "1.23" ]
+        go-version: [ "1.23" , "1.24" ]
         platform: [ ubuntu-latest ]
     runs-on: ${{ matrix.platform }}
     steps:
