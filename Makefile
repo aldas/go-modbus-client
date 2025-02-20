@@ -23,8 +23,8 @@ vet: ## Vet the files
 test: ## Run unittests
 	@go test -short ${PKG_LIST}
 
-goversion ?= "1.23"
-test_version: ## Run tests inside Docker with given version (defaults to 1.23). Example: make test_version goversion=1.23
+goversion ?= "1.24"
+test_version: ## Run tests inside Docker with given version (defaults to 1.24). Example: make test_version goversion=1.24
 	@docker run --rm -it -v $(shell pwd):/project golang:$(goversion) /bin/sh -c "cd /project && make init check"
 
 race: ## Run data race detector
