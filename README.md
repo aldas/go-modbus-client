@@ -86,7 +86,7 @@ func main() {
 	defer cancel()
 
 	b := modbus.NewRequestBuilderWithConfig(modbus.BuilderDefaults{
-		ServerAddress: "tcp://127.0.0.1:5022",
+		ServerAddress: "tcp://127.0.0.1:5022?invalid_addr=1000,12000-12100&read_timeout=2s",
 		FunctionCode:  packet.FunctionReadHoldingRegisters, // fc3
 		UnitID:        1,
 		Protocol:      modbus.ProtocolTCP,

@@ -18,7 +18,7 @@ Example `config.json` content to poll "Victron Energy Meter VM-3P75CT" over UDP
 
 {
   "defaults": {
-    "server_address": "udp://192.168.0.200:502",
+    "server_address": "udp://192.168.0.200:502?invalid_addr=1000,12000-12100&read_timeout=1s",
     "function_code": 3,
     "unit_id": 1,
     "protocol": "tcp",

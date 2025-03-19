@@ -510,6 +510,21 @@ func TestParseFieldType(t *testing.T) {
 }
 
 func TestField_CheckInvalid(t *testing.T) {
+	//exampleData := []byte{
+	//	0b00010001, 0x0, // bit // 0
+	//	0x3, 0x4, // byte // 1
+	//	0xFF, 0x80, // uint8, int8 // 2
+	//	0xff, 0xff, // uint16 // 3
+	//	0x80, 0x00, // int16 // 4
+	//	0xff, 0xff, 0xff, 0xff, // uint32  // 5,6
+	//	0x80, 0x0, 0x0, 0x0, // int32 // 7,8
+	//	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // uint64 // 9,10,11,12
+	//	0x80, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // int64 // 13,14,15,16
+	//	0xff, 0xff, 0xff, 0xff, // float32 // 17,18
+	//	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // float64 // 19,20,21,22
+	//	0x56, 0x53, 0x83, 0x43, // string(3) // 56=V 53=S 83=ƒ 43=C
+	//}
+
 	var testCases = []struct {
 		name              string
 		when              Field
@@ -517,6 +532,67 @@ func TestField_CheckInvalid(t *testing.T) {
 		givenStartAddress uint16
 		expectErr         string
 	}{
+		{
+			name:      "is invalid byte, low byte",
+			when:      Field{Address: 1, Type: FieldTypeByte, Invalid: []byte{0xff}},
+			givenData: []byte{0x1, 0x2, 0x3, 0xff, 0x5, 0x6},
+			expectErr: "invalid value",
+		},
+		{
+			name:      "not invalid byte, low byte",
+			when:      Field{Address: 1, Type: FieldTypeByte, Invalid: []byte{0xff}},
+			givenData: []byte{0x1, 0x2, 0x3, 0x4, 0x5, 0x6},
+			expectErr: "",
+		},
+		{
+			name:      "is invalid byte, high byte",
+			when:      Field{Address: 1, Type: FieldTypeByte, Invalid: []byte{0xff}, FromHighByte: true},
+			givenData: []byte{0x1, 0x2, 0xff, 0x4, 0x5, 0x6},
+			expectErr: "invalid value",
+		},
+		{
+			name:      "not invalid byte, high byte",
+			when:      Field{Address: 1, Type: FieldTypeByte, Invalid: []byte{0xff}, FromHighByte: true},
+			givenData: []byte{0x1, 0x2, 0x3, 0x4, 0x5, 0x6},
+			expectErr: "",
+		},
+		{
+			name:      "is invalid uint8, low byte",
+			when:      Field{Address: 1, Type: FieldTypeUint8, Invalid: []byte{0xff}},
+			givenData: []byte{0x1, 0x2, 0x3, 0xff, 0x5, 0x6},
+			expectErr: "invalid value",
+		},
+		{
+			name:      "is invalid uint8, high byte",
+			when:      Field{Address: 1, Type: FieldTypeUint8, Invalid: []byte{0xff}, FromHighByte: true},
+			givenData: []byte{0x1, 0x2, 0xff, 0x4, 0x5, 0x6},
+			expectErr: "invalid value",
+		},
+		{
+			name:      "is invalid uint8, low byte",
+			when:      Field{Address: 1, Type: FieldTypeInt8, Invalid: []byte{0x80}},
+			givenData: []byte{0x1, 0x2, 0x3, 0x80, 0x5, 0x6},
+			expectErr: "invalid value",
+		},
+		{
+			name:      "is invalid uint8, high byte",
+			when:      Field{Address: 1, Type: FieldTypeInt8, Invalid: []byte{0x80}, FromHighByte: true},
+			givenData: []byte{0x1, 0x2, 0x80, 0x4, 0x5, 0x6},
+			expectErr: "invalid value",
+		},
+		{
+			name:      "is invalid uint16",
+			when:      Field{Address: 1, Type: FieldTypeUint16, Invalid: []byte{0xff, 0xff}},
+			givenData: []byte{0x1, 0x2, 0xff, 0xff, 0x5, 0x6},
+			expectErr: "invalid value",
+		},
+		{
+			name:      "is invalid int16",
+			when:      Field{Address: 1, Type: FieldTypeInt16, Invalid: []byte{0x80, 0x00}},
+			givenData: []byte{0x1, 0x2, 0x80, 0x0, 0x5, 0x6},
+			expectErr: "invalid value",
+		},
+
 		{
 			name: "ok",
 			when: Field{Address: 3, Type: FieldTypeInt16, Invalid: []byte{0xff, 0xff}},
