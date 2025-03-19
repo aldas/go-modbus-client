@@ -133,3 +133,90 @@ func TestNewPollerWithConfig(t *testing.T) {
 	assert.Equal(t, expect, result)
 
 }
+
+func TestPoller_PollWithError(t *testing.T) {
+	f1 := modbus.Field{
+		Name:            "f1",
+		Address:         10,
+		Type:            modbus.FieldTypeInt16,
+		ServerAddress:   "server",
+		FunctionCode:    packet.FunctionReadHoldingRegisters,
+		UnitID:          1,
+		Protocol:        modbus.ProtocolTCP,
+		RequestInterval: modbus.Duration(50 * time.Millisecond),
+	}
+	b := modbus.NewRequestBuilder("x", 1)
+	b.AddField(f1)
+	batches, err := b.Split()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	var testCases = []struct {
+		name            string
+		whenResponse    packet.Response
+		whenResponseErr error
+		expectStats     []BatchStatistics
+	}{
+		{
+			name: "ok",
+			whenResponseErr: &packet.ErrorResponseTCP{
+				TransactionID: 1245,
+				UnitID:        1,
+				Function:      2,
+				Code:          packet.ErrIllegalDataAddress,
+			},
+			expectStats: []BatchStatistics{
+				{
+					BatchIndex:            0,
+					FunctionCode:          0x3,
+					Protocol:              0x1,
+					ServerAddress:         "server",
+					IsPolling:             false,
+					StartCount:            0x1,
+					RequestOKCount:        0x0,
+					RequestErrCount:       0x2,
+					RequestModbusErrCount: 0x1,
+					SendSkipCount:         0x0,
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			client := &mockClient{
+				onDo: func(doCount int, req packet.Request) (packet.Response, error) {
+					if doCount > 1 {
+						cancel() // second request will end the test
+						return nil, errors.New("end")
+					}
+					return tc.whenResponse, tc.whenResponseErr
+				},
+			}
+
+			logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+			testTime := time.Unix(1615662935, 0).In(time.UTC) // 2021-03-13T19:15:35+00:00
+			conf := Config{
+				Logger: logger,
+				ConnectFunc: func(ctx context.Context, batchProtocol modbus.ProtocolType, address string) (Client, error) {
+					return client, nil
+				},
+				OnClientDoErrorFunc: func(err error, batchIndex int) error {
+					return err
+				},
+				TimeNow: func() time.Time { return testTime },
+			}
+			p := NewPollerWithConfig(batches, conf)
+			assert.Len(t, p.jobs, 1)
+
+			err = p.Poll(ctx)
+			assert.NoError(t, err)
+
+			actual := p.BatchStatistics()
+			assert.Equal(t, tc.expectStats, actual)
+		})
+	}
+}

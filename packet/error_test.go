@@ -123,6 +123,16 @@ func TestErrorResponseRTU_FunctionCode(t *testing.T) {
 	assert.Equal(t, uint8(1), given.FunctionCode())
 }
 
+func TestErrorResponseTCP_ModbusErrorCode(t *testing.T) {
+	given := ErrorResponseTCP{Function: 1, Code: ErrIllegalDataAddress}
+	assert.Equal(t, ErrIllegalDataAddress, given.ErrorCode())
+}
+
+func TestErrorResponseRTU_ModbusErrorCode(t *testing.T) {
+	given := ErrorResponseRTU{Function: 1, Code: ErrIllegalDataAddress}
+	assert.Equal(t, ErrIllegalDataAddress, given.ErrorCode())
+}
+
 func TestErrorResponseTCP_Bytes(t *testing.T) {
 	var testCases = []struct {
 		name   string

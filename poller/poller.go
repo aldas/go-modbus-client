@@ -46,6 +46,15 @@ type Config struct {
 	// Defaults to DefaultConnectClient
 	ConnectFunc func(ctx context.Context, batchProtocol modbus.ProtocolType, address string) (Client, error)
 
+	// OnClientDoErrorFunc is called when Client.Do returns with an error.
+	// User can decide do suppress certain errors by not returning from this function. In that
+	// case these errors will not be included in statistics.
+	//
+	// Use-case for this callback:
+	// Some engine controllers will return packet.ErrIllegalDataValue error code when the engine
+	// is not turned on, and you might not want to pollute logs with modbus errors like that.
+	OnClientDoErrorFunc func(err error, batchIndex int) error
+
 	// TimeNow allows mocking Result.Time value in tests
 	// Defaults to time.Now
 	TimeNow func() time.Time
@@ -72,9 +81,10 @@ func NewPollerWithConfig(batches []modbus.BuilderRequest, conf Config) *Poller {
 	}
 	for i, batch := range batches {
 		p.jobs[i] = job{
-			timeNow:     timeNow,
-			logger:      p.logger,
-			connectFunc: p.connectFunc,
+			timeNow:             timeNow,
+			logger:              p.logger,
+			connectFunc:         p.connectFunc,
+			onClientDoErrorFunc: conf.OnClientDoErrorFunc,
 
 			stats: jobBatchStatistics{
 				lock: sync.RWMutex{},
@@ -134,9 +144,10 @@ func (p *Poller) Poll(ctx context.Context) error {
 }
 
 type job struct {
-	timeNow     func() time.Time
-	logger      *slog.Logger
-	connectFunc func(ctx context.Context, batchProtocol modbus.ProtocolType, address string) (Client, error)
+	timeNow             func() time.Time
+	logger              *slog.Logger
+	connectFunc         func(ctx context.Context, batchProtocol modbus.ProtocolType, address string) (Client, error)
+	onClientDoErrorFunc func(err error, batchIndex int) error
 
 	batchIndex int
 	batch      modbus.BuilderRequest
@@ -215,9 +226,26 @@ func (j *job) poll(ctx context.Context) error {
 			start := j.timeNow()
 			resp, err := client.Do(ctx, batch.Request)
 			reqDuration := j.timeNow().Sub(start)
+
+			if err != nil && j.onClientDoErrorFunc != nil {
+				// user can decide do suppress certain errors
+				// for example some vessel engine controllers will return packet.ErrIllegalDataValue
+				// error code when engine is not turned on, and you might not want to pollute
+				// logs with modbus errors like that
+				err = j.onClientDoErrorFunc(err, j.batchIndex)
+				if err == nil {
+					continue
+				}
+			}
+
 			if err != nil {
 				countDoErr++
 				j.stats.IncRequestErrCount()
+
+				var mbErr packet.ModbusError
+				if errors.As(err, &mbErr) {
+					j.stats.IncRequestModbusErrCount()
+				}
 
 				j.logger.Error("request failed",
 					"err", err,
@@ -341,12 +369,20 @@ type BatchStatistics struct {
 
 	// IsPolling shows if that batch job currently in polling or waiting for retry
 	IsPolling bool
+
 	// StartCount is count how many times the poll job has (re)started
 	StartCount uint64
+
 	// RequestOKCount is count how many modbus request have succeeded for that job
 	RequestOKCount uint64
-	// RequestErrCount is count how many modbus request have failed for that job
+
+	// RequestErrCount is total count how many request have failed for that job
+	// this count does not distinguish modbus errors from network errors
 	RequestErrCount uint64
+
+	// RequestModbusErrCount is count how many request have failed with modbus error code for that job
+	RequestModbusErrCount uint64
+
 	// SendSkipCount is count how many ResultChan sends were skipped due blocked Result channel
 	SendSkipCount uint64
 }
@@ -378,6 +414,12 @@ func (j *jobBatchStatistics) IncRequestErrCount() {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	j.stats.RequestErrCount++
+}
+
+func (j *jobBatchStatistics) IncRequestModbusErrCount() {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	j.stats.RequestModbusErrCount++
 }
 
 func (j *jobBatchStatistics) IncSendSkipCount() {

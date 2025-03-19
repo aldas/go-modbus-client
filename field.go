@@ -135,8 +135,18 @@ type Field struct {
 
 	// Only relevant to register function fields
 	Bit uint8 `json:"bit" mapstructure:"bit"`
+
 	// FromHighByte is for single byte data types stored in single register (e.g. byte,uint8,int8)
+	//
+	// In Modbus (which uses big-endian format), the most significant byte is
+	// sent first and is therefore considered the 0th byte. The least significant byte
+	// is sent second and is considered the 1st byte.
+	//
+	// Modbus register with value `0x1234`.
+	//  - 0x12 is High Byte, 0th byte
+	//  - 0x34 is Low byte, is the 1st byte
 	FromHighByte bool `json:"from_high_byte" mapstructure:"from_high_byte"`
+
 	// Length is length of string and raw bytes data types.
 	Length uint8 `json:"length" mapstructure:"length"`
 
@@ -144,6 +154,19 @@ type Field struct {
 
 	// Invalid that represents not existent value in modbus. Given value (presented in hex) when encountered is converted to ErrInvalidValue error.
 	// for example your energy meter ac power is uint32 value of which `0xffffffff` should be treated as error/invalid value.
+	//
+	// Usually invalid value is largest unsigned or smallest signed value per data type. Example:
+	// - uint8 	= 0xff (255)
+	// - int8 	= 0x80 (-127)
+	// - uint16 = 0xff, 0xff (65535)
+	// - int16	= 0x80, 0x00 (-32768)
+	// - uint32 = 0xff, 0xff, 0xff, 0xff (4294967295)
+	// - int32	= 0x80, 0x0, 0x0, 0x0 (-2147483648)
+	// - uint64 = 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff (18446744073709551615)
+	// - int64	= 0x80, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 (-9223372036854775808)
+	// - float32 is same as uint32
+	// - float64 is same as uint64
+	// - bit, boolean - can not have invalid values
 	Invalid Invalid `json:"invalid,omitempty" mapstructure:"invalid"`
 }
 
@@ -328,6 +351,22 @@ func (f *Field) CheckInvalid(registers *packet.Registers) error {
 	if f.Invalid == nil {
 		return nil
 	}
+
+	if f.Type == FieldTypeByte || f.Type == FieldTypeUint8 || f.Type == FieldTypeInt8 {
+		regData, err := registers.Register(f.Address)
+		if err != nil {
+			return err
+		}
+		b := regData[1]
+		if f.FromHighByte {
+			b = regData[0]
+		}
+		if b == f.Invalid[0] {
+			return ErrInvalidValue
+		}
+		return nil
+	}
+
 	ok, err := registers.IsEqualBytes(f.Address, uint8(f.registerSize()*2), f.Invalid)
 	if err != nil {
 		return err
