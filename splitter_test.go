@@ -3,6 +3,7 @@ package modbus
 import (
 	"github.com/aldas/go-modbus-client/packet"
 	"github.com/stretchr/testify/assert"
+	"strings"
 	"testing"
 )
 
@@ -227,4 +228,278 @@ func TestSplit_to2CoilsBatches(t *testing.T) {
 	secondBatch.Request.(*packet.ReadCoilsRequestTCP).TransactionID = 124
 	assert.Equal(t, expect2, secondBatch.Request)
 	assert.Len(t, secondBatch.Fields, 1)
+}
+
+func TestInvalidRange_Overlaps(t *testing.T) {
+	testCases := []struct {
+		name             string
+		givenRange       *invalidRange
+		whenRequestStart uint16
+		whenSlotStart    uint16
+		whenSlotEnd      uint16
+		expectOverlap    bool
+		expectErr        bool
+		expectErrSubstr  string
+	}{
+		{
+			name:             "Nil receiver",
+			givenRange:       nil,
+			whenRequestStart: 100,
+			whenSlotStart:    150,
+			whenSlotEnd:      200,
+			// No invalidRanges to check => no overlap
+			expectOverlap: false,
+			expectErr:     false,
+		},
+		{
+			name:             "Empty slice",
+			givenRange:       &invalidRange{},
+			whenRequestStart: 100,
+			whenSlotStart:    150,
+			whenSlotEnd:      200,
+			// No elements => no overlap
+			expectOverlap: false,
+			expectErr:     false,
+		},
+		{
+			name: "No overlap",
+			givenRange: &invalidRange{
+				{from: 10, to: 20}, // well below the slot range
+			},
+			whenRequestStart: 100,
+			whenSlotStart:    150,
+			whenSlotEnd:      200,
+			expectOverlap:    false,
+			expectErr:        false,
+		},
+		{
+			name: "Overlap with error (slot range overlap)",
+			givenRange: &invalidRange{
+				{from: 150, to: 160},
+				{from: 170, to: 180},
+			},
+			whenRequestStart: 100,
+			whenSlotStart:    155,
+			whenSlotEnd:      158,
+			// Overlaps [155..158] with [150..160] => error
+			expectOverlap:   true,
+			expectErr:       true,
+			expectErrSubstr: "field overlaps invalid address range",
+		},
+		{
+			name: "Overlap with no error (whenRequestStart overlap only)",
+			givenRange: &invalidRange{
+				{from: 120, to: 130},
+				{from: 140, to: 145},
+			},
+			// Here we assume that overlapping only on the whenRequestStart
+			// triggers a true but no error (based on second check).
+			whenRequestStart: 100,
+			whenSlotStart:    150,
+			whenSlotEnd:      155,
+			// [150..155] doesn’t overlap with either range,
+			// but whenRequestStart=100 does overlap with [120..130] check?
+			// In practice, this example won't return an error, but does it return true or false?
+			// Because "ir.from <= whenSlotEnd && whenRequestStart <= ir.to"
+			// => 120 <= 155 && 100 <= 130 => true => (true, nil).
+			expectOverlap: true,
+			expectErr:     false,
+		},
+		{
+			name: "Edge boundary overlap (exactly at boundaries)",
+			givenRange: &invalidRange{
+				{from: 100, to: 200},
+			},
+			whenRequestStart: 100,
+			whenSlotStart:    200,
+			whenSlotEnd:      200,
+			// The condition `ir.from <= whenSlotEnd && whenSlotStart <= ir.to`
+			// => 100 <= 200 && 200 <= 200 => true => overlap => error
+			expectOverlap:   true,
+			expectErr:       true,
+			expectErrSubstr: "field overlaps invalid address range",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			gotOverlap, err := tt.givenRange.Overlaps(tt.whenRequestStart, tt.whenSlotStart, tt.whenSlotEnd)
+			if gotOverlap != tt.expectOverlap {
+				t.Errorf("Overlaps() gotOverlap = %v, want %v", gotOverlap, tt.expectOverlap)
+			}
+			if (err != nil) != tt.expectErr {
+				t.Errorf("Overlaps() error = %v, expectErr = %v", err, tt.expectErr)
+			}
+			if err != nil && tt.expectErrSubstr != "" && !strings.Contains(err.Error(), tt.expectErrSubstr) {
+				t.Errorf("Overlaps() error = %q, want substring %q", err.Error(), tt.expectErrSubstr)
+			}
+		})
+	}
+}
+
+func TestAddressToInvalidRange(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenAddress string
+		expect      invalidRange
+		expectErr   string
+	}{
+		{
+			name:        "ok, empty serial device url",
+			whenAddress: "/dev/ttyS0",
+		},
+		{
+			name:        "ok, serial device url without param",
+			whenAddress: "/dev/ttyS0?something=else",
+		},
+		{
+			name:        "ok, random port url is problematic",
+			whenAddress: "[::]:45310?invalid_addr=10",
+			expectErr:   `failed to parse server adddres for invalid range: "[::]:45310?invalid_addr=10", err: parse "[::]:45310?invalid_addr=10": first path segment in URL cannot contain colon`,
+		},
+		{
+			name:        "ok, empty random port url",
+			whenAddress: "[::]:45310",
+		},
+		{
+			name:        "ok, empty ip",
+			whenAddress: "192.168.100.101:502",
+		},
+		{
+			name:        "ok, single address",
+			whenAddress: "/dev/ttyS0?invalid_addr=10",
+			expect: invalidRange{
+				{from: 10, to: 10},
+			},
+		},
+		{
+			name:        "ok, address range",
+			whenAddress: "/dev/ttyS0?invalid_addr=11-52",
+			expect: invalidRange{
+				{from: 11, to: 52},
+			},
+		},
+		{
+			name:        "ok, multiple address ranges",
+			whenAddress: "/dev/ttyS0?invalid_addr=11-52,5",
+			expect: invalidRange{
+				{from: 11, to: 52},
+				{from: 5, to: 5},
+			},
+		},
+		{
+			name:        "ok, multiple address ranges",
+			whenAddress: "/dev/ttyS0?invalid_addr=11-52&invalid_addr=5",
+			expect: invalidRange{
+				{from: 11, to: 52},
+				{from: 5, to: 5},
+			},
+		},
+		{
+			name:        "nok, invalid single address",
+			whenAddress: "/dev/ttyS0?invalid_addr=1x",
+			expect:      nil,
+			expectErr:   `failed to parse invalid range: "/dev/ttyS0?invalid_addr=1x", err: strconv.ParseUint: parsing "1x": invalid syntax`,
+		},
+		{
+			name:        "nok, invalid address range",
+			whenAddress: "/dev/ttyS0?invalid_addr=11-5x2",
+			expect:      nil,
+			expectErr:   `failed to parse invalid range: "/dev/ttyS0?invalid_addr=11-5x2", err: strconv.ParseUint: parsing "5x2": invalid syntax`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := addressToInvalidRange(tc.whenAddress)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestBatchToRequests(t *testing.T) {
+	var testCases = []struct {
+		name      string
+		when      []builderSlotGroup
+		expect    []requestBatch
+		expectErr string
+	}{
+		{
+			name: "ok, split at invalid address",
+			when: []builderSlotGroup{
+				{
+					group: groupID{
+						serverAddress: "/dev/ttyS0?invalid_addr=15-20&invalid_addr=5",
+						functionCode:  3,
+						unitID:        1,
+						protocol:      ProtocolRTU,
+					},
+					slots: builderSlots{
+						{address: 2, size: 1, fields: nil},  // 2
+						{address: 3, size: 2, fields: nil},  // 3,4
+						{address: 10, size: 4, fields: nil}, // 10,11,12,13
+					},
+				},
+			},
+			expect: []requestBatch{
+				{
+					ServerAddress:   "/dev/ttyS0?invalid_addr=15-20&invalid_addr=5",
+					FunctionCode:    3,
+					UnitID:          1,
+					Protocol:        ProtocolRTU,
+					StartAddress:    2,
+					Quantity:        3,
+					RequestInterval: 0,
+					fields:          nil,
+				},
+				{
+					ServerAddress:   "/dev/ttyS0?invalid_addr=15-20&invalid_addr=5",
+					FunctionCode:    3,
+					UnitID:          1,
+					Protocol:        ProtocolRTU,
+					StartAddress:    10,
+					Quantity:        4,
+					RequestInterval: 0,
+					fields:          nil,
+				},
+			},
+		},
+		{
+			name: "nok, error when slot falls into range",
+			when: []builderSlotGroup{
+				{
+					group: groupID{
+						serverAddress: "/dev/ttyS0?invalid_addr=15-20&invalid_addr=5",
+						functionCode:  3,
+						unitID:        1,
+						protocol:      ProtocolRTU,
+					},
+					slots: builderSlots{
+						{address: 2, size: 1, fields: nil},  // 2
+						{address: 3, size: 2, fields: nil},  // 3,4
+						{address: 20, size: 4, fields: nil}, // 20,21,22,23
+					},
+				},
+			},
+			expect:    nil,
+			expectErr: `field overlaps invalid address range, addr: 20, range: 15-20`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := batchToRequests(tc.when)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }

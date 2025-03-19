@@ -2,8 +2,12 @@ package modbus
 
 import (
 	"errors"
+	"fmt"
 	"github.com/aldas/go-modbus-client/packet"
+	"net/url"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -13,7 +17,10 @@ func split(fields []Field, functionCode uint8, protocol ProtocolType) ([]Builder
 	if err != nil {
 		return nil, err
 	}
-	batches := batchToRequests(connectionGroup)
+	batches, err := batchToRequests(connectionGroup)
+	if err != nil {
+		return nil, err
+	}
 
 	result := make([]BuilderRequest, 0, len(batches))
 	for _, b := range batches {
@@ -140,7 +147,7 @@ func groupForSingleConnection(fields []Field, functionCode uint8, protocol Proto
 	return result, nil
 }
 
-func batchToRequests(connectionGroup []builderSlotGroup) []requestBatch {
+func batchToRequests(slotGroups []builderSlotGroup) ([]requestBatch, error) {
 	// Coils are always grouped to separate requests (fc1/fc2) from fields suitable for registers (fc3/fc4)
 	//
 	// NB: is batching/grouping algorithm is very naive. It just sorts fields by register and creates N number
@@ -149,9 +156,13 @@ func batchToRequests(connectionGroup []builderSlotGroup) []requestBatch {
 	// assumes that UnitID is same for all fields within group
 
 	var result = make([]requestBatch, 0)
-	for _, slotGroup := range connectionGroup {
+	for _, slotGroup := range slotGroups {
 		if len(slotGroup.slots) == 0 {
 			continue
+		}
+		invalid, err := addressToInvalidRange(slotGroup.group.serverAddress)
+		if err != nil {
+			return nil, err
 		}
 		addressLimit := packet.MaxRegistersInReadResponse
 		if slotGroup.isForCoils {
@@ -174,7 +185,12 @@ func batchToRequests(connectionGroup []builderSlotGroup) []requestBatch {
 			slotAddress := slot.address
 			slotEndAddress := slotAddress + slot.size
 			addressDiff := slotEndAddress - firstAddress
-			if addressDiff > addressLimit {
+			isBiggerThenAddressLimit := addressDiff > addressLimit
+			isInvalidRangeOverlap, err := invalid.Overlaps(firstAddress, slotAddress, slotEndAddress-1)
+			if err != nil {
+				return nil, err
+			}
+			if isBiggerThenAddressLimit || isInvalidRangeOverlap {
 				result = append(result, batch)
 
 				batch = requestBatch{
@@ -198,7 +214,7 @@ func batchToRequests(connectionGroup []builderSlotGroup) []requestBatch {
 		}
 		result = append(result, batch)
 	}
-	return result
+	return result, nil
 }
 
 type builderSlot struct {
@@ -276,4 +292,68 @@ type requestBatch struct {
 	RequestInterval Duration
 
 	fields Fields
+}
+
+// invalidAddress is (register/coil) range in between modbus server should not be requested
+type invalidAddress struct {
+	from uint16
+	to   uint16
+}
+
+type invalidRange []invalidAddress
+
+func (r *invalidRange) Overlaps(requestStart uint16, slotStart uint16, slotEnd uint16) (bool, error) {
+	if r == nil || len(*r) == 0 {
+		return false, nil
+	}
+	for _, ir := range *r {
+		if ir.from <= slotEnd && slotStart <= ir.to {
+			return true, fmt.Errorf("field overlaps invalid address range, addr: %d, range: %d-%d", slotStart, ir.from, ir.to)
+		}
+		if ir.from <= slotEnd && requestStart <= ir.to {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func addressToInvalidRange(address string) (invalidRange, error) {
+	if !strings.ContainsRune(address, '?') {
+		return nil, nil
+	}
+
+	url, err := url.Parse(address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse server adddres for invalid range: %q, err: %w", address, err)
+	}
+	result := make(invalidRange, 0)
+	raw := url.Query()["invalid_addr"]
+	for _, addrParam := range raw {
+		for _, addr := range strings.Split(addrParam, ",") {
+			before, after, found := strings.Cut(addr, "-")
+			if !found {
+				before = addr
+			}
+			from, err := strconv.ParseUint(before, 10, 16)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse invalid range: %q, err: %w", address, err)
+			}
+			tmp := invalidAddress{
+				from: uint16(from),
+				to:   uint16(from),
+			}
+			if found {
+				to, err := strconv.ParseUint(after, 10, 16)
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse invalid range: %q, err: %w", address, err)
+				}
+				tmp.to = uint16(to)
+			}
+			result = append(result, tmp)
+		}
+	}
+	if len(result) == 0 {
+		return nil, nil
+	}
+	return result, nil
 }
