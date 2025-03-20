@@ -220,3 +220,67 @@ func TestPoller_PollWithError(t *testing.T) {
 		})
 	}
 }
+
+func TestParseAddress(t *testing.T) {
+	defaultConf := modbus.ClientConfig{
+		WriteTimeout: 1 * time.Second,
+		ReadTimeout:  1 * time.Second,
+	}
+	var testCases = []struct {
+		name           string
+		whenAddressURL string
+		expectAddr     string
+		expectConf     modbus.ClientConfig
+		expectErr      string
+	}{
+		{
+			name:           "ok",
+			whenAddressURL: "udp://modbus-test-server:5022?write_timeout=3s&read_timeout=4s",
+			expectAddr:     "udp://modbus-test-server:5022",
+			expectConf: modbus.ClientConfig{
+				WriteTimeout: 3 * time.Second,
+				ReadTimeout:  4 * time.Second,
+			},
+		},
+		{
+			name:           "ok, without scheme and port",
+			whenAddressURL: "modbus-test-server",
+			expectAddr:     "tcp://modbus-test-server:502",
+			expectConf:     defaultConf,
+		},
+		{
+			name:           "ok, without scheme",
+			whenAddressURL: "modbus-test-server:5022",
+			expectAddr:     "tcp://modbus-test-server:5022",
+			expectConf:     defaultConf,
+		},
+		{
+			name:           "ok, IP without scheme and port",
+			whenAddressURL: "192.168.1.1",
+			expectAddr:     "tcp://192.168.1.1:502",
+			expectConf:     defaultConf,
+		},
+		{
+			name:           "ok, random IPv6 port",
+			whenAddressURL: "[::]:45215?write_timeout=3s",
+			expectAddr:     "tcp://:::45215",
+			expectConf: modbus.ClientConfig{
+				WriteTimeout: 3 * time.Second,
+				ReadTimeout:  1 * time.Second,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			addr, conf, err := parseAddress(tc.whenAddressURL)
+
+			assert.Equal(t, tc.expectAddr, addr)
+			assert.Equal(t, tc.expectConf, conf)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
