@@ -9,6 +9,7 @@ import (
 	"github.com/aldas/go-modbus-client/packet"
 	"log/slog"
 	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -311,25 +312,39 @@ func (j *job) poll(ctx context.Context) error {
 	}
 }
 
-// DefaultConnectClient is default implementation to create and connect to Modbus server
-func DefaultConnectClient(ctx context.Context, protocol modbus.ProtocolType, addressURL string) (Client, error) {
+func parseAddress(addressURL string) (string, modbus.ClientConfig, error) {
+	if !strings.Contains(addressURL, "://") {
+		addressURL = "tcp://" + addressURL
+	}
+
 	u, err := url.Parse(addressURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse server address, err: %w", err)
+		return "", modbus.ClientConfig{}, fmt.Errorf("failed to parse server address, err: %w", err)
 	}
-	addr := fmt.Sprintf("%s://%s", cmp.Or(u.Scheme, "tcp"), u.Host)
+	host := cmp.Or(u.Hostname(), addressURL)
+	port := cmp.Or(u.Port(), "502")
+	addr := fmt.Sprintf("%s://%s:%s", u.Scheme, host, port)
 
 	writeTimeout, err := durationParam(u.Query(), "write_timeout", 1*time.Second)
 	if err != nil {
-		return nil, err
+		return "", modbus.ClientConfig{}, err
 	}
 	readTimeout, err := durationParam(u.Query(), "read_timeout", 1*time.Second)
 	if err != nil {
-		return nil, err
+		return "", modbus.ClientConfig{}, err
 	}
 	config := modbus.ClientConfig{
 		WriteTimeout: writeTimeout,
 		ReadTimeout:  readTimeout,
+	}
+	return addr, config, nil
+}
+
+// DefaultConnectClient is default implementation to create and connect to Modbus server
+func DefaultConnectClient(ctx context.Context, protocol modbus.ProtocolType, addressURL string) (Client, error) {
+	addr, config, err := parseAddress(addressURL)
+	if err != nil {
+		return nil, err
 	}
 
 	var client *modbus.Client
