@@ -122,6 +122,14 @@ type Field struct {
 
 	// ServerAddress is Modbus server location as URL.
 	// URL: `scheme://host:port` or file `/dev/ttyS0?BaudRate=4800`
+	// Query parameters are used to pass information about network connection or how to split
+	// fields into request batches.
+	//
+	// Splitter logic know following query parameters:
+	// - `max_quantity_per_request` maximum quantity that request can have. How many
+	//		registers/coils requests will be limited to.
+	// - `invalid_addr=70,100-120` - addresses or address range that splitter will avoid to include in request
+	//		when creating batches.
 	ServerAddress   string       `json:"server_address" mapstructure:"server_address"`
 	FunctionCode    uint8        `json:"function_code" mapstructure:"function_code"`
 	UnitID          uint8        `json:"unit_id" mapstructure:"unit_id"`
