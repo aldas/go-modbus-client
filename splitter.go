@@ -160,7 +160,7 @@ func batchToRequests(slotGroups []builderSlotGroup) ([]requestBatch, error) {
 		if len(slotGroup.slots) == 0 {
 			continue
 		}
-		invalid, err := addressToInvalidRange(slotGroup.group.serverAddress)
+		config, err := addressToSplitterConfig(slotGroup.group.serverAddress)
 		if err != nil {
 			return nil, err
 		}
@@ -168,6 +168,10 @@ func batchToRequests(slotGroups []builderSlotGroup) ([]requestBatch, error) {
 		if slotGroup.isForCoils {
 			addressLimit = packet.MaxCoilsInReadResponse
 		}
+		if config.MaxQuantityPerRequest > 0 && config.MaxQuantityPerRequest < addressLimit {
+			addressLimit = config.MaxQuantityPerRequest
+		}
+
 		sort.Sort(slotsSorter(slotGroup.slots))
 
 		firstAddress := slotGroup.slots[0].address
@@ -185,12 +189,12 @@ func batchToRequests(slotGroups []builderSlotGroup) ([]requestBatch, error) {
 			slotAddress := slot.address
 			slotEndAddress := slotAddress + slot.size
 			addressDiff := slotEndAddress - firstAddress
-			isBiggerThenAddressLimit := addressDiff > addressLimit
-			isInvalidRangeOverlap, err := invalid.Overlaps(firstAddress, slotAddress, slotEndAddress-1)
+			isBiggerThanAddressLimit := addressDiff > addressLimit
+			isInvalidRangeOverlap, err := config.InvalidRange.Overlaps(firstAddress, slotAddress, slotEndAddress-1)
 			if err != nil {
 				return nil, err
 			}
-			if isBiggerThenAddressLimit || isInvalidRangeOverlap {
+			if isBiggerThanAddressLimit || isInvalidRangeOverlap {
 				result = append(result, batch)
 
 				batch = requestBatch{
@@ -317,15 +321,40 @@ func (r *invalidRange) Overlaps(requestStart uint16, slotStart uint16, slotEnd u
 	return false, nil
 }
 
-func addressToInvalidRange(address string) (invalidRange, error) {
-	if !strings.ContainsRune(address, '?') {
-		return nil, nil
-	}
+type splitterConfig struct {
+	MaxQuantityPerRequest uint16
+	InvalidRange          invalidRange
+}
 
+func addressToSplitterConfig(address string) (splitterConfig, error) {
+	if !strings.ContainsRune(address, '?') {
+		return splitterConfig{}, nil
+	}
 	url, err := url.Parse(address)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse server adddres for invalid range: %q, err: %w", address, err)
+		return splitterConfig{}, fmt.Errorf("failed to parse server adddres for invalid range: %q, err: %w", address, err)
 	}
+	invalid, err := addressToInvalidRange(url)
+	if err != nil {
+		return splitterConfig{}, err
+	}
+
+	maxQuantityPerRequest := uint16(0)
+	if raw := url.Query().Get("max_quantity_per_request"); raw != "" {
+		tmpQ, err := strconv.ParseUint(raw, 10, 16)
+		if err != nil {
+			return splitterConfig{}, fmt.Errorf("failed to parse max_quantity_per_request, err: %w", err)
+		}
+		maxQuantityPerRequest = uint16(tmpQ)
+	}
+
+	return splitterConfig{
+		MaxQuantityPerRequest: maxQuantityPerRequest,
+		InvalidRange:          invalid,
+	}, nil
+}
+
+func addressToInvalidRange(url *url.URL) (invalidRange, error) {
 	result := make(invalidRange, 0)
 	raw := url.Query()["invalid_addr"]
 	for _, addrParam := range raw {
@@ -336,7 +365,7 @@ func addressToInvalidRange(address string) (invalidRange, error) {
 			}
 			from, err := strconv.ParseUint(before, 10, 16)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse invalid range: %q, err: %w", address, err)
+				return nil, fmt.Errorf("failed to parse invalid range: %q, err: %w", addr, err)
 			}
 			tmp := invalidAddress{
 				from: uint16(from),
@@ -345,7 +374,7 @@ func addressToInvalidRange(address string) (invalidRange, error) {
 			if found {
 				to, err := strconv.ParseUint(after, 10, 16)
 				if err != nil {
-					return nil, fmt.Errorf("failed to parse invalid range: %q, err: %w", address, err)
+					return nil, fmt.Errorf("failed to parse invalid range: %q, err: %w", addr, err)
 				}
 				tmp.to = uint16(to)
 			}

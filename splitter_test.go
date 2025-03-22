@@ -3,6 +3,7 @@ package modbus
 import (
 	"github.com/aldas/go-modbus-client/packet"
 	"github.com/stretchr/testify/assert"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -230,6 +231,44 @@ func TestSplit_to2CoilsBatches(t *testing.T) {
 	assert.Len(t, secondBatch.Fields, 1)
 }
 
+func TestSplit_Serialto2CoilsBatches(t *testing.T) {
+	given := []Field{
+		{
+			ServerAddress: "/dev/ttyS0:9600?invalid_addr=70", UnitID: 0,
+			Address: 1, Type: FieldTypeUint16,
+		},
+		{
+			ServerAddress: "/dev/ttyS0:9600?invalid_addr=70", UnitID: 1,
+			Address: 2, Type: FieldTypeUint16,
+		},
+	}
+
+	batched, err := split(given, 3, ProtocolRTU)
+	assert.NoError(t, err)
+	assert.Len(t, batched, 2)
+}
+
+func TestSplit_maxQuantityPerRequest(t *testing.T) {
+	given := []Field{
+		{
+			ServerAddress: "/dev/ttyS0:9600?max_quantity_per_request=2", UnitID: 1,
+			Address: 1, Type: FieldTypeUint16,
+		},
+		{
+			ServerAddress: "/dev/ttyS0:9600?max_quantity_per_request=2", UnitID: 1,
+			Address: 2, Type: FieldTypeUint16,
+		},
+		{
+			ServerAddress: "/dev/ttyS0:9600?max_quantity_per_request=2", UnitID: 1,
+			Address: 3, Type: FieldTypeUint16,
+		},
+	}
+
+	batched, err := split(given, 3, ProtocolRTU)
+	assert.NoError(t, err)
+	assert.Len(t, batched, 2)
+}
+
 func TestInvalidRange_Overlaps(t *testing.T) {
 	testCases := []struct {
 		name             string
@@ -337,6 +376,63 @@ func TestInvalidRange_Overlaps(t *testing.T) {
 	}
 }
 
+func TestAddressToSplitterConfig(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenAddress string
+		expect      splitterConfig
+		expectErr   string
+	}{
+		{
+			name:        "ok, max_quantity_per_request",
+			whenAddress: "/dev/ttyS0?max_quantity_per_request=16",
+			expect: splitterConfig{
+				MaxQuantityPerRequest: 16,
+				InvalidRange:          nil,
+			},
+		},
+		{
+			name:        "nok, invalid max_quantity_per_request",
+			whenAddress: "/dev/ttyS0?max_quantity_per_request=-1",
+			expect:      splitterConfig{},
+			expectErr:   `failed to parse max_quantity_per_request, err: strconv.ParseUint: parsing "-1": invalid syntax`,
+		},
+		{
+			name:        "ok, single invalid address",
+			whenAddress: "/dev/ttyS0?invalid_addr=10",
+			expect: splitterConfig{
+				MaxQuantityPerRequest: 0,
+				InvalidRange:          invalidRange{{from: 10, to: 10}},
+			},
+		},
+		{
+			name:        "ok, random port url is problematic",
+			whenAddress: "[::]:45310?invalid_addr=10",
+			expectErr:   `failed to parse server adddres for invalid range: "[::]:45310?invalid_addr=10", err: parse "[::]:45310?invalid_addr=10": first path segment in URL cannot contain colon`,
+		},
+		{
+			name:        "ok, empty random port url",
+			whenAddress: "[::]:45310",
+		},
+		{
+			name:        "ok, empty ip",
+			whenAddress: "192.168.100.101:502",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := addressToSplitterConfig(tc.whenAddress)
+
+			assert.Equal(t, tc.expect, result)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestAddressToInvalidRange(t *testing.T) {
 	var testCases = []struct {
 		name        string
@@ -351,19 +447,6 @@ func TestAddressToInvalidRange(t *testing.T) {
 		{
 			name:        "ok, serial device url without param",
 			whenAddress: "/dev/ttyS0?something=else",
-		},
-		{
-			name:        "ok, random port url is problematic",
-			whenAddress: "[::]:45310?invalid_addr=10",
-			expectErr:   `failed to parse server adddres for invalid range: "[::]:45310?invalid_addr=10", err: parse "[::]:45310?invalid_addr=10": first path segment in URL cannot contain colon`,
-		},
-		{
-			name:        "ok, empty random port url",
-			whenAddress: "[::]:45310",
-		},
-		{
-			name:        "ok, empty ip",
-			whenAddress: "192.168.100.101:502",
 		},
 		{
 			name:        "ok, single address",
@@ -397,20 +480,24 @@ func TestAddressToInvalidRange(t *testing.T) {
 		},
 		{
 			name:        "nok, invalid single address",
-			whenAddress: "/dev/ttyS0?invalid_addr=1x",
+			whenAddress: "tcp://192.168.1.2:502?invalid_addr=1x",
 			expect:      nil,
-			expectErr:   `failed to parse invalid range: "/dev/ttyS0?invalid_addr=1x", err: strconv.ParseUint: parsing "1x": invalid syntax`,
+			expectErr:   `failed to parse invalid range: "1x", err: strconv.ParseUint: parsing "1x": invalid syntax`,
 		},
 		{
 			name:        "nok, invalid address range",
-			whenAddress: "/dev/ttyS0?invalid_addr=11-5x2",
+			whenAddress: "tcp://192.168.1.2:502?invalid_addr=11-5x2",
 			expect:      nil,
-			expectErr:   `failed to parse invalid range: "/dev/ttyS0?invalid_addr=11-5x2", err: strconv.ParseUint: parsing "5x2": invalid syntax`,
+			expectErr:   `failed to parse invalid range: "11-5x2", err: strconv.ParseUint: parsing "5x2": invalid syntax`,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := addressToInvalidRange(tc.whenAddress)
+			address, err := url.Parse(tc.whenAddress)
+			if err != nil {
+				t.Fatalf("failed to parse address: %v", err)
+			}
+			result, err := addressToInvalidRange(address)
 
 			assert.Equal(t, tc.expect, result)
 			if tc.expectErr != "" {
