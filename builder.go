@@ -164,6 +164,8 @@ type BuilderRequest struct {
 	UnitID uint8
 	// StartAddress is start register address for request
 	StartAddress uint16
+	// Quantity is amount of registers/coils to return with request
+	Quantity uint16
 
 	Protocol        ProtocolType
 	RequestInterval time.Duration

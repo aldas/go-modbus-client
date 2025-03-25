@@ -126,7 +126,7 @@ type Field struct {
 	// fields into request batches.
 	//
 	// Splitter logic know following query parameters:
-	// - `max_quantity_per_request` maximum quantity that request can have. How many
+	// - `max_quantity_per_request` maximum quantity (uint16) that request can have. How many
 	//		registers/coils requests will be limited to.
 	// - `invalid_addr=70,100-120` - addresses or address range that splitter will avoid to include in request
 	//		when creating batches.
