@@ -65,12 +65,34 @@ func split(fields []Field, functionCode uint8, protocol ProtocolType) ([]Builder
 		if err != nil {
 			return nil, err
 		}
+		var quantity uint16
+		switch r := req.(type) {
+		case *packet.ReadCoilsRequestTCP: // fc1
+			quantity = r.Quantity
+		case *packet.ReadCoilsRequestRTU: // fc1
+			quantity = r.Quantity
+		case *packet.ReadDiscreteInputsRequestTCP: // fc2
+			quantity = r.Quantity
+		case *packet.ReadDiscreteInputsRequestRTU: // fc2
+			quantity = r.Quantity
+		case *packet.ReadHoldingRegistersRequestTCP: // fc3
+			quantity = r.Quantity
+		case *packet.ReadHoldingRegistersRequestRTU: // fc3
+			quantity = r.Quantity
+		case *packet.ReadInputRegistersRequestTCP: // fc4
+			quantity = r.Quantity
+		case *packet.ReadInputRegistersRequestRTU: // fc4
+			quantity = r.Quantity
+		}
+
 		result = append(result, BuilderRequest{
 			Request: req,
 
-			ServerAddress:   b.ServerAddress,
-			UnitID:          b.UnitID,
-			StartAddress:    b.StartAddress,
+			ServerAddress: b.ServerAddress,
+			UnitID:        b.UnitID,
+			StartAddress:  b.StartAddress,
+			Quantity:      quantity,
+
 			Protocol:        b.Protocol,
 			RequestInterval: time.Duration(b.RequestInterval),
 

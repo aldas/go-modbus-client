@@ -39,6 +39,7 @@ func TestSplit_single(t *testing.T) {
 	expect := BuilderRequest{
 		ServerAddress: ":502",
 		StartAddress:  1,
+		Quantity:      1,
 		Protocol:      ProtocolTCP,
 		Request:       pReq,
 		Fields: []Field{
