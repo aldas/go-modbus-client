@@ -25,11 +25,18 @@ type Client interface {
 	Close() error
 }
 
+// ClientConnectFunc is used by poller jobs to open connection to modbus server and request data from it
+type ClientConnectFunc func(ctx context.Context, protocol modbus.ProtocolType, addressURL string) (Client, error)
+
 // Poller is service for sending modbus requests with interval to servers and emitting extracted
 // values from request to result channel.
+//
+// Poller creates goroutines for each given modbus.BuilderRequest and runs them in parallel. If your
+// modbus server does not handle parallel requests well (modbus over serial connection) you need to
+// provide network client that limits connections to servers. See Config.ConnectFunc
 type Poller struct {
 	logger      *slog.Logger
-	connectFunc func(ctx context.Context, batchProtocol modbus.ProtocolType, address string) (Client, error)
+	connectFunc ClientConnectFunc
 
 	isRunning atomic.Bool
 	jobs      []job
@@ -44,8 +51,9 @@ type Config struct {
 	Logger *slog.Logger
 
 	// ConnectFunc is used by poller jobs to open connection to modbus server and request data from it
+	// If you need single connection per server (for example Serial connections) use built in NewSingleConnectionPerAddressClientFunc.
 	// Defaults to DefaultConnectClient
-	ConnectFunc func(ctx context.Context, batchProtocol modbus.ProtocolType, address string) (Client, error)
+	ConnectFunc ClientConnectFunc
 
 	// OnClientDoErrorFunc is called when Client.Do returns with an error.
 	// User can decide do suppress certain errors by not returning from this function. In that
