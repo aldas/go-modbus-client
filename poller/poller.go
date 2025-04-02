@@ -320,7 +320,9 @@ func (j *job) poll(ctx context.Context) error {
 	}
 }
 
-func parseAddress(addressURL string) (string, modbus.ClientConfig, error) {
+// ParseNetworkAddress parses given address to modbus.ClientConfig suitable for use with TCP/UDP clients
+// Returned address is formatted as valid URL "scheme://host:port", where scheme default to `tcp` and port to `502`.
+func ParseNetworkAddress(addressURL string) (address string, config modbus.ClientConfig, err error) {
 	if !strings.Contains(addressURL, "://") {
 		addressURL = "tcp://" + addressURL
 	}
@@ -341,7 +343,7 @@ func parseAddress(addressURL string) (string, modbus.ClientConfig, error) {
 	if err != nil {
 		return "", modbus.ClientConfig{}, err
 	}
-	config := modbus.ClientConfig{
+	config = modbus.ClientConfig{
 		WriteTimeout: writeTimeout,
 		ReadTimeout:  readTimeout,
 	}
@@ -350,7 +352,7 @@ func parseAddress(addressURL string) (string, modbus.ClientConfig, error) {
 
 // DefaultConnectClient is default implementation to create and connect to Modbus server
 func DefaultConnectClient(ctx context.Context, protocol modbus.ProtocolType, addressURL string) (Client, error) {
-	addr, config, err := parseAddress(addressURL)
+	addr, config, err := ParseNetworkAddress(addressURL)
 	if err != nil {
 		return nil, err
 	}
