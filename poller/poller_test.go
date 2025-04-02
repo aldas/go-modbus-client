@@ -221,7 +221,7 @@ func TestPoller_PollWithError(t *testing.T) {
 	}
 }
 
-func TestParseAddress(t *testing.T) {
+func TestParseNetworkAddress(t *testing.T) {
 	defaultConf := modbus.ClientConfig{
 		WriteTimeout: 1 * time.Second,
 		ReadTimeout:  1 * time.Second,
@@ -272,7 +272,7 @@ func TestParseAddress(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			addr, conf, err := parseAddress(tc.whenAddressURL)
+			addr, conf, err := ParseNetworkAddress(tc.whenAddressURL)
 
 			assert.Equal(t, tc.expectAddr, addr)
 			assert.Equal(t, tc.expectConf, conf)
