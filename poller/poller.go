@@ -166,8 +166,9 @@ type job struct {
 }
 
 func (j *job) Start(ctx context.Context) {
-	const defaultRetry = 1 * time.Second
-	retryTime := defaultRetry
+	const defaultRetryDelay = 1 * time.Second
+	const maxRetryDelay = 1 * time.Minute
+	retryTime := defaultRetryDelay
 	delay := time.NewTimer(retryTime)
 	defer delay.Stop()
 
@@ -181,12 +182,11 @@ func (j *job) Start(ctx context.Context) {
 		if err == nil || ctx.Err() != nil {
 			return
 		}
-		elapsed := j.timeNow().Sub(start)
-		if elapsed > 1*time.Minute {
-			retryTime = defaultRetry
-		} else {
-			retryTime = cmp.Or(retryTime*2, 1*time.Minute)
+		retryTime = retryTime * 2
+		if retryTime > maxRetryDelay {
+			retryTime = maxRetryDelay
 		}
+		elapsed := j.timeNow().Sub(start)
 		j.logger.Error("poll failed",
 			"error", err,
 			"elapsed", elapsed,
