@@ -167,7 +167,7 @@ type job struct {
 
 func (j *job) Start(ctx context.Context) {
 	const defaultRetryDelay = 1 * time.Second
-	const maxRetryDelay = 1 * time.Minute
+	const maxRetryDelay = 30 * time.Second
 	retryTime := defaultRetryDelay
 	delay := time.NewTimer(retryTime)
 	defer delay.Stop()
