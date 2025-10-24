@@ -3,13 +3,14 @@ package modbus
 import (
 	"context"
 	"errors"
-	"github.com/aldas/go-modbus-client/packet"
 	"io"
 	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/aldas/go-modbus-client/packet"
 )
 
 const (
@@ -255,7 +256,7 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 		default:
 		}
 
-		_ = c.conn.SetReadDeadline(c.timeNow().Add(500 * time.Microsecond)) // max 0.5ms block time for read per iteration
+		_ = c.conn.SetReadDeadline(c.timeNow().Add(1 * time.Millisecond)) // max 1ms block time for read per iteration
 		n, err := c.conn.Read(received[total:maxBytes])
 		if c.hooks != nil {
 			c.hooks.AfterEachRead(received[total:total+n], n, err)

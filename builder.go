@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/aldas/go-modbus-client/packet"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/aldas/go-modbus-client/packet"
 )
 
 const (
@@ -57,11 +58,19 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON converts raw bytes from JSON to Duration
 func (d *Duration) UnmarshalJSON(raw []byte) error {
+	const maxDur = time.Hour * 24 * 30 * 12
 	if raw[0] != '"' {
 		v, err := strconv.ParseInt(string(raw), 10, 64)
 		if err != nil {
 			return fmt.Errorf("could not parse Duration as int, err: %w", err)
 		}
+		if v < 0 {
+			return fmt.Errorf("unmarshalled duration cannot be negative")
+		}
+		if v >= int64(maxDur) { // ~1 year max
+			return fmt.Errorf("unmarshalled duration cannot be greater than 8640 hours (~1 year)")
+		}
+
 		*d = Duration(v)
 		return nil
 	}
@@ -76,6 +85,12 @@ func (d *Duration) UnmarshalJSON(raw []byte) error {
 	tmp, err := time.ParseDuration(string(raw[1:e]))
 	if err != nil {
 		return fmt.Errorf("could not parse Duration from string, err: %w", err)
+	}
+	if tmp < 0 {
+		return fmt.Errorf("unmarshalled duration cannot be negative")
+	}
+	if tmp >= maxDur { // ~1 year max
+		return fmt.Errorf("unmarshalled duration cannot be greater than 8640 hours (~1 year)")
 	}
 	*d = Duration(tmp)
 	return nil
