@@ -96,7 +96,7 @@ func NewRegisters(data []byte, startAddress uint16) (*Registers, error) {
 		return nil, errors.New("data length at least 2 bytes as 1 register is 2 bytes")
 	}
 	if dataLen%2 != 0 {
-		return nil, errors.New("data length must be odd number of bytes as 1 register is 2 bytes")
+		return nil, errors.New("data length must be even number of bytes as 1 register is 2 bytes")
 	}
 	return &Registers{
 		defaultByteOrder: BigEndianHighWordFirst,
