@@ -94,3 +94,123 @@ func ParseRTURequest(data []byte) (Request, error) {
 		return nil, fmt.Errorf("unknown function code parsed: %v", functionCode)
 	}
 }
+
+// RequestDestination represents the addressing and request parameters
+// used in a Modbus read/write operation. It identifies the target device,
+// the function to execute, and the register range to read/write.
+type RequestDestination struct {
+	// Address specifies the target device's network or serial address.
+	// For Modbus RTU, this is the filesystem path to device.
+	// For Modbus TCP, this may represent the host or IP address.
+	Address string
+
+	// UnitID is the Modbus unit identifier used primarily in Modbus TCP
+	// to address devices behind a gateway. In RTU mode, this is the slave address.
+	UnitID uint8
+
+	// FunctionCode specifies the Modbus function to execute.
+	FunctionCode uint8
+
+	// StartAddress defines the (starting) register or coil address
+	// for the read/write operation.
+	// Optional: This field is 0 when request does not have this field.
+	StartAddress uint16
+
+	// Quantity indicates how many registers or coils to read,
+	// depending on the function code.
+	// Optional: This field is 0 when request does not have this field.
+	Quantity uint16
+}
+
+// ExtractRequestDestination extracts destination related fields from Modbus requests.
+// Note: this function does not support FC23 (ReadWriteMultipleRegisters) fully, it is missing write related fields.
+func ExtractRequestDestination(req Request) (RequestDestination, error) {
+	d := RequestDestination{
+		Address:      "", // up to the user to fill
+		UnitID:       0,
+		FunctionCode: req.FunctionCode(),
+		StartAddress: 0,
+		Quantity:     0,
+	}
+	switch r := req.(type) {
+	case *ReadCoilsRequestTCP: // fc1
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.Quantity
+	case *ReadCoilsRequestRTU: // fc1
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.Quantity
+	case *ReadDiscreteInputsRequestTCP: // fc2
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.Quantity
+	case *ReadDiscreteInputsRequestRTU: // fc2
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.Quantity
+	case *ReadHoldingRegistersRequestTCP: // fc3
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.Quantity
+	case *ReadHoldingRegistersRequestRTU: // fc3
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.Quantity
+	case *ReadInputRegistersRequestTCP: // fc4
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.Quantity
+	case *ReadInputRegistersRequestRTU: // fc4
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.Quantity
+	case *WriteSingleCoilRequestRTU: // fc5
+		d.UnitID = r.UnitID
+		d.StartAddress = r.Address
+	case *WriteSingleCoilRequestTCP: // fc5
+		d.UnitID = r.UnitID
+		d.StartAddress = r.Address
+	case *WriteSingleRegisterRequestRTU: // fc6
+		d.UnitID = r.UnitID
+		d.StartAddress = r.Address
+	case *WriteSingleRegisterRequestTCP: // fc6
+		d.UnitID = r.UnitID
+		d.StartAddress = r.Address
+	case *WriteMultipleCoilsRequestRTU: // fc15
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.CoilCount
+	case *WriteMultipleCoilsRequestTCP: // fc15
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.CoilCount
+	case *WriteMultipleRegistersRequestRTU: // fc16
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.RegisterCount
+	case *WriteMultipleRegistersRequestTCP: // fc16
+		d.UnitID = r.UnitID
+		d.StartAddress = r.StartAddress
+		d.Quantity = r.RegisterCount
+	case *ReadServerIDRequestRTU: // fc17
+		d.UnitID = r.UnitID
+	case *ReadServerIDRequestTCP: // fc17
+		d.UnitID = r.UnitID
+	case *ReadWriteMultipleRegistersRequestRTU: // fc23
+		d.UnitID = r.UnitID
+		d.StartAddress = r.ReadStartAddress
+		d.Quantity = r.ReadQuantity
+		// r.WriteStartAddress and r.ReadQuantity are at the moment intentionally left out
+		// if these fields are needed then open an issue / send PR
+	case *ReadWriteMultipleRegistersRequestTCP: // fc23
+		d.UnitID = r.UnitID
+		d.StartAddress = r.ReadStartAddress
+		d.Quantity = r.ReadQuantity
+		// r.WriteStartAddress and r.ReadQuantity are at the moment intentionally left out
+		// if these fields are needed then open an issue / send PR
+	default:
+		return RequestDestination{}, fmt.Errorf("extract request destination: unknown function code parsed: %v", req.FunctionCode())
+	}
+	return d, nil
+}
