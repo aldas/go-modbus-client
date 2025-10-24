@@ -26,6 +26,8 @@ const (
 	//   TCP MODBUS ADU = 253 bytes + MBAP (7 bytes) = 260 bytes.
 	tcpPacketMaxLen = 7 + 253 // 2 trans id + 2 proto + 2 pdu len + 1 unit id + 253 max data len
 	rtuPacketMaxLen = 256     // 1 unit id + 253 max data len + 2 crc
+	// packetBufferOverhead allows detection of packets exceeding Modbus max size
+	packetBufferOverhead = 10
 
 	defaultWriteTimeout   = 1 * time.Second
 	defaultReadTimeout    = 2 * time.Second
@@ -243,7 +245,7 @@ func (c *Client) do(ctx context.Context, data []byte, expectedLen int) ([]byte, 
 	}
 
 	// make buffer a little bit bigger than would be valid to see problems when somehow more bytes are sent
-	const maxBytes = tcpPacketMaxLen + 10
+	const maxBytes = tcpPacketMaxLen + packetBufferOverhead
 	received := [maxBytes]byte{}
 	total := 0
 	readTimeout := time.After(c.readTimeout)

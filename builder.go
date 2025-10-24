@@ -30,14 +30,15 @@ type ProtocolType uint8
 
 // UnmarshalJSON converts raw bytes from JSON to Invalid
 func (pt *ProtocolType) UnmarshalJSON(raw []byte) error {
+	if len(raw) < 4 {
+		return fmt.Errorf("protocol value too short, given: '%s'", raw)
+	}
 	t := string(raw)
-	switch strings.ToLower(t) {
-	case `"tcp"`:
+	if strings.EqualFold(t, `"tcp"`) {
 		*pt = ProtocolTCP
-	case `"rtu"`:
+	} else if strings.EqualFold(t, `"rtu"`) {
 		*pt = ProtocolRTU
-
-	default:
+	} else {
 		return fmt.Errorf("unknown protocol value, given: '%s'", t)
 	}
 	return nil

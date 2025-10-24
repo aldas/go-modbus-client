@@ -860,6 +860,12 @@ func TestProtocolType_UnmarshalJSON(t *testing.T) {
 			expect:    []ProtocolType{ProtocolTCP, 0x0},
 			expectErr: `unknown protocol value, given: '"unknown"'`,
 		},
+		{
+			name:      "nok, too short",
+			given:     `["u"]`,
+			expect:    []ProtocolType{0x0},
+			expectErr: `protocol value too short, given: '"u"'`,
+		},
 	}
 
 	for _, tc := range testCases {
