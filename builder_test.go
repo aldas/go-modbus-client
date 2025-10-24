@@ -913,6 +913,12 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 			expectErr: `could not parse Duration from string, err: time: unknown unit "S" in duration "1S"`,
 		},
 		{
+			name:      "ok, empty means 0",
+			given:     ``,
+			expect:    Duration(0),
+			expectErr: ``,
+		},
+		{
 			name:      "nok, invalid type",
 			given:     `null`,
 			expect:    Duration(0),
