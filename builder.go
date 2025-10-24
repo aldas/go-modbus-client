@@ -60,6 +60,11 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON converts raw bytes from JSON to Duration
 func (d *Duration) UnmarshalJSON(raw []byte) error {
 	const maxDur = time.Hour * 24 * 30 * 12
+	if len(raw) == 0 {
+		*d = Duration(0)
+		return nil
+	}
+
 	if raw[0] != '"' {
 		v, err := strconv.ParseInt(string(raw), 10, 64)
 		if err != nil {
