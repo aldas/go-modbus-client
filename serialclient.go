@@ -176,7 +176,9 @@ func (c *SerialClient) Close() error {
 	if c.serialPort == nil {
 		return nil
 	}
-	return c.serialPort.Close()
+	err := c.serialPort.Close()
+	c.serialPort = nil
+	return err
 }
 
 func (c *SerialClient) flush() error {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/aldas/go-modbus-client/packet"
 	"io"
 	"log"
 	"net"
@@ -12,6 +11,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/aldas/go-modbus-client/packet"
 )
 
 const (
@@ -176,7 +177,7 @@ func (s *Server) serve(ctx context.Context, listener net.Listener, handler Modbu
 					conn.onErrorFunc(fmt.Errorf("failed to close handler connection, err: %w", err))
 				}
 				s.trackConn(c, false)
-				if s.OnAcceptConnFunc != nil {
+				if s.OnCloseConnFunc != nil {
 					s.OnCloseConnFunc(ctx, conn.conn.RemoteAddr(), s.isShutdown.Load())
 				}
 			}()
