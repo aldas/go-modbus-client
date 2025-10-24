@@ -3,12 +3,13 @@ package modbus
 import (
 	"errors"
 	"fmt"
-	"github.com/aldas/go-modbus-client/packet"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/aldas/go-modbus-client/packet"
 )
 
 // split groups (by host:port+UnitID, "optimized" max amount of fields for max quantity) fields into packets
@@ -194,7 +195,9 @@ func batchToRequests(slotGroups []builderSlotGroup) ([]requestBatch, error) {
 			addressLimit = config.MaxQuantityPerRequest
 		}
 
-		sort.Sort(slotsSorter(slotGroup.slots))
+		sort.Slice(slotGroup.slots, func(i, j int) bool {
+			return slotGroup.slots[i].address < slotGroup.slots[j].address
+		})
 
 		firstAddress := slotGroup.slots[0].address
 		batch := requestBatch{
@@ -258,14 +261,6 @@ func (bs *builderSlots) IndexOf(address uint16) int {
 		}
 	}
 	return -1
-}
-
-type slotsSorter builderSlots
-
-func (a slotsSorter) Len() int      { return len(a) }
-func (a slotsSorter) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a slotsSorter) Less(i, j int) bool {
-	return a[i].address < a[j].address
 }
 
 type groupID struct {
