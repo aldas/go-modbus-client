@@ -194,6 +194,10 @@ func (j *job) Start(ctx context.Context) {
 			"retry_time", retryTime,
 		)
 
+		// stop the timer and drain the channel before resetting
+		if !delay.Stop() {
+			<-delay.C
+		}
 		delay.Reset(retryTime)
 		select {
 		case <-delay.C:

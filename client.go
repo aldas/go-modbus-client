@@ -194,7 +194,10 @@ func (c *Client) Close() error {
 	if c.conn == nil {
 		return nil
 	}
-	return c.conn.Close()
+	err := c.conn.Close()
+	c.conn = nil
+	c.address = ""
+	return err
 }
 
 // ClientError indicates errors returned by Client that network related and are possibly retryable
