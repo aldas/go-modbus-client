@@ -3,11 +3,13 @@ package modbus
 import (
 	"context"
 	"errors"
-	"github.com/aldas/go-modbus-client/packet"
+	"fmt"
 	"io"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/aldas/go-modbus-client/packet"
 )
 
 // SerialClient provides mechanisms to send requests to modbus server over serial port
@@ -91,8 +93,10 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 		c.hooks.BeforeWrite(data)
 	}
 	if _, err := c.serialPort.Write(data); err != nil {
-		if err := c.flush(); err != nil {
-			return nil, &ClientError{Err: err}
+		if flushErr := c.flush(); flushErr != nil {
+			return nil, &ClientError{
+				Err: fmt.Errorf("write failed: %w, additionally flush failed: %v", err, flushErr),
+			}
 		}
 		return nil, &ClientError{Err: err}
 	}
@@ -123,8 +127,10 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 		// os.ErrDeadlineExceeded - we set new deadline on next iteration
 		// io.EOF - we check if read + received is enough to form complete packet
 		if err != nil && !(errors.Is(err, os.ErrDeadlineExceeded) || errors.Is(err, io.EOF)) {
-			if err := c.flush(); err != nil {
-				return nil, &ClientError{Err: err}
+			if flushErr := c.flush(); flushErr != nil {
+				return nil, &ClientError{
+					Err: fmt.Errorf("write failed: %w, additionally flush failed: %v", err, flushErr),
+				}
 			}
 			return nil, &ClientError{Err: err}
 		}
@@ -137,14 +143,18 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 		}
 		// check if we have exactly the error packet. Error packets are shorter than regulars packets
 		if errPacket := c.asProtocolErrorFunc(received[0:total]); errPacket != nil {
-			if err := c.flush(); err != nil {
-				return nil, &ClientError{Err: err}
+			if flushErr := c.flush(); flushErr != nil {
+				return nil, &ClientError{
+					Err: fmt.Errorf("write failed: %w, additionally flush failed: %v", err, flushErr),
+				}
 			}
 			return nil, &ClientError{Err: errPacket}
 		}
 		if total >= expectedLen {
-			if err := c.flush(); err != nil {
-				return nil, &ClientError{Err: err}
+			if flushErr := c.flush(); flushErr != nil {
+				return nil, &ClientError{
+					Err: fmt.Errorf("write failed: %w, additionally flush failed: %v", err, flushErr),
+				}
 			}
 			break
 		}
