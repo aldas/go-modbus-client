@@ -129,7 +129,7 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 		if err != nil && !(errors.Is(err, os.ErrDeadlineExceeded) || errors.Is(err, io.EOF)) {
 			if flushErr := c.flush(); flushErr != nil {
 				return nil, &ClientError{
-					Err: fmt.Errorf("write failed: %w, additionally flush failed: %v", err, flushErr),
+					Err: fmt.Errorf("read failed: %w, additionally flush failed: %v", err, flushErr),
 				}
 			}
 			return nil, &ClientError{Err: err}
@@ -145,7 +145,7 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 		if errPacket := c.asProtocolErrorFunc(received[0:total]); errPacket != nil {
 			if flushErr := c.flush(); flushErr != nil {
 				return nil, &ClientError{
-					Err: fmt.Errorf("write failed: %w, additionally flush failed: %v", err, flushErr),
+					Err: fmt.Errorf("protocol error: %w, additionally flush failed: %v", errPacket, flushErr),
 				}
 			}
 			return nil, &ClientError{Err: errPacket}
@@ -153,7 +153,7 @@ func (c *SerialClient) do(ctx context.Context, data []byte, expectedLen int) ([]
 		if total >= expectedLen {
 			if flushErr := c.flush(); flushErr != nil {
 				return nil, &ClientError{
-					Err: fmt.Errorf("write failed: %w, additionally flush failed: %v", err, flushErr),
+					Err: fmt.Errorf("flush failed after successful read: %v", flushErr),
 				}
 			}
 			break
