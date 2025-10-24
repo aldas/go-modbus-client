@@ -5,14 +5,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/aldas/go-modbus-client"
-	"github.com/aldas/go-modbus-client/packet"
 	"log/slog"
 	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/aldas/go-modbus-client"
+	"github.com/aldas/go-modbus-client/packet"
 )
 
 const (
@@ -293,8 +294,9 @@ func (j *job) poll(ctx context.Context) error {
 			}
 			select {
 			case j.resultsChan <- result:
+				s := j.stats.Stats()
 				j.logger.Log(ctx, slog.Level(-8), "request success",
-					"count_ok", j.stats.stats.RequestOKCount,
+					"count_ok", s.RequestOKCount,
 					"req_duration", reqDuration,
 					"values", values,
 				)
@@ -308,7 +310,7 @@ func (j *job) poll(ctx context.Context) error {
 			j.logger.Debug("job health tick",
 				"fc", functionCode,
 				"server", batch.ServerAddress,
-				"stats", j.stats.stats,
+				"stats", j.stats.Stats(),
 			)
 		case <-ctx.Done():
 			j.logger.Info("job done",
