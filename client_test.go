@@ -3,13 +3,14 @@ package modbus
 import (
 	"context"
 	"errors"
-	"github.com/aldas/go-modbus-client/packet"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"io"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/aldas/go-modbus-client/packet"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 type netConnMock struct {
@@ -137,7 +138,7 @@ func TestClient_Do_receivePacketWith1Read(t *testing.T) {
 	conn.On("Write", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x6, 0x1, 0x1, 0x0, 0xc8, 0x0, 0x9}).Once().Return(0, nil)
 
 	// full packet []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1, 0x2, 0x0, 0x1}
-	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
+	conn.On("SetReadDeadline", exampleNow.Add(1*time.Millisecond)).Return(nil)
 	conn.On("Read", mock.Anything).
 		Return(11, nil).
 		Run(func(args mock.Arguments) {
@@ -189,7 +190,7 @@ func TestClientRTU_Do_receivePacketWith1Read(t *testing.T) {
 	conn.On("SetWriteDeadline", exampleNow.Add(defaultWriteTimeout)).Once().Return(nil)
 	conn.On("Write", []byte{0x1, 0x1, 0x0, 0xc8, 0x0, 0x9, 0x7d, 0xf2}).Once().Return(0, nil)
 
-	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
+	conn.On("SetReadDeadline", exampleNow.Add(1*time.Millisecond)).Return(nil)
 	conn.On("Read", mock.Anything).
 		Return(7, nil).
 		Run(func(args mock.Arguments) {
@@ -220,7 +221,7 @@ func TestClient_Do_receivePacketWith2Reads(t *testing.T) {
 	conn.On("Write", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x6, 0x1, 0x1, 0x0, 0xc8, 0x0, 0x9}).Once().Return(0, nil)
 
 	// full packet []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1, 0x2, 0x0, 0x1}
-	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
+	conn.On("SetReadDeadline", exampleNow.Add(1*time.Millisecond)).Return(nil)
 	conn.On("Read", mock.Anything).
 		Return(8, nil).
 		Run(func(args mock.Arguments) {
@@ -228,7 +229,7 @@ func TestClient_Do_receivePacketWith2Reads(t *testing.T) {
 			copy(b, []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1}) // first 8 bytes
 		}).Once()
 
-	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
+	conn.On("SetReadDeadline", exampleNow.Add(1*time.Millisecond)).Return(nil)
 	conn.On("Read", mock.Anything).
 		Return(3, nil).
 		Run(func(args mock.Arguments) {
@@ -258,7 +259,7 @@ func TestClient_Do_receiveErrorPacket(t *testing.T) {
 	conn.On("SetWriteDeadline", exampleNow.Add(defaultWriteTimeout)).Once().Return(nil)
 	conn.On("Write", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x6, 0x1, 0x1, 0x0, 0xc8, 0x0, 0x9}).Once().Return(0, nil)
 
-	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
+	conn.On("SetReadDeadline", exampleNow.Add(1*time.Millisecond)).Return(nil)
 	conn.On("Read", mock.Anything).
 		Return(9, nil).
 		Run(func(args mock.Arguments) {
@@ -293,7 +294,7 @@ func TestClient_Do_ReadSomeBytesWithEOF(t *testing.T) {
 	conn.On("Write", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x6, 0x1, 0x1, 0x0, 0xc8, 0x0, 0x9}).Once().Return(0, nil)
 
 	// full packet []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1, 0x2, 0x0, 0x1}
-	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
+	conn.On("SetReadDeadline", exampleNow.Add(1*time.Millisecond)).Return(nil)
 	conn.On("Read", mock.Anything).
 		Return(8, nil).
 		Run(func(args mock.Arguments) {
@@ -301,7 +302,7 @@ func TestClient_Do_ReadSomeBytesWithEOF(t *testing.T) {
 			copy(b, []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x5, 0x1, 0x1}) // first 8 bytes
 		}).Once()
 
-	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
+	conn.On("SetReadDeadline", exampleNow.Add(1*time.Millisecond)).Return(nil)
 	conn.On("Read", mock.Anything).
 		Return(1, io.EOF) // second read should return 3 bytes but returns 1 with io.EOF
 
@@ -327,7 +328,7 @@ func TestClient_Do_contextCancelAfterFirstRead(t *testing.T) {
 
 	conn.On("SetWriteDeadline", exampleNow.Add(defaultWriteTimeout)).Once().Return(nil)
 	conn.On("Write", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x6, 0x1, 0x1, 0x0, 0xc8, 0x0, 0x9}).Once().Return(0, nil)
-	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
+	conn.On("SetReadDeadline", exampleNow.Add(1*time.Millisecond)).Return(nil)
 	conn.On("Read", mock.Anything).
 		Return(8, nil).
 		Run(func(args mock.Arguments) {
@@ -447,7 +448,7 @@ func TestClient_Do_unknownReadError(t *testing.T) {
 
 	conn.On("SetWriteDeadline", exampleNow.Add(defaultWriteTimeout)).Once().Return(nil)
 	conn.On("Write", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x6, 0x1, 0x1, 0x0, 0xc8, 0x0, 0x9}).Once().Return(0, nil)
-	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
+	conn.On("SetReadDeadline", exampleNow.Add(1*time.Millisecond)).Return(nil)
 	conn.On("Read", mock.Anything).
 		Return(0, io.ErrUnexpectedEOF)
 
@@ -475,7 +476,7 @@ func TestClient_Do_ReadMoreBytesThanPacketCanBe(t *testing.T) {
 
 	conn.On("SetWriteDeadline", exampleNow.Add(defaultWriteTimeout)).Once().Return(nil)
 	conn.On("Write", []byte{0x12, 0x34, 0x0, 0x0, 0x0, 0x6, 0x1, 0x1, 0x0, 0xc8, 0x0, 0x9}).Once().Return(0, nil)
-	conn.On("SetReadDeadline", exampleNow.Add(500*time.Microsecond)).Return(nil)
+	conn.On("SetReadDeadline", exampleNow.Add(1*time.Millisecond)).Return(nil)
 	conn.On("Read", mock.Anything).
 		Return(tcpPacketMaxLen+1, nil)
 

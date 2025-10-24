@@ -1,8 +1,9 @@
 package packet
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRegisters_NewRegisters(t *testing.T) {
@@ -29,7 +30,7 @@ func TestRegisters_NewRegisters(t *testing.T) {
 			whenData:         []byte{0x1, 0x2, 0x1},
 			whenStartAddress: 1,
 			expect:           nil,
-			expectError:      "data length must be odd number of bytes as 1 register is 2 bytes",
+			expectError:      "data length must be even number of bytes as 1 register is 2 bytes",
 		},
 		{
 			name:             "nok, too short len",

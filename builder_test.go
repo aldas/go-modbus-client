@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/aldas/go-modbus-client/modbustest"
 	"github.com/aldas/go-modbus-client/packet"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestBuilder_ReadCoilsTCP(t *testing.T) {
@@ -785,7 +786,7 @@ func TestRegisterRequest_ExtractFields(t *testing.T) {
 			givenResponseData:              []byte{0x0, 0x0, 0x0, 0x1, 0b00010001},
 			whenContinueOnExtractionErrors: false,
 			expect:                         nil,
-			expectErr:                      "data length must be odd number of bytes as 1 register is 2 bytes",
+			expectErr:                      "data length must be even number of bytes as 1 register is 2 bytes",
 		},
 	}
 
@@ -922,6 +923,30 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 			given:     `"1S`,
 			expect:    Duration(0),
 			expectErr: `duration value does not end with quote mark, given: '"1S'`,
+		},
+		{
+			name:      "nok, string, can not be negative",
+			given:     `"-1s"`,
+			expect:    Duration(0),
+			expectErr: `unmarshalled duration cannot be negative`,
+		},
+		{
+			name:      "nok, can not be negative",
+			given:     `-1`,
+			expect:    Duration(0),
+			expectErr: `unmarshalled duration cannot be negative`,
+		},
+		{
+			name:      "nok, string, cannot be greater than 8640 hours",
+			given:     `"8640h"`,
+			expect:    Duration(0),
+			expectErr: `unmarshalled duration cannot be greater than 8640 hours (~1 year)`,
+		},
+		{
+			name:      "nok, cannot be greater than 8640 hours",
+			given:     `31104000000000000`,
+			expect:    Duration(0),
+			expectErr: `unmarshalled duration cannot be greater than 8640 hours (~1 year)`,
 		},
 	}
 

@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/aldas/go-modbus-client/packet"
 	"strings"
+
+	"github.com/aldas/go-modbus-client/packet"
 )
 
 const (
@@ -356,7 +357,7 @@ func (f *Field) MarshalBytes(value any) ([]byte, error) {
 // CheckInvalid compares Invalid value to bytes in fields registers. When raw data in response
 // equal to Invalid the ErrInvalidValue error is returned. Nil return value means no problems occurred.
 func (f *Field) CheckInvalid(registers *packet.Registers) error {
-	if f.Invalid == nil {
+	if len(f.Invalid) == 0 {
 		return nil
 	}
 
