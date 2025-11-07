@@ -190,14 +190,10 @@ func (j *job) Start(ctx context.Context) {
 		elapsed := j.timeNow().Sub(start)
 		j.logger.Error("poll failed",
 			"error", err,
-			"elapsed", elapsed,
-			"retry_time", retryTime,
+			"elapsed_s", elapsed.Seconds(),
+			"retry_time_s", retryTime.Seconds(),
 		)
 
-		// stop the timer and drain the channel before resetting
-		if !delay.Stop() {
-			<-delay.C
-		}
 		delay.Reset(retryTime)
 		select {
 		case <-delay.C:
