@@ -3,9 +3,10 @@ package modbus
 import (
 	"encoding/json"
 	"errors"
+	"testing"
+
 	"github.com/aldas/go-modbus-client/packet"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestField_registerSize(t *testing.T) {
@@ -262,6 +263,7 @@ func TestField_Validate(t *testing.T) {
 		ServerAddress: ":502",
 		UnitID:        1,
 		Address:       100,
+		FunctionCode:  packet.FunctionReadHoldingRegisters,
 		Type:          FieldTypeString,
 		Bit:           0,
 		FromHighByte:  false,
@@ -277,6 +279,11 @@ func TestField_Validate(t *testing.T) {
 		{
 			name:  "ok",
 			given: func(f *Field) {},
+		},
+		{
+			name:      "nok, server address is empty",
+			given:     func(f *Field) { f.FunctionCode = 0 },
+			expectErr: "field function code must be set",
 		},
 		{
 			name:      "nok, server address is empty",
@@ -320,7 +327,21 @@ func TestField_Validate(t *testing.T) {
 				f.Type = FieldTypeCoil
 				f.FunctionCode = 3
 			},
-			expectErr: "field with type coil must have function code of 0,1,2",
+			expectErr: "field with type coil must have function code of 1,2",
+		},
+		{
+			name: "nok, non-coil with coil fc=1",
+			given: func(f *Field) {
+				f.FunctionCode = packet.FunctionReadCoils
+			},
+			expectErr: "only coil field type can have function code of 1,2",
+		},
+		{
+			name: "nok, non-coil with coil fc=2",
+			given: func(f *Field) {
+				f.FunctionCode = packet.FunctionReadDiscreteInputs
+			},
+			expectErr: "only coil field type can have function code of 1,2",
 		},
 		{
 			name: "nok, invalid protocol",

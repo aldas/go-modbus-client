@@ -210,12 +210,23 @@ func (f *Field) Validate() error {
 	if f.Bit > 15 {
 		return errors.New("field bit value must be in range (0-15)")
 	}
-	switch f.Type {
-	case FieldTypeCoil:
-		fc := f.FunctionCode
-		if !(fc == 0 || fc == packet.FunctionReadCoils || fc == packet.FunctionReadDiscreteInputs) {
-			return errors.New("field with type coil must have function code of 0,1,2")
+
+	fc := f.FunctionCode
+	if fc == 0 {
+		return errors.New("field function code must be set")
+	}
+	isCoilsFC := fc == packet.FunctionReadCoils || fc == packet.FunctionReadDiscreteInputs
+	if f.Type == FieldTypeCoil {
+		if !isCoilsFC {
+			return errors.New("field with type coil must have function code of 1,2")
 		}
+	} else {
+		if isCoilsFC {
+			return errors.New("only coil field type can have function code of 1,2")
+		}
+	}
+
+	switch f.Type {
 	case FieldTypeString:
 		if f.Length == 0 {
 			return errors.New("field with type string must have length set")
