@@ -109,36 +109,33 @@ func split(fields []Field, functionCode uint8, protocol ProtocolType) ([]Builder
 // groupForSingleConnection groups fields into groups what can be requested potentially by same request
 // (same server + function + unit ID + protocol + interval)
 func groupForSingleConnection(fields []Field, functionCode uint8, protocol ProtocolType) ([]builderSlotGroup, error) {
-	onlyCoils := functionCode == packet.FunctionReadCoils || functionCode == packet.FunctionReadDiscreteInputs
+	//onlyCoils := functionCode == packet.FunctionReadCoils || functionCode == packet.FunctionReadDiscreteInputs
 
 	groups := map[groupID]builderSlotGroup{}
 	for _, f := range fields {
 		// adjust field fc and protocol to any cases
 		isCoil := f.Type == FieldTypeCoil
-		if (!isCoil && functionCode != 0 && f.FunctionCode == 0) || (isCoil && onlyCoils) {
+		if f.FunctionCode == 0 && functionCode != 0 {
 			f.FunctionCode = functionCode
 		}
+
 		if protocol != protocolAny && f.Protocol == protocolAny {
 			f.Protocol = protocol
 		}
 
-		if err := f.Validate(); err != nil {
-			return nil, err
-		}
-
-		if !onlyCoils && functionCode != 0 && functionCode != f.FunctionCode {
-			// when functionCode is provided and field does not have it set - consider field included
-			continue
+		if functionCode != 0 { // we only want want specific FCs
+			if functionCode != f.FunctionCode {
+				// when functionCode is provided and field does not have it - ignore it
+				continue
+			}
 		}
 		if protocol != protocolAny && f.Protocol != protocolAny && protocol != f.Protocol {
 			// when protocol is provided and field does not have it set - consider field included
 			continue
 		}
 
-		if onlyCoils && !isCoil {
-			continue
-		} else if !onlyCoils && isCoil {
-			continue
+		if err := f.Validate(); err != nil {
+			return nil, err
 		}
 
 		// create groups by modbus server ServerAddress + fc + unitID + isCoil

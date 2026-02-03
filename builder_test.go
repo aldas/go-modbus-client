@@ -185,33 +185,120 @@ func TestBuilder_ReadDiscreteInputsRTU(t *testing.T) {
 }
 
 func TestBuilder_Split(t *testing.T) {
-	b := NewRequestBuilderWithConfig(BuilderDefaults{
+	uint16Field := Field{
+		Name:          "y",
 		ServerAddress: "addr",
+		FunctionCode:  4,
 		UnitID:        1,
-	})
+		Protocol:      ProtocolTCP,
+		Address:       2,
+		Type:          FieldTypeInt16,
+	}
 
-	reqs, err := b.AddAll(Fields{
+	var testCases = []struct {
+		name               string
+		whenFields         Fields
+		expectRequestCount int
+		expectedError      string
+	}{
 		{
-			Name:          "x",
-			ServerAddress: "addr",
-			FunctionCode:  1,
-			UnitID:        1,
-			Protocol:      ProtocolTCP,
-			Address:       1,
-			Type:          FieldTypeInt16,
+			name: "ok, same fc, same addr, same unit, same protocol",
+			whenFields: Fields{
+				{
+					Name:          "x",
+					ServerAddress: "addr",
+					FunctionCode:  4,
+					UnitID:        1,
+					Protocol:      ProtocolTCP,
+					Address:       1,
+					Type:          FieldTypeInt16,
+				},
+				uint16Field,
+			},
+			expectRequestCount: 1,
 		},
 		{
-			Name:          "y",
-			ServerAddress: "addr",
-			FunctionCode:  1,
-			UnitID:        1,
-			Protocol:      ProtocolRTU, // different protocol
-			Address:       1,
-			Type:          FieldTypeInt16,
+			name: "ok, same fc, different addr, same unit, same protocol",
+			whenFields: Fields{
+				{
+					Name:          "x",
+					ServerAddress: "addr2",
+					FunctionCode:  4,
+					UnitID:        1,
+					Protocol:      ProtocolTCP,
+					Address:       1,
+					Type:          FieldTypeInt16,
+				},
+				uint16Field,
+			},
+			expectRequestCount: 2,
 		},
-	}).Split()
-	assert.NoError(t, err)
-	assert.Len(t, reqs, 2)
+		{
+			name: "ok, same fc, same addr, different unit, same protocol",
+			whenFields: Fields{
+				{
+					Name:          "x",
+					ServerAddress: "addr",
+					FunctionCode:  4,
+					UnitID:        2,
+					Protocol:      ProtocolTCP,
+					Address:       1,
+					Type:          FieldTypeInt16,
+				},
+				uint16Field,
+			},
+			expectRequestCount: 2,
+		},
+		{
+			name: "ok, same fc, same addr, same unit, different protocol",
+			whenFields: Fields{
+				{
+					Name:          "x",
+					ServerAddress: "addr",
+					FunctionCode:  4,
+					UnitID:        1,
+					Protocol:      ProtocolRTU,
+					Address:       1,
+					Type:          FieldTypeInt16,
+				},
+				uint16Field,
+			},
+			expectRequestCount: 2,
+		},
+		{
+			name: "ok, different fc, same addr, same unit, same protocol",
+			whenFields: Fields{
+				{
+					Name:          "x",
+					ServerAddress: "addr",
+					FunctionCode:  2,
+					UnitID:        1,
+					Protocol:      ProtocolTCP,
+					Address:       1,
+					Type:          FieldTypeCoil,
+				},
+				uint16Field,
+			},
+			expectRequestCount: 2,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			b := NewRequestBuilderWithConfig(BuilderDefaults{
+				ServerAddress: "addr",
+				UnitID:        1,
+			})
+
+			reqs, err := b.AddAll(tc.whenFields).Split()
+
+			assert.Len(t, reqs, tc.expectRequestCount)
+			if tc.expectedError != "" {
+				assert.EqualError(t, err, tc.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestBuilder_ReadHoldingRegistersTCP(t *testing.T) {

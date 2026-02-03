@@ -1,11 +1,12 @@
 package modbus
 
 import (
-	"github.com/aldas/go-modbus-client/packet"
-	"github.com/stretchr/testify/assert"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/aldas/go-modbus-client/packet"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSplit_validationError(t *testing.T) {
@@ -162,11 +163,12 @@ func TestSplit_to2RegisterBatches(t *testing.T) {
 		},
 		{Name: "F5",
 			ServerAddress: ":502", UnitID: 0,
-			Address: 1, Type: FieldTypeCoil, // should be ignored
+			FunctionCode: packet.FunctionReadCoils,
+			Address:      1, Type: FieldTypeCoil, // should be ignored
 		},
 	}
 
-	batched, err := split(given, 3, ProtocolTCP)
+	batched, err := split(given, packet.FunctionReadHoldingRegisters, ProtocolTCP)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 2)
 
@@ -207,7 +209,8 @@ func TestSplit_to2CoilsBatches(t *testing.T) {
 		},
 		{
 			ServerAddress: ":502", UnitID: 0,
-			Address: 122, Type: FieldTypeFloat32, // should be ignored
+			FunctionCode: packet.FunctionReadHoldingRegisters,
+			Address:      122, Type: FieldTypeFloat32, // should be ignored
 		},
 	}
 
