@@ -12,13 +12,26 @@ import (
 	"github.com/aldas/go-modbus-client/packet"
 )
 
-// split groups (by host:port+UnitID, "optimized" max amount of fields for max quantity) fields into packets
-func split(fields []Field, functionCode uint8, protocol ProtocolType) ([]BuilderRequest, error) {
+// Splitter groups Fields into Modbus requests
+type Splitter interface {
+	Split(fields Fields, functionCode uint8, protocol ProtocolType) ([]BuilderRequest, error)
+}
+
+// DefaultSplitter implements splitter logic that groups Fields by host:port+UnitID and splits them to BuilderRequest
+// "optimized" max amount of Fields for max number of fields as Modbus request size can contain
+type DefaultSplitter struct {
+	// ShouldSplitFunc is called for field addresses. If it returns true, the current address will be split into a
+	// new batch (request) and not added to the current batch.
+	ShouldSplitFunc func(batch SplitBatch, address uint16, size uint16) bool
+}
+
+// Split groups (by host:port+UnitID, "optimized" max amount of Fields for max quantity) Fields into packets
+func (s DefaultSplitter) Split(fields Fields, functionCode uint8, protocol ProtocolType) ([]BuilderRequest, error) {
 	connectionGroup, err := groupForSingleConnection(fields, functionCode, protocol)
 	if err != nil {
 		return nil, err
 	}
-	batches, err := batchToRequests(connectionGroup)
+	batches, err := splitGroupToBatches(connectionGroup, s.ShouldSplitFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +110,7 @@ func split(fields []Field, functionCode uint8, protocol ProtocolType) ([]Builder
 			Protocol:        b.Protocol,
 			RequestInterval: time.Duration(b.RequestInterval),
 
-			Fields: b.fields,
+			Fields: b.Fields,
 		})
 	}
 	if len(result) == 0 {
@@ -106,7 +119,7 @@ func split(fields []Field, functionCode uint8, protocol ProtocolType) ([]Builder
 	return result, nil
 }
 
-// groupForSingleConnection groups fields into groups what can be requested potentially by same request
+// groupForSingleConnection groups Fields into groups what can be requested potentially by same request
 // (same server + function + unit ID + protocol + interval)
 func groupForSingleConnection(fields []Field, functionCode uint8, protocol ProtocolType) ([]builderSlotGroup, error) {
 	//onlyCoils := functionCode == packet.FunctionReadCoils || functionCode == packet.FunctionReadDiscreteInputs
@@ -167,15 +180,15 @@ func groupForSingleConnection(fields []Field, functionCode uint8, protocol Proto
 	return result, nil
 }
 
-func batchToRequests(slotGroups []builderSlotGroup) ([]requestBatch, error) {
+func splitGroupToBatches(slotGroups []builderSlotGroup, shouldSplitFunc func(batch SplitBatch, address uint16, size uint16) bool) ([]SplitBatch, error) {
 	// Coils are always grouped to separate requests (fc1/fc2) from fields suitable for registers (fc3/fc4)
 	//
-	// NB: is batching/grouping algorithm is very naive. It just sorts fields by register and creates N number
-	// of requests of them by limiting quantity to MaxRegistersInReadResponse. It does not try to optimise long caps
-	// between fields
-	// assumes that UnitID is same for all fields within group
+	// NB: this batching/grouping algorithm is very naive. It just sorts fields by register and creates N number
+	// of requests of them by limiting the quantity to MaxRegistersInReadResponse. It does not try to optimize long caps
+	// between fields.
+	// assumes that UnitID is the same for all fields within a group
 
-	var result = make([]requestBatch, 0)
+	var result = make([]SplitBatch, 0)
 	for _, slotGroup := range slotGroups {
 		if len(slotGroup.slots) == 0 {
 			continue
@@ -197,7 +210,7 @@ func batchToRequests(slotGroups []builderSlotGroup) ([]requestBatch, error) {
 		})
 
 		firstAddress := slotGroup.slots[0].address
-		batch := requestBatch{
+		batch := SplitBatch{
 			ServerAddress:   slotGroup.group.serverAddress,
 			FunctionCode:    slotGroup.group.functionCode,
 			UnitID:          slotGroup.group.unitID,
@@ -216,10 +229,10 @@ func batchToRequests(slotGroups []builderSlotGroup) ([]requestBatch, error) {
 			if err != nil {
 				return nil, err
 			}
-			if isBiggerThanAddressLimit || isInvalidRangeOverlap {
+			if isBiggerThanAddressLimit || isInvalidRangeOverlap || (shouldSplitFunc != nil && shouldSplitFunc(batch, slotAddress, slot.size)) {
 				result = append(result, batch)
 
-				batch = requestBatch{
+				batch = SplitBatch{
 					ServerAddress:   slotGroup.group.serverAddress,
 					FunctionCode:    slotGroup.group.functionCode,
 					UnitID:          slotGroup.group.unitID,
@@ -236,7 +249,7 @@ func batchToRequests(slotGroups []builderSlotGroup) ([]requestBatch, error) {
 				batch.Quantity = addressDiff
 			}
 
-			batch.fields = append(batch.fields, slot.fields...)
+			batch.Fields = append(batch.Fields, slot.fields...)
 		}
 		result = append(result, batch)
 	}
@@ -297,7 +310,8 @@ func (g *builderSlotGroup) AddField(f Field) {
 	g.slots[i] = slot
 }
 
-type requestBatch struct {
+// SplitBatch represents a group of fields that are requested to the same Modbus request
+type SplitBatch struct {
 	ServerAddress string
 	FunctionCode  uint8
 	UnitID        uint8
@@ -309,7 +323,7 @@ type requestBatch struct {
 	IsForCoils      bool
 	RequestInterval Duration
 
-	fields Fields
+	Fields Fields
 }
 
 // invalidAddress is (register/coil) range in between modbus server should not be requested
@@ -346,7 +360,7 @@ func addressToSplitterConfig(address string) (splitterConfig, error) {
 	}
 	url, err := url.Parse(address)
 	if err != nil {
-		return splitterConfig{}, fmt.Errorf("failed to parse server adddres for invalid range: %q, err: %w", address, err)
+		return splitterConfig{}, fmt.Errorf("failed to parse server address for invalid range: %q, err: %w", address, err)
 	}
 	invalid, err := addressToInvalidRange(url)
 	if err != nil {

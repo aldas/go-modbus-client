@@ -1,8 +1,9 @@
 package modbus
 
 import (
-	"github.com/aldas/go-modbus-client/packet"
 	"time"
+
+	"github.com/aldas/go-modbus-client/packet"
 )
 
 // BField is distinct field be requested and extracted from response

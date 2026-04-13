@@ -122,6 +122,9 @@ type BuilderDefaults struct {
 	UnitID   uint8        `json:"unit_id" mapstructure:"unit_id"`
 	Protocol ProtocolType `json:"protocol" mapstructure:"protocol"`
 	Interval Duration     `json:"interval" mapstructure:"interval"`
+
+	// Splitter is used to split fields into requests. If nil DefaultSplitter is used.
+	Splitter Splitter
 }
 
 // NewRequestBuilderWithConfig creates new instance of Builder with given defaults.
@@ -310,47 +313,56 @@ func (r BuilderRequest) extractCoilFields(response CoilsResponse, continueOnExtr
 	return result, nil
 }
 
-// Split combines fields into requests by their ServerAddress+FunctionCode+UnitID+Protocol+RequestInterval
+// Split combines Fields into requests by their ServerAddress+FunctionCode+UnitID+Protocol+RequestInterval
+func (b *Builder) split(functionCode uint8, protocol ProtocolType) ([]BuilderRequest, error) {
+	s := b.config.Splitter
+	if s == nil {
+		s = DefaultSplitter{}
+	}
+	return s.Split(b.fields, functionCode, protocol)
+}
+
+// Split combines Fields into requests by their ServerAddress+FunctionCode+UnitID+Protocol+RequestInterval
 func (b *Builder) Split() ([]BuilderRequest, error) {
-	return split(b.fields, 0, protocolAny)
+	return b.split(0, protocolAny)
 }
 
-// ReadHoldingRegistersTCP combines fields into TCP Read Holding Registers (FC3) requests
+// ReadHoldingRegistersTCP combines Fields into TCP Read Holding Registers (FC3) requests
 func (b *Builder) ReadHoldingRegistersTCP() ([]BuilderRequest, error) {
-	return split(b.fields, packet.FunctionReadHoldingRegisters, ProtocolTCP)
+	return b.split(packet.FunctionReadHoldingRegisters, ProtocolTCP)
 }
 
-// ReadHoldingRegistersRTU combines fields into RTU Read Holding Registers (FC3) requests
+// ReadHoldingRegistersRTU combines Fields into RTU Read Holding Registers (FC3) requests
 func (b *Builder) ReadHoldingRegistersRTU() ([]BuilderRequest, error) {
-	return split(b.fields, packet.FunctionReadHoldingRegisters, ProtocolRTU)
+	return b.split(packet.FunctionReadHoldingRegisters, ProtocolRTU)
 }
 
-// ReadInputRegistersTCP combines fields into TCP Read Input Registers (FC4) requests
+// ReadInputRegistersTCP combines Fields into TCP Read Input Registers (FC4) requests
 func (b *Builder) ReadInputRegistersTCP() ([]BuilderRequest, error) {
-	return split(b.fields, packet.FunctionReadInputRegisters, ProtocolTCP)
+	return b.split(packet.FunctionReadInputRegisters, ProtocolTCP)
 }
 
-// ReadInputRegistersRTU combines fields into RTU Read Input Registers (FC4) requests
+// ReadInputRegistersRTU combines Fields into RTU Read Input Registers (FC4) requests
 func (b *Builder) ReadInputRegistersRTU() ([]BuilderRequest, error) {
-	return split(b.fields, packet.FunctionReadInputRegisters, ProtocolRTU)
+	return b.split(packet.FunctionReadInputRegisters, ProtocolRTU)
 }
 
-// ReadCoilsTCP combines fields into TCP Read Coils (FC1) requests
+// ReadCoilsTCP combines Fields into TCP Read Coils (FC1) requests
 func (b *Builder) ReadCoilsTCP() ([]BuilderRequest, error) {
-	return split(b.fields, packet.FunctionReadCoils, ProtocolTCP)
+	return b.split(packet.FunctionReadCoils, ProtocolTCP)
 }
 
-// ReadCoilsRTU combines fields into RTU Read Coils (FC1) requests
+// ReadCoilsRTU combines Fields into RTU Read Coils (FC1) requests
 func (b *Builder) ReadCoilsRTU() ([]BuilderRequest, error) {
-	return split(b.fields, packet.FunctionReadCoils, ProtocolRTU)
+	return b.split(packet.FunctionReadCoils, ProtocolRTU)
 }
 
-// ReadDiscreteInputsTCP combines fields into TCP Read Discrete Inputs (FC2) requests
+// ReadDiscreteInputsTCP combines Fields into TCP Read Discrete Inputs (FC2) requests
 func (b *Builder) ReadDiscreteInputsTCP() ([]BuilderRequest, error) {
-	return split(b.fields, packet.FunctionReadDiscreteInputs, ProtocolTCP)
+	return b.split(packet.FunctionReadDiscreteInputs, ProtocolTCP)
 }
 
-// ReadDiscreteInputsRTU combines fields into RTU Read Discrete Inputs (FC2) requests
+// ReadDiscreteInputsRTU combines Fields into RTU Read Discrete Inputs (FC2) requests
 func (b *Builder) ReadDiscreteInputsRTU() ([]BuilderRequest, error) {
-	return split(b.fields, packet.FunctionReadDiscreteInputs, ProtocolRTU)
+	return b.split(packet.FunctionReadDiscreteInputs, ProtocolRTU)
 }
