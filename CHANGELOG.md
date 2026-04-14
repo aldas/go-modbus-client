@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026.04.14
+
+* Add Splitter interface and default implementation by @aldas in https://github.com/aldas/go-modbus-client/pull/35
+* CI: add Go 1.26 to CI flow by @aldas in https://github.com/aldas/go-modbus-client/pull/33
+* improve test by @aldas in https://github.com/aldas/go-modbus-client/pull/36
+
+
 ## [0.4.0] - 2026.02.03
 
 * Fixed `builder.Split()` ignores coils when fc=0 
