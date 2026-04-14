@@ -21,7 +21,7 @@ func TestSplit_validationError(t *testing.T) {
 		},
 	}
 
-	batched, err := split(given, 3, ProtocolTCP)
+	batched, err := DefaultSplitter{}.Split(given, 3, ProtocolTCP)
 	assert.EqualError(t, err, "field server address can not be empty")
 	assert.Nil(t, batched)
 }
@@ -31,7 +31,7 @@ func TestSplit_single(t *testing.T) {
 		{ServerAddress: ":502", UnitID: 0, Address: 1, Type: FieldTypeInt8},
 	}
 
-	batched, err := split(given, 3, ProtocolTCP)
+	batched, err := DefaultSplitter{}.Split(given, 3, ProtocolTCP)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 1)
 
@@ -67,7 +67,7 @@ func TestSplit_quantity(t *testing.T) {
 			expectQuantity:     4,
 		},
 		{
-			name: "ok, multiple fields",
+			name: "ok, multiple Fields",
 			givenFields: []Field{
 				{ServerAddress: ":502", UnitID: 0, Address: 10, Type: FieldTypeInt8},
 				{ServerAddress: ":502", UnitID: 0, Address: 74, Type: FieldTypeUint32},
@@ -76,7 +76,7 @@ func TestSplit_quantity(t *testing.T) {
 			expectQuantity:     66,
 		},
 		{
-			name: "ok, multiple fields int8",
+			name: "ok, multiple Fields int8",
 			givenFields: []Field{
 				{ServerAddress: ":502", UnitID: 0, Address: 10, Type: FieldTypeInt8},
 				{ServerAddress: ":502", UnitID: 0, Address: 75, Type: FieldTypeInt8},
@@ -85,7 +85,7 @@ func TestSplit_quantity(t *testing.T) {
 			expectQuantity:     66,
 		},
 		{
-			name: "ok, multiple fields int64",
+			name: "ok, multiple Fields int64",
 			givenFields: []Field{
 				{ServerAddress: ":502", UnitID: 0, Address: 0, Type: FieldTypeInt8},
 				{ServerAddress: ":502", UnitID: 0, Address: 1, Type: FieldTypeFloat64},
@@ -97,7 +97,7 @@ func TestSplit_quantity(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			batched, err := split(tc.givenFields, 3, ProtocolTCP)
+			batched, err := DefaultSplitter{}.Split(tc.givenFields, 3, ProtocolTCP)
 			if assert.NoError(t, err) {
 				assert.Len(t, batched, 1)
 				req := batched[0].Request.(*packet.ReadHoldingRegistersRequestTCP)
@@ -132,7 +132,7 @@ func TestSplit_many(t *testing.T) {
 		},
 	}
 
-	batched, err := split(given, 3, ProtocolTCP)
+	batched, err := DefaultSplitter{}.Split(given, 3, ProtocolTCP)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 1)
 
@@ -168,7 +168,7 @@ func TestSplit_to2RegisterBatches(t *testing.T) {
 		},
 	}
 
-	batched, err := split(given, packet.FunctionReadHoldingRegisters, ProtocolTCP)
+	batched, err := DefaultSplitter{}.Split(given, packet.FunctionReadHoldingRegisters, ProtocolTCP)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 2)
 
@@ -214,7 +214,7 @@ func TestSplit_to2CoilsBatches(t *testing.T) {
 		},
 	}
 
-	batched, err := split(given, 1, ProtocolTCP)
+	batched, err := DefaultSplitter{}.Split(given, 1, ProtocolTCP)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 2)
 
@@ -247,7 +247,7 @@ func TestSplit_Serialto2CoilsBatches(t *testing.T) {
 		},
 	}
 
-	batched, err := split(given, 3, ProtocolRTU)
+	batched, err := DefaultSplitter{}.Split(given, 3, ProtocolRTU)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 2)
 }
@@ -268,7 +268,7 @@ func TestSplit_maxQuantityPerRequest(t *testing.T) {
 		},
 	}
 
-	batched, err := split(given, 3, ProtocolRTU)
+	batched, err := DefaultSplitter{}.Split(given, 3, ProtocolRTU)
 	assert.NoError(t, err)
 	assert.Len(t, batched, 2)
 }
@@ -412,7 +412,7 @@ func TestAddressToSplitterConfig(t *testing.T) {
 		{
 			name:        "ok, random port url is problematic",
 			whenAddress: "[::]:45310?invalid_addr=10",
-			expectErr:   `failed to parse server adddres for invalid range: "[::]:45310?invalid_addr=10", err: parse "[::]:45310?invalid_addr=10": first path segment in URL cannot contain colon`,
+			expectErr:   `failed to parse server address for invalid range: "[::]:45310?invalid_addr=10", err: parse "[::]:45310?invalid_addr=10": first path segment in URL cannot contain colon`,
 		},
 		{
 			name:        "ok, empty random port url",
@@ -515,10 +515,11 @@ func TestAddressToInvalidRange(t *testing.T) {
 
 func TestBatchToRequests(t *testing.T) {
 	var testCases = []struct {
-		name      string
-		when      []builderSlotGroup
-		expect    []requestBatch
-		expectErr string
+		name                string
+		when                []builderSlotGroup
+		whenShouldSplitFunc func(batch SplitBatch, address uint16, size uint16) bool
+		expect              []SplitBatch
+		expectErr           string
 	}{
 		{
 			name: "ok, split at invalid address",
@@ -537,7 +538,7 @@ func TestBatchToRequests(t *testing.T) {
 					},
 				},
 			},
-			expect: []requestBatch{
+			expect: []SplitBatch{
 				{
 					ServerAddress:   "/dev/ttyS0?invalid_addr=15-20&invalid_addr=5",
 					FunctionCode:    3,
@@ -546,7 +547,7 @@ func TestBatchToRequests(t *testing.T) {
 					StartAddress:    2,
 					Quantity:        3,
 					RequestInterval: 0,
-					fields:          nil,
+					Fields:          nil,
 				},
 				{
 					ServerAddress:   "/dev/ttyS0?invalid_addr=15-20&invalid_addr=5",
@@ -556,7 +557,51 @@ func TestBatchToRequests(t *testing.T) {
 					StartAddress:    10,
 					Quantity:        4,
 					RequestInterval: 0,
-					fields:          nil,
+					Fields:          nil,
+				},
+			},
+		},
+		{
+			name: "ok, custom shouldSplitFunc",
+			whenShouldSplitFunc: func(batch SplitBatch, address uint16, size uint16) bool {
+				// split to new request when addresses are not consecutive
+				return address-batch.StartAddress > 1
+			},
+			when: []builderSlotGroup{
+				{
+					group: groupID{
+						serverAddress: "/dev/ttyS0",
+						functionCode:  3,
+						unitID:        1,
+						protocol:      ProtocolRTU,
+					},
+					slots: builderSlots{
+						{address: 2, size: 1, fields: nil},  // 2
+						{address: 3, size: 2, fields: nil},  // 3,4
+						{address: 10, size: 4, fields: nil}, // 10,11,12,13
+					},
+				},
+			},
+			expect: []SplitBatch{
+				{
+					ServerAddress:   "/dev/ttyS0",
+					FunctionCode:    3,
+					UnitID:          1,
+					Protocol:        ProtocolRTU,
+					StartAddress:    2,
+					Quantity:        3,
+					RequestInterval: 0,
+					Fields:          nil,
+				},
+				{
+					ServerAddress:   "/dev/ttyS0",
+					FunctionCode:    3,
+					UnitID:          1,
+					Protocol:        ProtocolRTU,
+					StartAddress:    10,
+					Quantity:        4,
+					RequestInterval: 0,
+					Fields:          nil,
 				},
 			},
 		},
@@ -583,7 +628,7 @@ func TestBatchToRequests(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := batchToRequests(tc.when)
+			result, err := splitGroupToBatches(tc.when, tc.whenShouldSplitFunc)
 
 			assert.Equal(t, tc.expect, result)
 			if tc.expectErr != "" {

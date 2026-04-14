@@ -90,7 +90,8 @@ func main() {
 		FunctionCode:  packet.FunctionReadHoldingRegisters, // fc3
 		UnitID:        1,
 		Protocol:      modbus.ProtocolTCP,
-		Interval:      modbus.Duration(1 * time.Second), // send request every 1 second
+		Interval:      modbus.Duration(1 * time.Second), // send a request every 1 second
+		Splitter:      nil, // allows custom splitter logic to be used
 	})
 
 	batches, _ := b.
