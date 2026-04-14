@@ -565,7 +565,9 @@ func TestBatchToRequests(t *testing.T) {
 			name: "ok, custom shouldSplitFunc",
 			whenShouldSplitFunc: func(batch SplitBatch, address uint16, size uint16) bool {
 				// split to new request when addresses are not consecutive
-				return address-batch.StartAddress > 1
+				batchEnd := int(batch.StartAddress + batch.Quantity - 1)
+				diff := int(address) - batchEnd
+				return diff > 1
 			},
 			when: []builderSlotGroup{
 				{
@@ -576,9 +578,9 @@ func TestBatchToRequests(t *testing.T) {
 						protocol:      ProtocolRTU,
 					},
 					slots: builderSlots{
-						{address: 2, size: 1, fields: nil},  // 2
-						{address: 3, size: 2, fields: nil},  // 3,4
-						{address: 10, size: 4, fields: nil}, // 10,11,12,13
+						{address: 2, size: 1, fields: nil}, // 2
+						{address: 3, size: 2, fields: nil}, // 3,4
+						{address: 6, size: 4, fields: nil}, // 6,7,8,9
 					},
 				},
 			},
@@ -598,7 +600,7 @@ func TestBatchToRequests(t *testing.T) {
 					FunctionCode:    3,
 					UnitID:          1,
 					Protocol:        ProtocolRTU,
-					StartAddress:    10,
+					StartAddress:    6,
 					Quantity:        4,
 					RequestInterval: 0,
 					Fields:          nil,
