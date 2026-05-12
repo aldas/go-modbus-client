@@ -766,6 +766,489 @@ func TestExtractRequestDestination(t *testing.T) {
 	}
 }
 
+func TestCloneRequest(t *testing.T) {
+	var testCases = []struct {
+		name      string
+		when      Request
+		expect    Request
+		expectErr string
+	}{
+		{
+			name: "ReadCoilsRequestTCP",
+			when: &ReadCoilsRequestTCP{
+				MBAPHeader:       MBAPHeader{TransactionID: 0x0102},
+				ReadCoilsRequest: ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadCoilsRequestTCP{
+				MBAPHeader:       MBAPHeader{TransactionID: 0x0102},
+				ReadCoilsRequest: ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadCoilsRequestRTU",
+			when: &ReadCoilsRequestRTU{
+				ReadCoilsRequest: ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadCoilsRequestRTU{
+				ReadCoilsRequest: ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadDiscreteInputsRequestTCP",
+			when: &ReadDiscreteInputsRequestTCP{
+				MBAPHeader:                MBAPHeader{TransactionID: 0x0102},
+				ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadDiscreteInputsRequestTCP{
+				MBAPHeader:                MBAPHeader{TransactionID: 0x0102},
+				ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadDiscreteInputsRequestRTU",
+			when: &ReadDiscreteInputsRequestRTU{
+				ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadDiscreteInputsRequestRTU{
+				ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadHoldingRegistersRequestTCP",
+			when: &ReadHoldingRegistersRequestTCP{
+				MBAPHeader:                  MBAPHeader{TransactionID: 0x0102},
+				ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadHoldingRegistersRequestTCP{
+				MBAPHeader:                  MBAPHeader{TransactionID: 0x0102},
+				ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadHoldingRegistersRequestRTU",
+			when: &ReadHoldingRegistersRequestRTU{
+				ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadHoldingRegistersRequestRTU{
+				ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadInputRegistersRequestTCP",
+			when: &ReadInputRegistersRequestTCP{
+				MBAPHeader:                MBAPHeader{TransactionID: 0x0102},
+				ReadInputRegistersRequest: ReadInputRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadInputRegistersRequestTCP{
+				MBAPHeader:                MBAPHeader{TransactionID: 0x0102},
+				ReadInputRegistersRequest: ReadInputRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadInputRegistersRequestRTU",
+			when: &ReadInputRegistersRequestRTU{
+				ReadInputRegistersRequest: ReadInputRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadInputRegistersRequestRTU{
+				ReadInputRegistersRequest: ReadInputRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "WriteSingleCoilRequestTCP",
+			when: &WriteSingleCoilRequestTCP{
+				MBAPHeader:             MBAPHeader{TransactionID: 0x0102},
+				WriteSingleCoilRequest: WriteSingleCoilRequest{UnitID: 1, Address: 100, CoilState: true},
+			},
+			expect: WriteSingleCoilRequestTCP{
+				MBAPHeader:             MBAPHeader{TransactionID: 0x0102},
+				WriteSingleCoilRequest: WriteSingleCoilRequest{UnitID: 1, Address: 100, CoilState: true},
+			},
+		},
+		{
+			name: "WriteSingleCoilRequestRTU",
+			when: &WriteSingleCoilRequestRTU{
+				WriteSingleCoilRequest: WriteSingleCoilRequest{UnitID: 1, Address: 100, CoilState: true},
+			},
+			expect: WriteSingleCoilRequestRTU{
+				WriteSingleCoilRequest: WriteSingleCoilRequest{UnitID: 1, Address: 100, CoilState: true},
+			},
+		},
+		{
+			name: "WriteSingleRegisterRequestTCP",
+			when: &WriteSingleRegisterRequestTCP{
+				MBAPHeader:                 MBAPHeader{TransactionID: 0x0102},
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{UnitID: 1, Address: 200, Data: [2]byte{0x01, 0x02}},
+			},
+			expect: WriteSingleRegisterRequestTCP{
+				MBAPHeader:                 MBAPHeader{TransactionID: 0x0102},
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{UnitID: 1, Address: 200, Data: [2]byte{0x01, 0x02}},
+			},
+		},
+		{
+			name: "WriteSingleRegisterRequestRTU",
+			when: &WriteSingleRegisterRequestRTU{
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{UnitID: 1, Address: 200, Data: [2]byte{0x01, 0x02}},
+			},
+			expect: WriteSingleRegisterRequestRTU{
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{UnitID: 1, Address: 200, Data: [2]byte{0x01, 0x02}},
+			},
+		},
+		{
+			name: "WriteMultipleCoilsRequestTCP",
+			when: &WriteMultipleCoilsRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID: 1, StartAddress: 100, CoilCount: 3, Data: []byte{0x05},
+				},
+			},
+			expect: WriteMultipleCoilsRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID: 1, StartAddress: 100, CoilCount: 3, Data: []byte{0x05},
+				},
+			},
+		},
+		{
+			name: "WriteMultipleCoilsRequestRTU",
+			when: &WriteMultipleCoilsRequestRTU{
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID: 1, StartAddress: 100, CoilCount: 3, Data: []byte{0x05},
+				},
+			},
+			expect: WriteMultipleCoilsRequestRTU{
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID: 1, StartAddress: 100, CoilCount: 3, Data: []byte{0x05},
+				},
+			},
+		},
+		{
+			name: "WriteMultipleRegistersRequestTCP",
+			when: &WriteMultipleRegistersRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID: 1, StartAddress: 100, RegisterCount: 2, Data: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+			expect: WriteMultipleRegistersRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID: 1, StartAddress: 100, RegisterCount: 2, Data: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+		},
+		{
+			name: "WriteMultipleRegistersRequestRTU",
+			when: &WriteMultipleRegistersRequestRTU{
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID: 1, StartAddress: 100, RegisterCount: 2, Data: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+			expect: WriteMultipleRegistersRequestRTU{
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID: 1, StartAddress: 100, RegisterCount: 2, Data: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+		},
+		{
+			name: "ReadServerIDRequestTCP",
+			when: &ReadServerIDRequestTCP{
+				MBAPHeader:          MBAPHeader{TransactionID: 0x0102},
+				ReadServerIDRequest: ReadServerIDRequest{UnitID: 1},
+			},
+			expect: ReadServerIDRequestTCP{
+				MBAPHeader:          MBAPHeader{TransactionID: 0x0102},
+				ReadServerIDRequest: ReadServerIDRequest{UnitID: 1},
+			},
+		},
+		{
+			name: "ReadServerIDRequestRTU",
+			when: &ReadServerIDRequestRTU{
+				ReadServerIDRequest: ReadServerIDRequest{UnitID: 1},
+			},
+			expect: ReadServerIDRequestRTU{
+				ReadServerIDRequest: ReadServerIDRequest{UnitID: 1},
+			},
+		},
+		{
+			name: "ReadWriteMultipleRegistersRequestTCP",
+			when: &ReadWriteMultipleRegistersRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
+					UnitID: 1, ReadStartAddress: 100, ReadQuantity: 1,
+					WriteStartAddress: 200, WriteQuantity: 2, WriteData: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+			expect: ReadWriteMultipleRegistersRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
+					UnitID: 1, ReadStartAddress: 100, ReadQuantity: 1,
+					WriteStartAddress: 200, WriteQuantity: 2, WriteData: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+		},
+		{
+			name: "ReadWriteMultipleRegistersRequestRTU",
+			when: &ReadWriteMultipleRegistersRequestRTU{
+				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
+					UnitID: 1, ReadStartAddress: 100, ReadQuantity: 1,
+					WriteStartAddress: 200, WriteQuantity: 2, WriteData: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+			expect: ReadWriteMultipleRegistersRequestRTU{
+				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
+					UnitID: 1, ReadStartAddress: 100, ReadQuantity: 1,
+					WriteStartAddress: 200, WriteQuantity: 2, WriteData: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+		},
+		{
+			name: "ReadCoilsRequestTCP value",
+			when: ReadCoilsRequestTCP{
+				MBAPHeader:       MBAPHeader{TransactionID: 0x0102},
+				ReadCoilsRequest: ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadCoilsRequestTCP{
+				MBAPHeader:       MBAPHeader{TransactionID: 0x0102},
+				ReadCoilsRequest: ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadCoilsRequestRTU value",
+			when: ReadCoilsRequestRTU{
+				ReadCoilsRequest: ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadCoilsRequestRTU{
+				ReadCoilsRequest: ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadDiscreteInputsRequestTCP value",
+			when: ReadDiscreteInputsRequestTCP{
+				MBAPHeader:                MBAPHeader{TransactionID: 0x0102},
+				ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadDiscreteInputsRequestTCP{
+				MBAPHeader:                MBAPHeader{TransactionID: 0x0102},
+				ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadDiscreteInputsRequestRTU value",
+			when: ReadDiscreteInputsRequestRTU{
+				ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadDiscreteInputsRequestRTU{
+				ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadHoldingRegistersRequestTCP value",
+			when: ReadHoldingRegistersRequestTCP{
+				MBAPHeader:                  MBAPHeader{TransactionID: 0x0102},
+				ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadHoldingRegistersRequestTCP{
+				MBAPHeader:                  MBAPHeader{TransactionID: 0x0102},
+				ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadHoldingRegistersRequestRTU value",
+			when: ReadHoldingRegistersRequestRTU{
+				ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadHoldingRegistersRequestRTU{
+				ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadInputRegistersRequestTCP value",
+			when: ReadInputRegistersRequestTCP{
+				MBAPHeader:                MBAPHeader{TransactionID: 0x0102},
+				ReadInputRegistersRequest: ReadInputRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadInputRegistersRequestTCP{
+				MBAPHeader:                MBAPHeader{TransactionID: 0x0102},
+				ReadInputRegistersRequest: ReadInputRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "ReadInputRegistersRequestRTU value",
+			when: ReadInputRegistersRequestRTU{
+				ReadInputRegistersRequest: ReadInputRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+			expect: ReadInputRegistersRequestRTU{
+				ReadInputRegistersRequest: ReadInputRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+			},
+		},
+		{
+			name: "WriteSingleCoilRequestTCP value",
+			when: WriteSingleCoilRequestTCP{
+				MBAPHeader:             MBAPHeader{TransactionID: 0x0102},
+				WriteSingleCoilRequest: WriteSingleCoilRequest{UnitID: 1, Address: 100, CoilState: true},
+			},
+			expect: WriteSingleCoilRequestTCP{
+				MBAPHeader:             MBAPHeader{TransactionID: 0x0102},
+				WriteSingleCoilRequest: WriteSingleCoilRequest{UnitID: 1, Address: 100, CoilState: true},
+			},
+		},
+		{
+			name: "WriteSingleCoilRequestRTU value",
+			when: WriteSingleCoilRequestRTU{
+				WriteSingleCoilRequest: WriteSingleCoilRequest{UnitID: 1, Address: 100, CoilState: true},
+			},
+			expect: WriteSingleCoilRequestRTU{
+				WriteSingleCoilRequest: WriteSingleCoilRequest{UnitID: 1, Address: 100, CoilState: true},
+			},
+		},
+		{
+			name: "WriteSingleRegisterRequestTCP value",
+			when: WriteSingleRegisterRequestTCP{
+				MBAPHeader:                 MBAPHeader{TransactionID: 0x0102},
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{UnitID: 1, Address: 200, Data: [2]byte{0x01, 0x02}},
+			},
+			expect: WriteSingleRegisterRequestTCP{
+				MBAPHeader:                 MBAPHeader{TransactionID: 0x0102},
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{UnitID: 1, Address: 200, Data: [2]byte{0x01, 0x02}},
+			},
+		},
+		{
+			name: "WriteSingleRegisterRequestRTU value",
+			when: WriteSingleRegisterRequestRTU{
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{UnitID: 1, Address: 200, Data: [2]byte{0x01, 0x02}},
+			},
+			expect: WriteSingleRegisterRequestRTU{
+				WriteSingleRegisterRequest: WriteSingleRegisterRequest{UnitID: 1, Address: 200, Data: [2]byte{0x01, 0x02}},
+			},
+		},
+		{
+			name: "WriteMultipleCoilsRequestTCP value",
+			when: WriteMultipleCoilsRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID: 1, StartAddress: 100, CoilCount: 3, Data: []byte{0x05},
+				},
+			},
+			expect: WriteMultipleCoilsRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID: 1, StartAddress: 100, CoilCount: 3, Data: []byte{0x05},
+				},
+			},
+		},
+		{
+			name: "WriteMultipleCoilsRequestRTU value",
+			when: WriteMultipleCoilsRequestRTU{
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID: 1, StartAddress: 100, CoilCount: 3, Data: []byte{0x05},
+				},
+			},
+			expect: WriteMultipleCoilsRequestRTU{
+				WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+					UnitID: 1, StartAddress: 100, CoilCount: 3, Data: []byte{0x05},
+				},
+			},
+		},
+		{
+			name: "WriteMultipleRegistersRequestTCP value",
+			when: WriteMultipleRegistersRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID: 1, StartAddress: 100, RegisterCount: 2, Data: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+			expect: WriteMultipleRegistersRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID: 1, StartAddress: 100, RegisterCount: 2, Data: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+		},
+		{
+			name: "WriteMultipleRegistersRequestRTU value",
+			when: WriteMultipleRegistersRequestRTU{
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID: 1, StartAddress: 100, RegisterCount: 2, Data: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+			expect: WriteMultipleRegistersRequestRTU{
+				WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+					UnitID: 1, StartAddress: 100, RegisterCount: 2, Data: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+		},
+		{
+			name: "ReadServerIDRequestTCP value",
+			when: ReadServerIDRequestTCP{
+				MBAPHeader:          MBAPHeader{TransactionID: 0x0102},
+				ReadServerIDRequest: ReadServerIDRequest{UnitID: 1},
+			},
+			expect: ReadServerIDRequestTCP{
+				MBAPHeader:          MBAPHeader{TransactionID: 0x0102},
+				ReadServerIDRequest: ReadServerIDRequest{UnitID: 1},
+			},
+		},
+		{
+			name: "ReadServerIDRequestRTU value",
+			when: ReadServerIDRequestRTU{
+				ReadServerIDRequest: ReadServerIDRequest{UnitID: 1},
+			},
+			expect: ReadServerIDRequestRTU{
+				ReadServerIDRequest: ReadServerIDRequest{UnitID: 1},
+			},
+		},
+		{
+			name: "ReadWriteMultipleRegistersRequestTCP value",
+			when: ReadWriteMultipleRegistersRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
+					UnitID: 1, ReadStartAddress: 100, ReadQuantity: 1,
+					WriteStartAddress: 200, WriteQuantity: 2, WriteData: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+			expect: ReadWriteMultipleRegistersRequestTCP{
+				MBAPHeader: MBAPHeader{TransactionID: 0x0102},
+				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
+					UnitID: 1, ReadStartAddress: 100, ReadQuantity: 1,
+					WriteStartAddress: 200, WriteQuantity: 2, WriteData: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+		},
+		{
+			name: "ReadWriteMultipleRegistersRequestRTU value",
+			when: ReadWriteMultipleRegistersRequestRTU{
+				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
+					UnitID: 1, ReadStartAddress: 100, ReadQuantity: 1,
+					WriteStartAddress: 200, WriteQuantity: 2, WriteData: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+			expect: ReadWriteMultipleRegistersRequestRTU{
+				ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
+					UnitID: 1, ReadStartAddress: 100, ReadQuantity: 1,
+					WriteStartAddress: 200, WriteQuantity: 2, WriteData: []byte{0x00, 0xC8, 0x00, 0x82},
+				},
+			},
+		},
+		{
+			name:      "unknown type returns error",
+			when:      dummyRequest{},
+			expectErr: "clone request: unknown request type",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := CloneRequest(tc.when)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expect, result)
+			}
+		})
+	}
+}
+
 type dummyRequest struct{}
 
 func (dummyRequest) FunctionCode() uint8         { return 0x99 }

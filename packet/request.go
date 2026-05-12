@@ -16,6 +16,93 @@ type Request interface {
 	ExpectedResponseLength() int
 }
 
+// CloneRequest returns a deep copy of the given request.
+func CloneRequest(req Request) (Request, error) {
+	switch r := req.(type) {
+	case ReadCoilsRequestTCP: // fc1
+		return r.Clone(), nil
+	case *ReadCoilsRequestTCP: // fc1
+		return r.Clone(), nil
+	case ReadCoilsRequestRTU: // fc1
+		return r.Clone(), nil
+	case *ReadCoilsRequestRTU: // fc1
+		return r.Clone(), nil
+	case ReadDiscreteInputsRequestTCP: // fc2
+		return r.Clone(), nil
+	case *ReadDiscreteInputsRequestTCP: // fc2
+		return r.Clone(), nil
+	case ReadDiscreteInputsRequestRTU: // fc2
+		return r.Clone(), nil
+	case *ReadDiscreteInputsRequestRTU: // fc2
+		return r.Clone(), nil
+	case ReadHoldingRegistersRequestTCP: // fc3
+		return r.Clone(), nil
+	case *ReadHoldingRegistersRequestTCP: // fc3
+		return r.Clone(), nil
+	case ReadHoldingRegistersRequestRTU: // fc3
+		return r.Clone(), nil
+	case *ReadHoldingRegistersRequestRTU: // fc3
+		return r.Clone(), nil
+	case ReadInputRegistersRequestTCP: // fc4
+		return r.Clone(), nil
+	case *ReadInputRegistersRequestTCP: // fc4
+		return r.Clone(), nil
+	case ReadInputRegistersRequestRTU: // fc4
+		return r.Clone(), nil
+	case *ReadInputRegistersRequestRTU: // fc4
+		return r.Clone(), nil
+	case WriteSingleCoilRequestTCP: // fc5
+		return r.Clone(), nil
+	case *WriteSingleCoilRequestTCP: // fc5
+		return r.Clone(), nil
+	case WriteSingleCoilRequestRTU: // fc5
+		return r.Clone(), nil
+	case *WriteSingleCoilRequestRTU: // fc5
+		return r.Clone(), nil
+	case WriteSingleRegisterRequestTCP: // fc6
+		return r.Clone(), nil
+	case *WriteSingleRegisterRequestTCP: // fc6
+		return r.Clone(), nil
+	case WriteSingleRegisterRequestRTU: // fc6
+		return r.Clone(), nil
+	case *WriteSingleRegisterRequestRTU: // fc6
+		return r.Clone(), nil
+	case WriteMultipleCoilsRequestTCP: // fc15
+		return r.Clone(), nil
+	case *WriteMultipleCoilsRequestTCP: // fc15
+		return r.Clone(), nil
+	case WriteMultipleCoilsRequestRTU: // fc15
+		return r.Clone(), nil
+	case *WriteMultipleCoilsRequestRTU: // fc15
+		return r.Clone(), nil
+	case WriteMultipleRegistersRequestTCP: // fc16
+		return r.Clone(), nil
+	case *WriteMultipleRegistersRequestTCP: // fc16
+		return r.Clone(), nil
+	case WriteMultipleRegistersRequestRTU: // fc16
+		return r.Clone(), nil
+	case *WriteMultipleRegistersRequestRTU: // fc16
+		return r.Clone(), nil
+	case ReadServerIDRequestTCP: // fc17
+		return r.Clone(), nil
+	case *ReadServerIDRequestTCP: // fc17
+		return r.Clone(), nil
+	case ReadServerIDRequestRTU: // fc17
+		return r.Clone(), nil
+	case *ReadServerIDRequestRTU: // fc17
+		return r.Clone(), nil
+	case ReadWriteMultipleRegistersRequestTCP: // fc23
+		return r.Clone(), nil
+	case *ReadWriteMultipleRegistersRequestTCP: // fc23
+		return r.Clone(), nil
+	case ReadWriteMultipleRegistersRequestRTU: // fc23
+		return r.Clone(), nil
+	case *ReadWriteMultipleRegistersRequestRTU: // fc23
+		return r.Clone(), nil
+	}
+	return nil, errors.New("clone request: unknown request type")
+}
+
 // ParseTCPRequest parses given bytes into modbus TCP request packet or returns error
 func ParseTCPRequest(data []byte) (Request, error) {
 	if len(data) < 8 {

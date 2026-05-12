@@ -192,3 +192,13 @@ func (r ReadCoilsRequest) bytes(bytes []byte) []byte {
 	putReadRequestBytes(bytes, r.UnitID, FunctionReadCoils, r.StartAddress, r.Quantity)
 	return bytes
 }
+
+// Clone returns a copy of the request.
+func (r ReadCoilsRequestTCP) Clone() ReadCoilsRequestTCP {
+	return r
+}
+
+// Clone returns a copy of the request.
+func (r ReadCoilsRequestRTU) Clone() ReadCoilsRequestRTU {
+	return r
+}

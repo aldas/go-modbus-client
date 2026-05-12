@@ -323,3 +323,22 @@ func TestParseReadServerIDRequestRTU(t *testing.T) {
 		})
 	}
 }
+
+func TestReadServerIDRequestTCP_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := ReadServerIDRequestTCP{
+			MBAPHeader:          MBAPHeader{TransactionID: 0x0102, ProtocolID: 0},
+			ReadServerIDRequest: ReadServerIDRequest{UnitID: 1},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}
+
+func TestReadServerIDRequestRTU_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := ReadServerIDRequestRTU{
+			ReadServerIDRequest: ReadServerIDRequest{UnitID: 1},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}

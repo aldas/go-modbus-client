@@ -143,3 +143,13 @@ func (r ReadServerIDRequest) bytes(bytes []byte) []byte {
 	bytes[1] = FunctionReadServerID
 	return bytes
 }
+
+// Clone returns a copy of the request.
+func (r ReadServerIDRequestTCP) Clone() ReadServerIDRequestTCP {
+	return r
+}
+
+// Clone returns a copy of the request.
+func (r ReadServerIDRequestRTU) Clone() ReadServerIDRequestRTU {
+	return r
+}

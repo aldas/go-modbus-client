@@ -168,3 +168,13 @@ func (r WriteSingleRegisterRequest) bytes(bytes []byte) []byte {
 	copy(bytes[4:6], r.Data[:])
 	return bytes
 }
+
+// Clone returns a copy of the request.
+func (r WriteSingleRegisterRequestTCP) Clone() WriteSingleRegisterRequestTCP {
+	return r
+}
+
+// Clone returns a copy of the request.
+func (r WriteSingleRegisterRequestRTU) Clone() WriteSingleRegisterRequestRTU {
+	return r
+}

@@ -215,6 +215,26 @@ func (r BuilderRequest) AsRegisters(response RegistersResponse) (*packet.Registe
 	return response.AsRegisters(r.StartAddress)
 }
 
+// Clone returns a copy of BuilderRequest
+func (r BuilderRequest) Clone() (BuilderRequest, error) {
+	clone := r
+	if r.Request != nil {
+		req, err := packet.CloneRequest(r.Request)
+		if err != nil {
+			return BuilderRequest{}, fmt.Errorf("could not clone request: %w", err)
+		}
+		clone.Request = req
+	}
+
+	if r.Fields != nil {
+		clone.Fields = make(Fields, 0, len(r.Fields))
+		for _, f := range r.Fields {
+			clone.Fields = append(clone.Fields, f.Clone())
+		}
+	}
+	return clone, nil
+}
+
 // FieldValue is concrete value extracted from register data using field data type and byte order
 type FieldValue struct {
 	Field Field

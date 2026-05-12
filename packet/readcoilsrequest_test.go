@@ -458,3 +458,22 @@ func TestParseReadCoilsRequestRTU(t *testing.T) {
 		})
 	}
 }
+
+func TestReadCoilsRequestTCP_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := ReadCoilsRequestTCP{
+			MBAPHeader:       MBAPHeader{TransactionID: 0x0102, ProtocolID: 0},
+			ReadCoilsRequest: ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}
+
+func TestReadCoilsRequestRTU_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := ReadCoilsRequestRTU{
+			ReadCoilsRequest: ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}

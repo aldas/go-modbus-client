@@ -435,3 +435,22 @@ func TestParseWriteSingleCoilRequestRTU(t *testing.T) {
 		})
 	}
 }
+
+func TestWriteSingleCoilRequestTCP_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := WriteSingleCoilRequestTCP{
+			MBAPHeader:             MBAPHeader{TransactionID: 0x0102, ProtocolID: 0},
+			WriteSingleCoilRequest: WriteSingleCoilRequest{UnitID: 1, Address: 100, CoilState: true},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}
+
+func TestWriteSingleCoilRequestRTU_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := WriteSingleCoilRequestRTU{
+			WriteSingleCoilRequest: WriteSingleCoilRequest{UnitID: 1, Address: 100, CoilState: true},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}

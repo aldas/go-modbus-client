@@ -254,3 +254,17 @@ func CoilsToBytes(coils []bool) []byte {
 	}
 	return result
 }
+
+// Clone returns a deep copy of the request.
+func (r WriteMultipleCoilsRequestTCP) Clone() WriteMultipleCoilsRequestTCP {
+	clone := r
+	clone.Data = append([]byte{}, r.Data...)
+	return clone
+}
+
+// Clone returns a deep copy of the request.
+func (r WriteMultipleCoilsRequestRTU) Clone() WriteMultipleCoilsRequestRTU {
+	clone := r
+	clone.Data = append([]byte{}, r.Data...)
+	return clone
+}

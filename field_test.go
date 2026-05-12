@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestField_registerSize(t *testing.T) {
+func TestField_RegisterSize(t *testing.T) {
 	var testCases = []struct {
 		name   string
 		when   Field
@@ -90,11 +90,36 @@ func TestField_registerSize(t *testing.T) {
 			when:   Field{Type: FieldTypeString, Length: 4},
 			expect: 2,
 		},
+		{
+			name:   "raw bytes odd size",
+			when:   Field{Type: FieldTypeRawBytes, Length: 3},
+			expect: 2,
+		},
+		{
+			name:   "raw bytes even size",
+			when:   Field{Type: FieldTypeRawBytes, Length: 4},
+			expect: 2,
+		},
+		{
+			name:   "raw bytes length 1",
+			when:   Field{Type: FieldTypeRawBytes, Length: 1},
+			expect: 1,
+		},
+		{
+			name:   "raw bytes length 2",
+			when:   Field{Type: FieldTypeRawBytes, Length: 2},
+			expect: 1,
+		},
+		{
+			name:   "coil",
+			when:   Field{Type: FieldTypeCoil},
+			expect: 1,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.expect, tc.when.registerSize())
+			assert.Equal(t, tc.expect, tc.when.RegisterSize())
 		})
 	}
 }
@@ -530,6 +555,86 @@ func TestParseFieldType(t *testing.T) {
 	}
 }
 
+func TestFieldTypeSizeBytes(t *testing.T) {
+	var testCases = []struct {
+		name   string
+		when   FieldType
+		expect int
+	}{
+		{name: "bit", when: FieldTypeBit, expect: 1},
+		{name: "byte", when: FieldTypeByte, expect: 1},
+		{name: "uint8", when: FieldTypeUint8, expect: 1},
+		{name: "int8", when: FieldTypeInt8, expect: 1},
+		{name: "coil", when: FieldTypeCoil, expect: 1},
+		{name: "uint16", when: FieldTypeUint16, expect: 2},
+		{name: "int16", when: FieldTypeInt16, expect: 2},
+		{name: "uint32", when: FieldTypeUint32, expect: 4},
+		{name: "int32", when: FieldTypeInt32, expect: 4},
+		{name: "float32", when: FieldTypeFloat32, expect: 4},
+		{name: "uint64", when: FieldTypeUint64, expect: 8},
+		{name: "int64", when: FieldTypeInt64, expect: 8},
+		{name: "float64", when: FieldTypeFloat64, expect: 8},
+		{name: "string", when: FieldTypeString, expect: 0},
+		{name: "raw bytes", when: FieldTypeRawBytes, expect: 0},
+		{name: "unknown", when: FieldType(0), expect: 0},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := FieldTypeSizeBytes(tc.when)
+			assert.Equal(t, tc.expect, s)
+		})
+	}
+}
+
+func TestField_FieldTypeSizeBytes(t *testing.T) {
+	var testCases = []struct {
+		name   string
+		when   Field
+		expect int
+	}{
+		{name: "uint16 delegates to package function", when: Field{Type: FieldTypeUint16}, expect: 2},
+		{name: "uint32 delegates to package function", when: Field{Type: FieldTypeUint32}, expect: 4},
+		{name: "string returns Length", when: Field{Type: FieldTypeString, Length: 7}, expect: 7},
+		{name: "raw bytes returns Length", when: Field{Type: FieldTypeRawBytes, Length: 5}, expect: 5},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expect, tc.when.FieldTypeSizeBytes())
+		})
+	}
+}
+
+func TestFieldTypeBitSize(t *testing.T) {
+	var testCases = []struct {
+		name   string
+		when   FieldType
+		expect int
+	}{
+		{name: "bit", when: FieldTypeBit, expect: 1},
+		{name: "coil", when: FieldTypeCoil, expect: 1},
+		{name: "byte", when: FieldTypeByte, expect: 8},
+		{name: "uint8", when: FieldTypeUint8, expect: 8},
+		{name: "int8", when: FieldTypeInt8, expect: 8},
+		{name: "uint16", when: FieldTypeUint16, expect: 16},
+		{name: "int16", when: FieldTypeInt16, expect: 16},
+		{name: "uint32", when: FieldTypeUint32, expect: 32},
+		{name: "int32", when: FieldTypeInt32, expect: 32},
+		{name: "float32", when: FieldTypeFloat32, expect: 32},
+		{name: "uint64", when: FieldTypeUint64, expect: 64},
+		{name: "int64", when: FieldTypeInt64, expect: 64},
+		{name: "float64", when: FieldTypeFloat64, expect: 64},
+		{name: "string", when: FieldTypeString, expect: 0},
+		{name: "raw bytes", when: FieldTypeRawBytes, expect: 0},
+		{name: "unknown", when: FieldType(0), expect: 0},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := FieldTypeBitSize(tc.when)
+			assert.Equal(t, tc.expect, s)
+		})
+	}
+}
+
 func TestField_CheckInvalid(t *testing.T) {
 	var testCases = []struct {
 		name              string
@@ -709,6 +814,41 @@ func TestInvalid_UnmarshalJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestField_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := Field{
+			Name:          "sensor1",
+			ServerAddress: "tcp://192.168.1.1:502",
+			FunctionCode:  3,
+			UnitID:        5,
+			Protocol:      ProtocolTCP,
+			Address:       100,
+			Type:          FieldTypeUint32,
+			Bit:           4,
+			FromHighByte:  true,
+			Length:        8,
+			ByteOrder:     packet.BigEndian,
+			Invalid:       []byte{0xff, 0xff, 0xff, 0xff},
+		}
+		clone := original.Clone()
+		assert.Equal(t, original, clone)
+	})
+
+	t.Run("invalid slice is deep copied", func(t *testing.T) {
+		original := Field{Invalid: []byte{0xff, 0x00}}
+		clone := original.Clone()
+
+		clone.Invalid[0] = 0x11
+		assert.Equal(t, byte(0xff), original.Invalid[0])
+	})
+
+	t.Run("nil invalid produces empty slice in clone", func(t *testing.T) {
+		original := Field{Type: FieldTypeUint16, Invalid: nil}
+		clone := original.Clone()
+		assert.Empty(t, clone.Invalid)
+	})
 }
 
 func TestMarshalFieldBytes(t *testing.T) {
