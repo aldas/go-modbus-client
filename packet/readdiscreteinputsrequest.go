@@ -191,3 +191,13 @@ func (r ReadDiscreteInputsRequest) bytes(bytes []byte) []byte {
 	putReadRequestBytes(bytes, r.UnitID, FunctionReadDiscreteInputs, r.StartAddress, r.Quantity)
 	return bytes
 }
+
+// Clone returns a copy of the request.
+func (r ReadDiscreteInputsRequestTCP) Clone() ReadDiscreteInputsRequestTCP {
+	return r
+}
+
+// Clone returns a copy of the request.
+func (r ReadDiscreteInputsRequestRTU) Clone() ReadDiscreteInputsRequestRTU {
+	return r
+}

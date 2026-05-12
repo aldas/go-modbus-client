@@ -184,3 +184,13 @@ func (r ReadInputRegistersRequest) bytes(bytes []byte) []byte {
 	putReadRequestBytes(bytes, r.UnitID, FunctionReadInputRegisters, r.StartAddress, r.Quantity)
 	return bytes
 }
+
+// Clone returns a copy of the request.
+func (r ReadInputRegistersRequestTCP) Clone() ReadInputRegistersRequestTCP {
+	return r
+}
+
+// Clone returns a copy of the request.
+func (r ReadInputRegistersRequestRTU) Clone() ReadInputRegistersRequestRTU {
+	return r
+}

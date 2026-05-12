@@ -113,6 +113,42 @@ func ParseFieldType(raw string) (FieldType, error) {
 	return ft, nil
 }
 
+// FieldTypeSizeBytes returns the size of a given FieldType in bytes. For unknown or types that size cannot be
+// determined just by the type itself 0 is returned.
+func FieldTypeSizeBytes(ft FieldType) int {
+	s := 0
+	switch ft {
+	case FieldTypeBit, FieldTypeCoil, FieldTypeUint8, FieldTypeInt8, FieldTypeByte:
+		s = 1
+	case FieldTypeUint16, FieldTypeInt16:
+		s = 2
+	case FieldTypeUint32, FieldTypeInt32, FieldTypeFloat32:
+		s = 4
+	case FieldTypeUint64, FieldTypeInt64, FieldTypeFloat64:
+		s = 8
+	}
+	return s
+}
+
+// FieldTypeBitSize returns the size in bits of the given data type. For unknown or types that size cannot be
+// determined just by the type itself 0 is returned.
+func FieldTypeBitSize(ft FieldType) int {
+	s := 0
+	switch ft {
+	case FieldTypeBit, FieldTypeCoil:
+		s = 1
+	case FieldTypeUint8, FieldTypeInt8, FieldTypeByte:
+		s = 8
+	case FieldTypeUint16, FieldTypeInt16:
+		s = 16
+	case FieldTypeUint32, FieldTypeInt32, FieldTypeFloat32:
+		s = 32
+	case FieldTypeUint64, FieldTypeInt64, FieldTypeFloat64:
+		s = 64
+	}
+	return s
+}
+
 // Fields is slice of Field instances
 type Fields []Field
 
@@ -179,8 +215,16 @@ type Field struct {
 	Invalid Invalid `json:"invalid,omitempty" mapstructure:"invalid"`
 }
 
-// registerSize returns how many register/words does this field would take in modbus response
-func (f *Field) registerSize() uint16 {
+// FieldTypeSizeBytes returns how many bytes this field would take in modbus response.
+func (f *Field) FieldTypeSizeBytes() int {
+	if f.Type == FieldTypeString || f.Type == FieldTypeRawBytes {
+		return int(f.Length)
+	}
+	return FieldTypeSizeBytes(f.Type)
+}
+
+// RegisterSize returns how many register/words does this field would take in modbus response
+func (f *Field) RegisterSize() uint16 {
 	switch f.Type {
 	case FieldTypeFloat64, FieldTypeInt64, FieldTypeUint64:
 		return 4
@@ -298,7 +342,7 @@ func (f *Field) ExtractFrom(registers *packet.Registers) (interface{}, error) {
 // - string (Note: raw utf8 bytes. If you need ASCII, convert the string before)
 // - []byte
 func (f *Field) MarshalBytes(value any) ([]byte, error) {
-	registerSize := f.registerSize()
+	registerSize := f.RegisterSize()
 	sizeBytes := int(registerSize) * 2
 
 	dst := make([]byte, sizeBytes)
@@ -387,7 +431,7 @@ func (f *Field) CheckInvalid(registers *packet.Registers) error {
 		return nil
 	}
 
-	ok, err := registers.IsEqualBytes(f.Address, uint8(f.registerSize()*2), f.Invalid)
+	ok, err := registers.IsEqualBytes(f.Address, uint8(f.RegisterSize()*2), f.Invalid)
 	if err != nil {
 		return err
 	}
@@ -395,6 +439,13 @@ func (f *Field) CheckInvalid(registers *packet.Registers) error {
 		return ErrInvalidValue
 	}
 	return nil
+}
+
+// Clone returns a deep copy of the Field
+func (f Field) Clone() Field {
+	clone := f
+	clone.Invalid = append([]byte{}, f.Invalid...)
+	return clone
 }
 
 // Invalid that represents not existent value in modbus. Given value (presented in hex) when encountered is converted to ErrInvalidValue error.

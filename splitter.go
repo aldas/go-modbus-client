@@ -290,7 +290,7 @@ type builderSlotGroup struct {
 }
 
 func (g *builderSlotGroup) AddField(f Field) {
-	registerSize := f.registerSize()
+	registerSize := f.RegisterSize()
 	i := g.slots.IndexOf(f.Address)
 	if i == -1 {
 		g.slots = append(g.slots, builderSlot{

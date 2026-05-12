@@ -196,3 +196,13 @@ func (r WriteSingleCoilRequest) bytes(bytes []byte) []byte {
 	binary.BigEndian.PutUint16(bytes[4:6], coilState)
 	return bytes
 }
+
+// Clone returns a copy of the request.
+func (r WriteSingleCoilRequestTCP) Clone() WriteSingleCoilRequestTCP {
+	return r
+}
+
+// Clone returns a copy of the request.
+func (r WriteSingleCoilRequestRTU) Clone() WriteSingleCoilRequestRTU {
+	return r
+}

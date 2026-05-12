@@ -243,3 +243,17 @@ func (r WriteMultipleRegistersRequest) bytes(bytes []byte) []byte {
 	copy(bytes[7:], r.Data)
 	return bytes
 }
+
+// Clone returns a deep copy of the request.
+func (r WriteMultipleRegistersRequestTCP) Clone() WriteMultipleRegistersRequestTCP {
+	clone := r
+	clone.Data = append([]byte{}, r.Data...)
+	return clone
+}
+
+// Clone returns a deep copy of the request.
+func (r WriteMultipleRegistersRequestRTU) Clone() WriteMultipleRegistersRequestRTU {
+	clone := r
+	clone.Data = append([]byte{}, r.Data...)
+	return clone
+}

@@ -442,3 +442,22 @@ func TestParseReadHoldingRegistersRequestRTU(t *testing.T) {
 		})
 	}
 }
+
+func TestReadHoldingRegistersRequestTCP_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := ReadHoldingRegistersRequestTCP{
+			MBAPHeader:                  MBAPHeader{TransactionID: 0x0102, ProtocolID: 0},
+			ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}
+
+func TestReadHoldingRegistersRequestRTU_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := ReadHoldingRegistersRequestRTU{
+			ReadHoldingRegistersRequest: ReadHoldingRegistersRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}

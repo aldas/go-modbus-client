@@ -618,3 +618,52 @@ func TestParseReadWriteMultipleRegistersRequestRTU(t *testing.T) {
 		})
 	}
 }
+
+func TestReadWriteMultipleRegistersRequestTCP_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := ReadWriteMultipleRegistersRequestTCP{
+			MBAPHeader: MBAPHeader{TransactionID: 0x0102, ProtocolID: 0},
+			ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
+				UnitID: 1, ReadStartAddress: 100, ReadQuantity: 1,
+				WriteStartAddress: 200, WriteQuantity: 2, WriteData: []byte{0x00, 0xC8, 0x00, 0x82},
+			},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+	t.Run("write data slice is deep copied", func(t *testing.T) {
+		original := ReadWriteMultipleRegistersRequestTCP{
+			ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{WriteData: []byte{0xff, 0x00}},
+		}
+		clone := original.Clone()
+		clone.WriteData[0] = 0x11
+		assert.Equal(t, byte(0xff), original.WriteData[0])
+	})
+	t.Run("nil write data produces empty slice in clone", func(t *testing.T) {
+		original := ReadWriteMultipleRegistersRequestTCP{}
+		assert.Empty(t, original.Clone().WriteData)
+	})
+}
+
+func TestReadWriteMultipleRegistersRequestRTU_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := ReadWriteMultipleRegistersRequestRTU{
+			ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{
+				UnitID: 1, ReadStartAddress: 100, ReadQuantity: 1,
+				WriteStartAddress: 200, WriteQuantity: 2, WriteData: []byte{0x00, 0xC8, 0x00, 0x82},
+			},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+	t.Run("write data slice is deep copied", func(t *testing.T) {
+		original := ReadWriteMultipleRegistersRequestRTU{
+			ReadWriteMultipleRegistersRequest: ReadWriteMultipleRegistersRequest{WriteData: []byte{0xff, 0x00}},
+		}
+		clone := original.Clone()
+		clone.WriteData[0] = 0x11
+		assert.Equal(t, byte(0xff), original.WriteData[0])
+	})
+	t.Run("nil write data produces empty slice in clone", func(t *testing.T) {
+		original := ReadWriteMultipleRegistersRequestRTU{}
+		assert.Empty(t, original.Clone().WriteData)
+	})
+}

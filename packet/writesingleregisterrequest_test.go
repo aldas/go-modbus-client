@@ -423,3 +423,22 @@ func TestParseWriteSingleRegisterRequestRTU(t *testing.T) {
 		})
 	}
 }
+
+func TestWriteSingleRegisterRequestTCP_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := WriteSingleRegisterRequestTCP{
+			MBAPHeader:                 MBAPHeader{TransactionID: 0x0102, ProtocolID: 0},
+			WriteSingleRegisterRequest: WriteSingleRegisterRequest{UnitID: 1, Address: 200, Data: [2]byte{0x01, 0x02}},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}
+
+func TestWriteSingleRegisterRequestRTU_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := WriteSingleRegisterRequestRTU{
+			WriteSingleRegisterRequest: WriteSingleRegisterRequest{UnitID: 1, Address: 200, Data: [2]byte{0x01, 0x02}},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}

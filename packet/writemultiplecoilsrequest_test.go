@@ -496,3 +496,50 @@ func TestParseWriteMultipleCoilsRequestRTU(t *testing.T) {
 		})
 	}
 }
+
+func TestWriteMultipleCoilsRequestTCP_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := WriteMultipleCoilsRequestTCP{
+			MBAPHeader: MBAPHeader{TransactionID: 0x0102, ProtocolID: 0},
+			WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+				UnitID: 1, StartAddress: 100, CoilCount: 3, Data: []byte{0x05},
+			},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+	t.Run("data slice is deep copied", func(t *testing.T) {
+		original := WriteMultipleCoilsRequestTCP{
+			WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{Data: []byte{0xff, 0x00}},
+		}
+		clone := original.Clone()
+		clone.Data[0] = 0x11
+		assert.Equal(t, byte(0xff), original.Data[0])
+	})
+	t.Run("nil data produces empty slice in clone", func(t *testing.T) {
+		original := WriteMultipleCoilsRequestTCP{}
+		assert.Empty(t, original.Clone().Data)
+	})
+}
+
+func TestWriteMultipleCoilsRequestRTU_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := WriteMultipleCoilsRequestRTU{
+			WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{
+				UnitID: 1, StartAddress: 100, CoilCount: 3, Data: []byte{0x05},
+			},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+	t.Run("data slice is deep copied", func(t *testing.T) {
+		original := WriteMultipleCoilsRequestRTU{
+			WriteMultipleCoilsRequest: WriteMultipleCoilsRequest{Data: []byte{0xff, 0x00}},
+		}
+		clone := original.Clone()
+		clone.Data[0] = 0x11
+		assert.Equal(t, byte(0xff), original.Data[0])
+	})
+	t.Run("nil data produces empty slice in clone", func(t *testing.T) {
+		original := WriteMultipleCoilsRequestRTU{}
+		assert.Empty(t, original.Clone().Data)
+	})
+}

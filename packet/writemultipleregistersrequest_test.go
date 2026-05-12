@@ -450,3 +450,50 @@ func TestParseWriteMultipleRegistersRequestRTU(t *testing.T) {
 		})
 	}
 }
+
+func TestWriteMultipleRegistersRequestTCP_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := WriteMultipleRegistersRequestTCP{
+			MBAPHeader: MBAPHeader{TransactionID: 0x0102, ProtocolID: 0},
+			WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+				UnitID: 1, StartAddress: 100, RegisterCount: 2, Data: []byte{0x00, 0xC8, 0x00, 0x82},
+			},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+	t.Run("data slice is deep copied", func(t *testing.T) {
+		original := WriteMultipleRegistersRequestTCP{
+			WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{Data: []byte{0xff, 0x00}},
+		}
+		clone := original.Clone()
+		clone.Data[0] = 0x11
+		assert.Equal(t, byte(0xff), original.Data[0])
+	})
+	t.Run("nil data produces empty slice in clone", func(t *testing.T) {
+		original := WriteMultipleRegistersRequestTCP{}
+		assert.Empty(t, original.Clone().Data)
+	})
+}
+
+func TestWriteMultipleRegistersRequestRTU_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := WriteMultipleRegistersRequestRTU{
+			WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{
+				UnitID: 1, StartAddress: 100, RegisterCount: 2, Data: []byte{0x00, 0xC8, 0x00, 0x82},
+			},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+	t.Run("data slice is deep copied", func(t *testing.T) {
+		original := WriteMultipleRegistersRequestRTU{
+			WriteMultipleRegistersRequest: WriteMultipleRegistersRequest{Data: []byte{0xff, 0x00}},
+		}
+		clone := original.Clone()
+		clone.Data[0] = 0x11
+		assert.Equal(t, byte(0xff), original.Data[0])
+	})
+	t.Run("nil data produces empty slice in clone", func(t *testing.T) {
+		original := WriteMultipleRegistersRequestRTU{}
+		assert.Empty(t, original.Clone().Data)
+	})
+}

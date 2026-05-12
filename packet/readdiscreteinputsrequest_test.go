@@ -458,3 +458,22 @@ func TestParseReadDiscreteInputsRequestRTU(t *testing.T) {
 		})
 	}
 }
+
+func TestReadDiscreteInputsRequestTCP_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := ReadDiscreteInputsRequestTCP{
+			MBAPHeader:                MBAPHeader{TransactionID: 0x0102, ProtocolID: 0},
+			ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}
+
+func TestReadDiscreteInputsRequestRTU_Clone(t *testing.T) {
+	t.Run("all fields are copied", func(t *testing.T) {
+		original := ReadDiscreteInputsRequestRTU{
+			ReadDiscreteInputsRequest: ReadDiscreteInputsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+		}
+		assert.Equal(t, original, original.Clone())
+	})
+}

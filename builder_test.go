@@ -655,6 +655,156 @@ func TestRegisterRequest_AsRegisters(t *testing.T) {
 	assert.Equal(t, uint16(1), value)
 }
 
+func TestBuilderRequest_Clone(t *testing.T) {
+	var testCases = []struct {
+		name      string
+		when      BuilderRequest
+		expect    BuilderRequest
+		expectErr string
+	}{
+		{
+			name: "all fields are copied",
+			when: BuilderRequest{
+				Request: packet.ReadHoldingRegistersRequestTCP{
+					MBAPHeader: packet.MBAPHeader{
+						TransactionID: 0x1234,
+						ProtocolID:    0,
+					},
+					ReadHoldingRegistersRequest: packet.ReadHoldingRegistersRequest{
+						UnitID:       1,
+						StartAddress: 200,
+						Quantity:     10,
+					},
+				},
+				ServerAddress:   "localhost:502",
+				UnitID:          1,
+				StartAddress:    200,
+				Quantity:        10,
+				Protocol:        ProtocolTCP,
+				RequestInterval: 1 * time.Second,
+				Fields: Fields{
+					{
+						Name:            "test1",
+						ServerAddress:   "localhost:502",
+						FunctionCode:    packet.FunctionReadHoldingRegisters,
+						UnitID:          1,
+						Protocol:        ProtocolTCP,
+						RequestInterval: Duration(1 * time.Second),
+						Address:         200,
+						Type:            FieldTypeBit,
+						Bit:             3,
+						FromHighByte:    false,
+						Length:          0,
+						ByteOrder:       packet.BigEndianLowWordFirst,
+						Invalid:         nil,
+					},
+				},
+			},
+			expect: BuilderRequest{
+				Request: packet.ReadHoldingRegistersRequestTCP{
+					MBAPHeader: packet.MBAPHeader{
+						TransactionID: 0x1234,
+						ProtocolID:    0,
+					},
+					ReadHoldingRegistersRequest: packet.ReadHoldingRegistersRequest{
+						UnitID:       1,
+						StartAddress: 200,
+						Quantity:     10,
+					},
+				},
+				ServerAddress:   "localhost:502",
+				UnitID:          1,
+				StartAddress:    200,
+				Quantity:        10,
+				Protocol:        ProtocolTCP,
+				RequestInterval: 1 * time.Second,
+				Fields: Fields{
+					{
+						Name:            "test1",
+						ServerAddress:   "localhost:502",
+						FunctionCode:    packet.FunctionReadHoldingRegisters,
+						UnitID:          1,
+						Protocol:        ProtocolTCP,
+						RequestInterval: Duration(1 * time.Second),
+						Address:         200,
+						Type:            FieldTypeBit,
+						Bit:             3,
+						FromHighByte:    false,
+						Length:          0,
+						ByteOrder:       packet.BigEndianLowWordFirst,
+						Invalid:         []byte{},
+					},
+				},
+			},
+		},
+		{
+			name:   "nil Request stays nil",
+			when:   BuilderRequest{ServerAddress: "localhost:502", Fields: nil},
+			expect: BuilderRequest{ServerAddress: "localhost:502", Fields: nil},
+		},
+		{
+			name:   "nil Fields stays nil",
+			when:   BuilderRequest{Request: packet.ReadHoldingRegistersRequestTCP{}, Fields: nil},
+			expect: BuilderRequest{Request: packet.ReadHoldingRegistersRequestTCP{}, Fields: nil},
+		},
+		{
+			// CloneRequest receives *T and returns T (value receiver), so the concrete
+			// type stored in the interface changes from pointer to value after clone.
+			name: "pointer Request is cloned and stored as value type",
+			when: BuilderRequest{
+				Request: &packet.ReadCoilsRequestTCP{
+					MBAPHeader:       packet.MBAPHeader{TransactionID: 0x0102},
+					ReadCoilsRequest: packet.ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+				},
+			},
+			expect: BuilderRequest{
+				Request: packet.ReadCoilsRequestTCP{
+					MBAPHeader:       packet.MBAPHeader{TransactionID: 0x0102},
+					ReadCoilsRequest: packet.ReadCoilsRequest{UnitID: 1, StartAddress: 100, Quantity: 10},
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := tc.when.Clone()
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.expect, c)
+		})
+	}
+
+	t.Run("fields invalid slice is deep copied", func(t *testing.T) {
+		original := BuilderRequest{
+			Request: packet.ReadHoldingRegistersRequestTCP{},
+			Fields:  Fields{{Invalid: Invalid{0xff, 0x00}}},
+		}
+		clone, err := original.Clone()
+		assert.NoError(t, err)
+
+		clone.Fields[0].Invalid[0] = 0x11
+		assert.Equal(t, byte(0xff), original.Fields[0].Invalid[0])
+	})
+
+	t.Run("Request slice field is deep copied", func(t *testing.T) {
+		original := BuilderRequest{
+			Request: packet.WriteMultipleCoilsRequestTCP{
+				WriteMultipleCoilsRequest: packet.WriteMultipleCoilsRequest{
+					UnitID: 1, StartAddress: 10, CoilCount: 3, Data: []byte{0x05},
+				},
+			},
+		}
+		clone, err := original.Clone()
+		assert.NoError(t, err)
+
+		clone.Request.(packet.WriteMultipleCoilsRequestTCP).WriteMultipleCoilsRequest.Data[0] = 0xff
+		assert.Equal(t, byte(0x05), original.Request.(packet.WriteMultipleCoilsRequestTCP).WriteMultipleCoilsRequest.Data[0])
+	})
+}
+
 func TestRegisterRequest_ExtractFields(t *testing.T) {
 	var testCases = []struct {
 		name                           string
