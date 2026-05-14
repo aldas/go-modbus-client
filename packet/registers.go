@@ -85,7 +85,6 @@ type ByteOrder uint8
 type Registers struct {
 	defaultByteOrder ByteOrder
 	startAddress     uint16
-	endAddress       uint16 // end address is not addressable. endAddress-1 is last addressable register (2 bytes)
 	data             []byte
 }
 
@@ -98,10 +97,12 @@ func NewRegisters(data []byte, startAddress uint16) (*Registers, error) {
 	if dataLen%2 != 0 {
 		return nil, errors.New("data length must be even number of bytes as 1 register is 2 bytes")
 	}
+	if dataLen/2 > math.MaxUint16 {
+		return nil, errors.New("data length exceeds maximum addressable register count")
+	}
 	return &Registers{
 		defaultByteOrder: BigEndianHighWordFirst,
 		startAddress:     startAddress,
-		endAddress:       startAddress + uint16(dataLen/2),
 		data:             data,
 	}, nil
 }
@@ -125,10 +126,10 @@ func (r Registers) register(address uint16) ([]byte, error) {
 	if address < r.startAddress {
 		return nil, errors.New("address under startAddress bounds")
 	}
-	if address >= r.endAddress {
+	startIndex := int(address-r.startAddress) * 2
+	if startIndex >= len(r.data) {
 		return nil, errors.New("address over startAddress+quantity bounds")
 	}
-	startIndex := (address - r.startAddress) * 2
 	return r.data[startIndex : startIndex+2], nil
 }
 
@@ -145,10 +146,10 @@ func (r Registers) doubleRegister(address uint16, byteOrder ByteOrder) ([]byte, 
 	if address < r.startAddress {
 		return nil, errors.New("address under startAddress bounds")
 	}
-	if address > (r.endAddress - 2) {
+	startIndex := int(address-r.startAddress) * 2
+	if startIndex+4 > len(r.data) {
 		return nil, errors.New("address over startAddress+quantity bounds")
 	}
-	startIndex := (address - r.startAddress) * 2
 	if byteOrder&LowWordFirst != 0 {
 		// reverse words/registers order (low word first)
 		return []byte{
@@ -159,7 +160,7 @@ func (r Registers) doubleRegister(address uint16, byteOrder ByteOrder) ([]byte, 
 			r.data[startIndex+1],
 		}, nil
 	}
-	return r.data[startIndex : startIndex+4], nil
+	return []byte{r.data[startIndex], r.data[startIndex+1], r.data[startIndex+2], r.data[startIndex+3]}, nil
 }
 
 // QuadRegister returns four registers data (64bit) from starting from given address using word/register order
@@ -175,10 +176,10 @@ func (r Registers) quadRegister(address uint16, byteOrder ByteOrder) ([]byte, er
 	if address < r.startAddress {
 		return nil, errors.New("address under startAddress bounds")
 	}
-	if address > (r.endAddress - 4) {
+	startIndex := int(address-r.startAddress) * 2
+	if startIndex+8 > len(r.data) {
 		return nil, errors.New("address over startAddress+quantity bounds")
 	}
-	startIndex := (address - r.startAddress) * 2
 	if byteOrder&LowWordFirst != 0 {
 		// reverse words/registers order (low word first)
 		return []byte{
@@ -195,7 +196,12 @@ func (r Registers) quadRegister(address uint16, byteOrder ByteOrder) ([]byte, er
 			r.data[startIndex+1],
 		}, nil
 	}
-	return r.data[startIndex : startIndex+8], nil
+	return []byte{
+		r.data[startIndex], r.data[startIndex+1],
+		r.data[startIndex+2], r.data[startIndex+3],
+		r.data[startIndex+4], r.data[startIndex+5],
+		r.data[startIndex+6], r.data[startIndex+7],
+	}, nil
 }
 
 // Bit checks if N-th bit is set in register. NB: Bits are counted from 0 and right to left.
@@ -469,7 +475,9 @@ func (r Registers) StringWithByteOrder(address uint16, length uint8, byteOrder B
 	return builder.String(), nil
 }
 
-// Bytes returns register data as byte slice starting from given address to given length in bytes.
+// Bytes returns register data as byte slice starting from given address to given length in bytes in set endian.
+// This method returns a copy of the data and is therefore not suitable for use with modbus functions that expect raw data.
+// Use Data() instead if you need to access the raw data.
 func (r Registers) Bytes(address uint16, length uint8) ([]byte, error) {
 	return r.BytesWithByteOrder(address, length, useDefaultByteOrder)
 }
@@ -482,8 +490,8 @@ func (r Registers) BytesWithByteOrder(address uint16, length uint8, wantByteOrde
 	if address < r.startAddress {
 		return nil, errors.New("address under startAddress bounds")
 	}
-	startIndex := (address - r.startAddress) * 2
-	endIndex := startIndex + uint16(length)
+	startIndex := int(address-r.startAddress) * 2
+	endIndex := startIndex + int(length)
 	// length is bytes. but data is sent in registers (2 bytes) and in big endian format. so last character for odd size
 	// needs 1 more byte (it needs to be swapped)
 	isOddSize := length%2 != 0
@@ -492,7 +500,7 @@ func (r Registers) BytesWithByteOrder(address uint16, length uint8, wantByteOrde
 		neededLength++
 		endIndex++
 	}
-	if int(endIndex) > len(r.data) {
+	if endIndex > len(r.data) {
 		return nil, errors.New("address over data bounds")
 	}
 
@@ -526,14 +534,14 @@ func (r Registers) IsEqualBytes(registerAddress uint16, addressLengthInBytes uin
 	if registerAddress < r.startAddress {
 		return false, errors.New("address under startAddress bounds")
 	}
-	startIndex := (registerAddress - r.startAddress) * 2
+	startIndex := int(registerAddress-r.startAddress) * 2
 
 	l := int(addressLengthInBytes)
 	if len(bytes) < l {
 		l = len(bytes)
 	}
-	endIndex := startIndex + uint16(l)
-	if int(endIndex) > len(r.data) {
+	endIndex := startIndex + l
+	if endIndex > len(r.data) {
 		return false, errors.New("address+length over data bounds")
 	}
 	data := r.data[startIndex:endIndex]
@@ -543,4 +551,178 @@ func (r Registers) IsEqualBytes(registerAddress uint16, addressLengthInBytes uin
 		}
 	}
 	return true, nil
+}
+
+// Data returns the raw data of the registers. This is different from Bytes() which returns a copy of the data (converted to endian).
+// This method does not do any endian conversion.
+func (r *Registers) Data() []byte {
+	return r.data
+}
+
+// WriteValueCmd represents a command to write a value to a register
+type WriteValueCmd struct {
+	// Value is the value to write to the register. It can be any type that can be converted to a byte slice.
+	Value any
+
+	// RegisterAddress is the address of the register to write to.
+	RegisterAddress uint16
+
+	// ToHighByte is used with bool,byte,uint8,int8 for different bytes in the register. Byte 0 is a high byte, byte 1 is a low byte of register/word
+	ToHighByte bool
+
+	// Endian is the raw byte order of the value in the register. See ByteOrder for more information.
+	Endian ByteOrder
+}
+
+// WriteValue writes a value as register(s) to the Registers instance
+func (r *Registers) WriteValue(cmd WriteValueCmd) error {
+	dataTypeSize, err := valueTypeByteSize(cmd.Value)
+	if err != nil {
+		return err
+	}
+
+	if cmd.RegisterAddress < r.startAddress {
+		return fmt.Errorf("register address under startAddress bounds")
+	}
+	startByte := int(cmd.RegisterAddress-r.startAddress) * 2
+	if !cmd.ToHighByte && dataTypeSize == 1 { // bool, uint8, int8: ToHighByte=false -> low byte (1), ToHighByte=true -> high byte (0)
+		startByte++
+	}
+
+	if startByte >= len(r.data) {
+		return fmt.Errorf("start register overflows address range")
+	}
+	endByte := startByte + dataTypeSize
+	if endByte > len(r.data) {
+		return fmt.Errorf("start byte + data type size overflows address range")
+	}
+
+	endian := cmd.Endian
+	if endian == useDefaultByteOrder {
+		endian = r.defaultByteOrder
+	}
+	return putAny(cmd.Value, r.data[startByte:endByte], endian)
+}
+
+func valueTypeByteSize(value any) (int, error) {
+	switch value.(type) {
+	case RegisterBit:
+		return 2, nil
+	case bool, uint8, int8:
+		return 1, nil
+	case uint16, int16:
+		return 2, nil
+	case uint32, int32, float32:
+		return 4, nil
+	case uint64, int64, float64:
+		return 8, nil
+	default:
+		return 0, fmt.Errorf("unsupported value type: %T", value)
+	}
+}
+
+// RegisterBit represents the value of the bit in a register.
+type RegisterBit struct {
+	Value bool
+	Bit   uint8
+}
+
+func putAny(value any, dst []byte, endian ByteOrder) error {
+	switch vt := value.(type) {
+	case RegisterBit:
+		if vt.Bit > 15 {
+			return fmt.Errorf("bit value more than register (16bit) contains")
+		}
+		startByte := 1 // low byte for bits 0-7, matching Bit() read convention
+		bit := vt.Bit
+		if bit > 7 {
+			bit -= 8
+			startByte = 0 // high byte for bits 8-15
+		}
+		if vt.Value {
+			dst[startByte] |= 1 << bit // set bit
+		} else {
+			dst[startByte] &= ^(1 << bit) // clear bit
+		}
+	case bool:
+		if vt {
+			dst[0] = 0x01
+		} else {
+			dst[0] = 0x00
+		}
+	case uint8:
+		dst[0] = vt
+	case int8:
+		dst[0] = byte(vt) // #nosec G115
+	case uint16:
+		binary.BigEndian.PutUint16(dst, vt)
+	case int16:
+		binary.BigEndian.PutUint16(dst, uint16(vt)) // #nosec G115
+	case uint32:
+		if endian&LowWordFirst != 0 {
+			putUint32LowWordFirst(dst, vt)
+		} else {
+			binary.BigEndian.PutUint32(dst, vt)
+		}
+	case int32:
+		if endian&LowWordFirst != 0 {
+			putUint32LowWordFirst(dst, uint32(vt)) // #nosec G115
+		} else {
+			binary.BigEndian.PutUint32(dst, uint32(vt)) // #nosec G115
+		}
+	case uint64:
+		if endian&LowWordFirst != 0 {
+			putUint64LowWordFirst(dst, vt)
+		} else {
+			binary.BigEndian.PutUint64(dst, vt)
+		}
+	case int64:
+		if endian&LowWordFirst != 0 {
+			putUint64LowWordFirst(dst, uint64(vt)) // #nosec G115
+		} else {
+			binary.BigEndian.PutUint64(dst, uint64(vt)) // #nosec G115
+		}
+	case float32:
+		if endian&LowWordFirst != 0 {
+			putUint32LowWordFirst(dst, math.Float32bits(vt))
+		} else {
+			binary.BigEndian.PutUint32(dst, math.Float32bits(vt))
+		}
+	case float64:
+		if endian&LowWordFirst != 0 {
+			putUint64LowWordFirst(dst, math.Float64bits(vt))
+		} else {
+			binary.BigEndian.PutUint64(dst, math.Float64bits(vt))
+		}
+	default:
+		return fmt.Errorf("cannot store %T", value)
+	}
+	return nil
+}
+
+// #nosec G115
+func putUint32LowWordFirst(b []byte, v uint32) {
+	_ = b[3] // bounds check hint
+
+	b[0] = byte(v >> 8)  // low word high byte
+	b[1] = byte(v)       // low word low byte
+	b[2] = byte(v >> 24) // high word high byte
+	b[3] = byte(v >> 16) // high word low byte
+}
+
+// #nosec G115
+func putUint64LowWordFirst(b []byte, v uint64) {
+	_ = b[7] // early bounds check to guarantee safety of writes below
+
+	b[0] = byte(v >> 8) // low word high byte
+	b[1] = byte(v)      // low word low byte
+
+	b[2] = byte(v >> 24)
+	b[3] = byte(v >> 16)
+
+	b[4] = byte(v >> 40)
+	b[5] = byte(v >> 32)
+
+	b[6] = byte(v >> 56) // high word high byte
+	b[7] = byte(v >> 48) // high word low byte
 }
