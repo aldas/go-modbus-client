@@ -21,7 +21,6 @@ func TestRegisters_NewRegisters(t *testing.T) {
 			expect: &Registers{
 				defaultByteOrder: BigEndianHighWordFirst,
 				startAddress:     1,
-				endAddress:       2,
 				data:             []byte{0x1, 0x2},
 			},
 		},
@@ -65,6 +64,32 @@ func TestRegisters_WithByteOrder(t *testing.T) {
 
 	r.WithByteOrder(LittleEndian)
 	assert.Equal(t, LittleEndian, r.defaultByteOrder)
+}
+
+func TestRegisters_Data(t *testing.T) {
+	t.Run("returns bytes passed to NewRegisters", func(t *testing.T) {
+		data := []byte{0x01, 0x02, 0x03, 0x04}
+		r, err := NewRegisters(data, 0)
+		assert.NoError(t, err)
+
+		assert.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, r.Data())
+	})
+
+	t.Run("returned slice is live - mutation propagates to internal state", func(t *testing.T) {
+		r, err := NewRegisters([]byte{0x00, 0x00}, 0)
+		assert.NoError(t, err)
+
+		r.Data()[0] = 0xFF
+		assert.Equal(t, []byte{0xFF, 0x00}, r.Data())
+	})
+
+	t.Run("full buffer returned regardless of startAddress", func(t *testing.T) {
+		data := []byte{0xAB, 0xCD, 0xEF, 0x01}
+		r, err := NewRegisters(data, 100)
+		assert.NoError(t, err)
+
+		assert.Equal(t, data, r.Data()) // all 4 bytes, not offset by startAddress
+	})
 }
 
 func TestRegisters_Register(t *testing.T) {
@@ -198,6 +223,34 @@ func TestRegisters_QuadRegister(t *testing.T) {
 	}
 }
 
+// TestRegisters_doubleRegister_smallBuffer verifies that a 1-register buffer
+// returns an error instead of panicking (uint16 underflow regression: endAddress-2).
+func TestRegisters_doubleRegister_smallBuffer(t *testing.T) {
+	r, err := NewRegisters(make([]byte, 2), 0) // 1 register, endAddress=1
+	assert.NoError(t, err)
+
+	_, err = r.Uint32(0)
+	assert.EqualError(t, err, "address over startAddress+quantity bounds")
+
+	_, err = r.Float32(0)
+	assert.EqualError(t, err, "address over startAddress+quantity bounds")
+}
+
+// TestRegisters_quadRegister_smallBuffer verifies that a <4-register buffer
+// returns an error instead of panicking (uint16 underflow regression: endAddress-4).
+func TestRegisters_quadRegister_smallBuffer(t *testing.T) {
+	for _, dataLen := range []int{2, 4, 6} { // 1, 2, 3 registers — all fewer than 4
+		r, err := NewRegisters(make([]byte, dataLen), 0)
+		assert.NoError(t, err)
+
+		_, err = r.Uint64(0)
+		assert.EqualError(t, err, "address over startAddress+quantity bounds")
+
+		_, err = r.Float64(0)
+		assert.EqualError(t, err, "address over startAddress+quantity bounds")
+	}
+}
+
 func TestRegisters_Bit(t *testing.T) {
 	var testCases = []struct {
 		name        string
@@ -243,7 +296,6 @@ func TestRegisters_Bit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
-				endAddress:   2,
 				data:         []byte{0b10000001, 0b00010010},
 			}
 
@@ -317,7 +369,6 @@ func TestRegisters_Byte(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
-				endAddress:   4,
 				data:         []byte{0xff, 0x1, 0xCA, 0xFE, 0x3, 0x0},
 			}
 
@@ -391,7 +442,6 @@ func TestRegisters_Int8(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
-				endAddress:   4,
 				data:         []byte{0xff, 0x1, 0b10000001, 0b01000001, 0x3, 0x0},
 			}
 
@@ -456,7 +506,6 @@ func TestRegisters_Uint16(t *testing.T) {
 			r := Registers{
 				defaultByteOrder: BigEndianHighWordFirst,
 				startAddress:     1,
-				endAddress:       4,
 				data:             []byte{0xff, 0xff, 0x7f, 0xff, 0x0, 0x1},
 			}
 			if tc.given != nil {
@@ -526,7 +575,6 @@ func TestRegisters_Int16(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
-				endAddress:   4,
 				data:         []byte{0xff, 0xff, 0x7f, 0xff, 0x0, 0x1},
 			}
 			if tc.given != nil {
@@ -591,7 +639,6 @@ func TestRegisters_Uint32(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
-				endAddress:   4,
 				data:         []byte{0xff, 0xff, 0x7f, 0xff, 0xff, 0xff},
 			}
 			if tc.given != nil {
@@ -700,7 +747,6 @@ func TestRegisters_Uint32WithByteOrder(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 0,
-				endAddress:   2,
 				data:         tc.givenBytes,
 			}
 			result, err := r.Uint32WithByteOrder(tc.whenAddress, tc.whenByteOrder)
@@ -758,7 +804,6 @@ func TestRegisters_Int32(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
-				endAddress:   4,
 				data:         []byte{0xff, 0xff, 0x7f, 0xff, 0xff, 0xff},
 			}
 			if tc.given != nil {
@@ -867,7 +912,6 @@ func TestRegisters_Int32WithByteOrder(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 0,
-				endAddress:   2,
 				data:         tc.givenBytes,
 			}
 			result, err := r.Int32WithByteOrder(tc.whenAddress, tc.whenByteOrder)
@@ -909,9 +953,9 @@ func TestRegisters_Uint64(t *testing.T) {
 		},
 		{
 			name:        "ok, 72623859790382856",
-			given:       &Registers{startAddress: 1, endAddress: 5, data: []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}},
 			whenAddress: 1,
 			expect:      72623859790382856,
+			given:       &Registers{startAddress: 1, data: []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}},
 		},
 		{
 			name:        "nok, address before start",
@@ -931,7 +975,6 @@ func TestRegisters_Uint64(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
-				endAddress:   9,
 				data:         []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF},
 			}
 			if tc.given != nil {
@@ -1029,7 +1072,6 @@ func TestRegisters_Uint64WithByteOrder(t *testing.T) {
 			r := Registers{
 				defaultByteOrder: BigEndianHighWordFirst,
 				startAddress:     0,
-				endAddress:       9,
 				data:             tc.givenBytes,
 			}
 			result, err := r.Uint64WithByteOrder(tc.whenAddress, tc.whenByteOrder)
@@ -1071,9 +1113,9 @@ func TestRegisters_Int64(t *testing.T) {
 		},
 		{
 			name:        "ok, -1",
-			given:       &Registers{startAddress: 1, endAddress: 5, data: []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}},
 			whenAddress: 1,
 			expect:      -1,
+			given:       &Registers{startAddress: 1, data: []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}},
 		},
 		{
 			name:        "nok, address before start",
@@ -1093,7 +1135,6 @@ func TestRegisters_Int64(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
-				endAddress:   9,
 				data:         []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
 			}
 			if tc.given != nil {
@@ -1203,7 +1244,6 @@ func TestRegisters_Int64WithByteOrder(t *testing.T) {
 			r := Registers{
 				defaultByteOrder: BigEndianHighWordFirst,
 				startAddress:     0,
-				endAddress:       9,
 				data:             tc.givenBytes,
 			}
 			result, err := r.Int64WithByteOrder(tc.whenAddress, tc.whenByteOrder)
@@ -1234,10 +1274,10 @@ func TestRegisters_Float32(t *testing.T) {
 		},
 		{
 			name:                 "ok, second register LE",
-			given:                &Registers{startAddress: 1, endAddress: 5, data: []byte{0xcd, 0xcc, 0xec, 0x3f}},
 			whenAddress:          1,
 			whenDefaultByteOrder: LittleEndian,
 			expect:               1.85,
+			given:                &Registers{startAddress: 1, data: []byte{0xcd, 0xcc, 0xec, 0x3f}},
 		},
 		{
 			name:        "ok, offset register",
@@ -1246,9 +1286,9 @@ func TestRegisters_Float32(t *testing.T) {
 		},
 		{
 			name:        "ok, 0",
-			given:       &Registers{startAddress: 1, endAddress: 5, data: []byte{0x00, 0x00, 0x00, 0x00}},
 			whenAddress: 1,
 			expect:      0,
+			given:       &Registers{startAddress: 1, data: []byte{0x00, 0x00, 0x00, 0x00}},
 		},
 		{
 			name:        "nok, address before start",
@@ -1268,7 +1308,6 @@ func TestRegisters_Float32(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
-				endAddress:   5,
 				data:         []byte{0x3f, 0xec, 0xcc, 0xcd, 0x3f, 0x2a, 0xaa, 0xab},
 			}
 			if tc.given != nil {
@@ -1354,7 +1393,6 @@ func TestRegisters_Float32WithByteOrder(t *testing.T) {
 			r := Registers{
 				defaultByteOrder: BigEndianHighWordFirst,
 				startAddress:     0,
-				endAddress:       5,
 				data:             tc.givenBytes,
 			}
 			result, err := r.Float32WithByteOrder(tc.whenAddress, tc.whenByteOrder)
@@ -1386,9 +1424,9 @@ func TestRegisters_Float64(t *testing.T) {
 		{
 			name:                 "ok, second register LE",
 			whenAddress:          1,
-			given:                &Registers{startAddress: 1, endAddress: 5, data: []byte{0x9a, 0x99, 0x99, 0x99, 0x99, 0x99, 0xfd, 0x3f}},
 			whenDefaultByteOrder: LittleEndian,
 			expect:               1.85,
+			given:                &Registers{startAddress: 1, data: []byte{0x9a, 0x99, 0x99, 0x99, 0x99, 0x99, 0xfd, 0x3f}},
 		},
 		{
 			name:        "ok, offset register",
@@ -1397,9 +1435,9 @@ func TestRegisters_Float64(t *testing.T) {
 		},
 		{
 			name:        "ok, 0",
-			given:       &Registers{startAddress: 1, endAddress: 5, data: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
 			whenAddress: 1,
 			expect:      0,
+			given:       &Registers{startAddress: 1, data: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
 		},
 		{
 			name:        "nok, address before start",
@@ -1419,7 +1457,6 @@ func TestRegisters_Float64(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := Registers{
 				startAddress: 1,
-				endAddress:   9,
 				data:         []byte{0x3f, 0xfd, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9a, 0x3f, 0xe5, 0x55, 0x55, 0x55, 0x54, 0x6a, 0xc5},
 			}
 			if tc.given != nil {
@@ -1505,7 +1542,6 @@ func TestRegisters_Float64WithByteOrder(t *testing.T) {
 			r := Registers{
 				defaultByteOrder: BigEndianHighWordFirst,
 				startAddress:     0,
-				endAddress:       9,
 				data:             tc.givenBytes,
 			}
 			result, err := r.Float64WithByteOrder(tc.whenAddress, tc.whenByteOrder)
@@ -1775,42 +1811,50 @@ func TestPutAny(t *testing.T) {
 		expect        []byte
 		expectedError string
 	}{
-		// registerBit: bits 0-7 modify dst[0], bits 8-15 modify dst[1]
+		// registerBit: bits 0-7 modify dst[1] (low byte), bits 8-15 modify dst[0] (high byte)
+		// matches Bit() read convention: bit 0 = LSB of low byte
 		{
-			name:     "registerBit set bit 0 (dst[0])",
+			name:     "registerBit set bit 0 (dst[1] low byte)",
 			givenDst: []byte{0x00, 0x00},
 			when:     RegisterBit{Value: true, Bit: 0},
-			expect:   []byte{0x01, 0x00},
+			expect:   []byte{0x00, 0x01},
 		},
 		{
-			name:     "registerBit set bit 7 (dst[0])",
+			name:     "registerBit set bit 7 (dst[1] low byte)",
 			givenDst: []byte{0x00, 0x00},
 			when:     RegisterBit{Value: true, Bit: 7},
-			expect:   []byte{0x80, 0x00},
+			expect:   []byte{0x00, 0x80},
 		},
 		{
-			name:     "registerBit clear bit 0 (dst[0])",
-			givenDst: []byte{0x01, 0x00},
+			name:     "registerBit clear bit 0 (dst[1] low byte)",
+			givenDst: []byte{0x00, 0x01},
 			when:     RegisterBit{Value: false, Bit: 0},
 			expect:   []byte{0x00, 0x00},
 		},
 		{
-			name:     "registerBit set bit 8 (dst[1])",
+			name:     "registerBit set bit 8 (dst[0] high byte)",
 			givenDst: []byte{0x00, 0x00},
 			when:     RegisterBit{Value: true, Bit: 8},
-			expect:   []byte{0x00, 0x01},
+			expect:   []byte{0x01, 0x00},
 		},
 		{
-			name:     "registerBit set bit 15 (dst[1])",
+			name:     "registerBit set bit 15 (dst[0] high byte)",
 			givenDst: []byte{0x00, 0x00},
 			when:     RegisterBit{Value: true, Bit: 15},
-			expect:   []byte{0x00, 0x80},
+			expect:   []byte{0x80, 0x00},
 		},
 		{
-			name:     "registerBit clear bit 8 (dst[1])",
-			givenDst: []byte{0x00, 0x01},
+			name:     "registerBit clear bit 8 (dst[0] high byte)",
+			givenDst: []byte{0x01, 0x00},
 			when:     RegisterBit{Value: false, Bit: 8},
 			expect:   []byte{0x00, 0x00},
+		},
+		{
+			name:          "registerBit bit > 15 returns error",
+			givenDst:      []byte{0x00, 0x00},
+			when:          RegisterBit{Value: true, Bit: 16},
+			expect:        []byte{0x00, 0x00},
+			expectedError: "bit value more than register (16bit) contains",
 		},
 		// bool: writes to dst[0] only
 		{
@@ -2103,12 +2147,25 @@ func TestWriteValue(t *testing.T) {
 			when:                WriteValueCmd{Value: float64(1.85), RegisterAddress: 0, Endian: BigEndian},
 			expect:              []byte{0x3f, 0xfd, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9a},
 		},
-		// registerBit (dataTypeSize=2, putAny does bitwise set)
+		// registerBit (dataTypeSize=2, putAny does bitwise set on low byte for bits 0-7)
 		{
-			name:                "registerBit set bit 0",
+			name:                "registerBit set bit 0 (low byte)",
 			givenRegisterLength: 1,
 			when:                WriteValueCmd{Value: RegisterBit{Value: true, Bit: 0}, RegisterAddress: 0},
+			expect:              []byte{0x00, 0x01},
+		},
+		{
+			name:                "registerBit set bit 8 (high byte)",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: RegisterBit{Value: true, Bit: 8}, RegisterAddress: 0},
 			expect:              []byte{0x01, 0x00},
+		},
+		{
+			name:                "registerBit bit > 15 returns error",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: RegisterBit{Value: true, Bit: 16}, RegisterAddress: 0},
+			expect:              []byte{0x00, 0x00},
+			expectedError:       "bit value more than register (16bit) contains",
 		},
 		// error: unsupported value type
 		{
