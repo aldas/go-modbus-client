@@ -1765,3 +1765,397 @@ func TestRegisters_IsEqualBytes(t *testing.T) {
 		})
 	}
 }
+
+func TestPutAny(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		givenDst      []byte
+		when          any
+		whenEndian    ByteOrder
+		expect        []byte
+		expectedError string
+	}{
+		// registerBit: bits 0-7 modify dst[0], bits 8-15 modify dst[1]
+		{
+			name:     "registerBit set bit 0 (dst[0])",
+			givenDst: []byte{0x00, 0x00},
+			when:     RegisterBit{Value: true, Bit: 0},
+			expect:   []byte{0x01, 0x00},
+		},
+		{
+			name:     "registerBit set bit 7 (dst[0])",
+			givenDst: []byte{0x00, 0x00},
+			when:     RegisterBit{Value: true, Bit: 7},
+			expect:   []byte{0x80, 0x00},
+		},
+		{
+			name:     "registerBit clear bit 0 (dst[0])",
+			givenDst: []byte{0x01, 0x00},
+			when:     RegisterBit{Value: false, Bit: 0},
+			expect:   []byte{0x00, 0x00},
+		},
+		{
+			name:     "registerBit set bit 8 (dst[1])",
+			givenDst: []byte{0x00, 0x00},
+			when:     RegisterBit{Value: true, Bit: 8},
+			expect:   []byte{0x00, 0x01},
+		},
+		{
+			name:     "registerBit set bit 15 (dst[1])",
+			givenDst: []byte{0x00, 0x00},
+			when:     RegisterBit{Value: true, Bit: 15},
+			expect:   []byte{0x00, 0x80},
+		},
+		{
+			name:     "registerBit clear bit 8 (dst[1])",
+			givenDst: []byte{0x00, 0x01},
+			when:     RegisterBit{Value: false, Bit: 8},
+			expect:   []byte{0x00, 0x00},
+		},
+		// bool: writes to dst[0] only
+		{
+			name:     "bool true",
+			givenDst: []byte{0x00},
+			when:     true,
+			expect:   []byte{0x01},
+		},
+		{
+			name:     "bool false",
+			givenDst: []byte{0x01},
+			when:     false,
+			expect:   []byte{0x00},
+		},
+		// uint8: writes dst[0] = vt
+		{
+			name:     "uint8(1)",
+			givenDst: []byte{0x00},
+			when:     uint8(1),
+			expect:   []byte{0x01},
+		},
+		{
+			name:     "uint8(255)",
+			givenDst: []byte{0x00},
+			when:     uint8(255),
+			expect:   []byte{0xFF},
+		},
+		// int8: writes dst[0] = byte(vt)
+		{
+			name:     "int8(1)",
+			givenDst: []byte{0x00},
+			when:     int8(1),
+			expect:   []byte{0x01},
+		},
+		{
+			name:     "int8(-1)",
+			givenDst: []byte{0x00},
+			when:     int8(-1),
+			expect:   []byte{0xFF},
+		},
+		// uint16
+		{
+			name:     "uint16(1)",
+			givenDst: []byte{0x00, 0x00},
+			when:     uint16(1),
+			expect:   []byte{0x00, 0x01},
+		},
+		{
+			name:     "uint16(0xABCD)",
+			givenDst: []byte{0x00, 0x00},
+			when:     uint16(0xABCD),
+			expect:   []byte{0xAB, 0xCD},
+		},
+		// int16
+		{
+			name:     "int16(-1)",
+			givenDst: []byte{0x00, 0x00},
+			when:     int16(-1),
+			expect:   []byte{0xFF, 0xFF},
+		},
+		// uint32
+		{
+			name:       "uint32(1) BigEndian",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00},
+			when:       uint32(1),
+			whenEndian: BigEndian,
+			expect:     []byte{0x00, 0x00, 0x00, 0x01},
+		},
+		{
+			name:       "uint32(1) LowWordFirst",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00},
+			when:       uint32(1),
+			whenEndian: BigEndianLowWordFirst,
+			expect:     []byte{0x00, 0x01, 0x00, 0x00},
+		},
+		// int32
+		{
+			name:       "int32(-1) BigEndian",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00},
+			when:       int32(-1),
+			whenEndian: BigEndian,
+			expect:     []byte{0xFF, 0xFF, 0xFF, 0xFF},
+		},
+		{
+			name:       "int32(1) LowWordFirst",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00},
+			when:       int32(1),
+			whenEndian: BigEndianLowWordFirst,
+			expect:     []byte{0x00, 0x01, 0x00, 0x00},
+		},
+		// uint64
+		{
+			name:       "uint64(1) BigEndian",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			when:       uint64(1),
+			whenEndian: BigEndian,
+			expect:     []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+		},
+		{
+			name:       "uint64(1) LowWordFirst",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			when:       uint64(1),
+			whenEndian: BigEndianLowWordFirst,
+			expect:     []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+		},
+		// int64
+		{
+			name:       "int64(-1) BigEndian",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			when:       int64(-1),
+			whenEndian: BigEndian,
+			expect:     []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+		},
+		{
+			name:       "int64(1) LowWordFirst",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			when:       int64(1),
+			whenEndian: BigEndianLowWordFirst,
+			expect:     []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+		},
+		// float32
+		{
+			name:       "float32(1.85) BigEndian",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00},
+			when:       float32(1.85),
+			whenEndian: BigEndian,
+			expect:     []byte{0x3f, 0xec, 0xcc, 0xcd},
+		},
+		{
+			name:       "float32(1.85) LowWordFirst",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00},
+			when:       float32(1.85),
+			whenEndian: BigEndianLowWordFirst,
+			expect:     []byte{0xcc, 0xcd, 0x3f, 0xec},
+		},
+		// float64
+		{
+			name:       "float64(1.85) BigEndian",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			when:       float64(1.85),
+			whenEndian: BigEndian,
+			expect:     []byte{0x3f, 0xfd, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9a},
+		},
+		{
+			name:       "float64(1.85) LowWordFirst",
+			givenDst:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			when:       float64(1.85),
+			whenEndian: BigEndianLowWordFirst,
+			expect:     []byte{0x99, 0x9a, 0x99, 0x99, 0x99, 0x99, 0x3f, 0xfd},
+		},
+		// unsupported type triggers the default error branch
+		{
+			name:          "unsupported type string",
+			givenDst:      []byte{0x00, 0x00},
+			when:          "hello",
+			expect:        []byte{0x00, 0x00},
+			expectedError: "cannot store string",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dst := tc.givenDst
+			err := putAny(tc.when, dst, tc.whenEndian)
+
+			assert.Equal(t, tc.expect, dst)
+			if tc.expectedError != "" {
+				assert.EqualError(t, err, tc.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestWriteValue(t *testing.T) {
+	var testCases = []struct {
+		name                string
+		givenRegisterLength uint16
+		givenStartAddress   uint16
+		when                WriteValueCmd
+		expect              []byte
+		expectedError       string
+	}{
+		// bool: ToHighByte=false (default) → low byte (1); ToHighByte=true → high byte (0)
+		{
+			name:                "bool true, ToHighByte=false (low byte)",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: true, RegisterAddress: 0},
+			expect:              []byte{0x00, 0x01},
+		},
+		{
+			name:                "bool false, ToHighByte=false (low byte)",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: false, RegisterAddress: 0},
+			expect:              []byte{0x00, 0x00},
+		},
+		{
+			name:                "bool true, ToHighByte=true (high byte)",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: true, RegisterAddress: 0, ToHighByte: true},
+			expect:              []byte{0x01, 0x00},
+		},
+		// uint8 / int8: single byte, same ToHighByte semantics as bool
+		{
+			name:                "uint8(1) ToHighByte=false (low byte)",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: uint8(1), RegisterAddress: 0},
+			expect:              []byte{0x00, 0x01},
+		},
+		{
+			name:                "uint8(1) ToHighByte=true (high byte)",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: uint8(1), RegisterAddress: 0, ToHighByte: true},
+			expect:              []byte{0x01, 0x00},
+		},
+		{
+			name:                "int8(-1) ToHighByte=true (high byte)",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: int8(-1), RegisterAddress: 0, ToHighByte: true},
+			expect:              []byte{0xFF, 0x00},
+		},
+		// uint16 / int16
+		{
+			name:                "uint16(0xABCD) at reg 0",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: uint16(0xABCD), RegisterAddress: 0},
+			expect:              []byte{0xAB, 0xCD},
+		},
+		{
+			name:                "uint16(0xABCD) at reg 1",
+			givenRegisterLength: 2,
+			when:                WriteValueCmd{Value: uint16(0xABCD), RegisterAddress: 1},
+			expect:              []byte{0x00, 0x00, 0xAB, 0xCD},
+		},
+		{
+			name:                "int16(-1) at reg 0",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: int16(-1), RegisterAddress: 0},
+			expect:              []byte{0xFF, 0xFF},
+		},
+		// non-zero startAddress: RegisterAddress is absolute, startAddress is subtracted
+		{
+			name:                "uint16 with non-zero startAddress",
+			givenRegisterLength: 2,
+			givenStartAddress:   100,
+			when:                WriteValueCmd{Value: uint16(0xABCD), RegisterAddress: 100},
+			expect:              []byte{0xAB, 0xCD, 0x00, 0x00},
+		},
+		// uint32 / int32 / float32
+		{
+			name:                "uint32(1) BigEndian",
+			givenRegisterLength: 2,
+			when:                WriteValueCmd{Value: uint32(1), RegisterAddress: 0, Endian: BigEndian},
+			expect:              []byte{0x00, 0x00, 0x00, 0x01},
+		},
+		{
+			name:                "uint32(1) LowWordFirst",
+			givenRegisterLength: 2,
+			when:                WriteValueCmd{Value: uint32(1), RegisterAddress: 0, Endian: BigEndianLowWordFirst},
+			expect:              []byte{0x00, 0x01, 0x00, 0x00},
+		},
+		{
+			name:                "int32(-1) BigEndian",
+			givenRegisterLength: 2,
+			when:                WriteValueCmd{Value: int32(-1), RegisterAddress: 0, Endian: BigEndian},
+			expect:              []byte{0xFF, 0xFF, 0xFF, 0xFF},
+		},
+		{
+			name:                "float32(1.85) BigEndian",
+			givenRegisterLength: 2,
+			when:                WriteValueCmd{Value: float32(1.85), RegisterAddress: 0, Endian: BigEndian},
+			expect:              []byte{0x3f, 0xec, 0xcc, 0xcd},
+		},
+		// uint64 / int64 / float64
+		{
+			name:                "uint64(1) BigEndian",
+			givenRegisterLength: 4,
+			when:                WriteValueCmd{Value: uint64(1), RegisterAddress: 0, Endian: BigEndian},
+			expect:              []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+		},
+		{
+			name:                "int64(-1) BigEndian",
+			givenRegisterLength: 4,
+			when:                WriteValueCmd{Value: int64(-1), RegisterAddress: 0, Endian: BigEndian},
+			expect:              []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+		},
+		{
+			name:                "float64(1.85) BigEndian",
+			givenRegisterLength: 4,
+			when:                WriteValueCmd{Value: float64(1.85), RegisterAddress: 0, Endian: BigEndian},
+			expect:              []byte{0x3f, 0xfd, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9a},
+		},
+		// registerBit (dataTypeSize=2, putAny does bitwise set)
+		{
+			name:                "registerBit set bit 0",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: RegisterBit{Value: true, Bit: 0}, RegisterAddress: 0},
+			expect:              []byte{0x01, 0x00},
+		},
+		// error: unsupported value type
+		{
+			name:                "unsupported value type",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: "hello", RegisterAddress: 0},
+			expect:              []byte{0x00, 0x00},
+			expectedError:       "unsupported value type: string",
+		},
+		// error: RegisterAddress < startAddress
+		{
+			name:                "register address under startAddress bounds",
+			givenRegisterLength: 1,
+			givenStartAddress:   5,
+			when:                WriteValueCmd{Value: uint16(0), RegisterAddress: 3},
+			expect:              []byte{0x00, 0x00},
+			expectedError:       "register address under startAddress bounds",
+		},
+		// error: startByte >= len(r.data) (RegisterAddress=1, givenRegisterLength=1 → len=2, startByte=2)
+		{
+			name:                "start register overflows address range",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: uint16(0), RegisterAddress: 1},
+			expect:              []byte{0x00, 0x00},
+			expectedError:       "start register overflows address range",
+		},
+		// error: endByte > len(r.data) (RegisterAddress=0, uint32 → startByte=0, endByte=4, len=2)
+		{
+			name:                "start byte + data type size overflows address range",
+			givenRegisterLength: 1,
+			when:                WriteValueCmd{Value: uint32(0), RegisterAddress: 0},
+			expect:              []byte{0x00, 0x00},
+			expectedError:       "start byte + data type size overflows address range",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dst := make([]byte, tc.givenRegisterLength*2)
+			r, _ := NewRegisters(dst, tc.givenStartAddress)
+
+			err := r.WriteValue(tc.when)
+			assert.Equal(t, tc.expect, dst)
+			if tc.expectedError != "" {
+				assert.EqualError(t, err, tc.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

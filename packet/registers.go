@@ -544,3 +544,168 @@ func (r Registers) IsEqualBytes(registerAddress uint16, addressLengthInBytes uin
 	}
 	return true, nil
 }
+
+// WriteValueCmd represents a command to write a value to a register
+type WriteValueCmd struct {
+	// Value is the value to write to the register. It can be any type that can be converted to a byte slice.
+	Value any
+
+	// RegisterAddress is the address of the register to write to.
+	RegisterAddress uint16
+
+	// ToHighByte is used with bool,byte,uint8,int8 for different bytes in the register. Byte 0 is a high byte, byte 1 is a low byte of register/word
+	ToHighByte bool
+
+	// Endian is the raw byte order of the value in the register. See ByteOrder for more information.
+	Endian ByteOrder
+}
+
+// WriteValue writes a value as register(s) to the Registers instance
+func (r *Registers) WriteValue(cmd WriteValueCmd) error {
+	dataTypeSize, err := valueTypeByteSize(cmd.Value)
+	if err != nil {
+		return err
+	}
+
+	if cmd.RegisterAddress < r.startAddress {
+		return fmt.Errorf("register address under startAddress bounds")
+	}
+	startByte := int(cmd.RegisterAddress-r.startAddress) * 2
+	if !cmd.ToHighByte && dataTypeSize == 1 { // bool, uint8, int8: ToHighByte=false -> low byte (1), ToHighByte=true -> high byte (0)
+		startByte++
+	}
+
+	if startByte >= len(r.data) {
+		return fmt.Errorf("start register overflows address range")
+	}
+	endByte := startByte + dataTypeSize
+	if endByte > len(r.data) {
+		return fmt.Errorf("start byte + data type size overflows address range")
+	}
+
+	endian := cmd.Endian
+	if endian == useDefaultByteOrder {
+		endian = r.defaultByteOrder
+	}
+	return putAny(cmd.Value, r.data[startByte:endByte], endian)
+}
+
+func valueTypeByteSize(value any) (int, error) {
+	switch value.(type) {
+	case RegisterBit:
+		return 2, nil
+	case bool, uint8, int8:
+		return 1, nil
+	case uint16, int16:
+		return 2, nil
+	case uint32, int32, float32:
+		return 4, nil
+	case uint64, int64, float64:
+		return 8, nil
+	default:
+		return 0, fmt.Errorf("unsupported value type: %T", value)
+	}
+}
+
+// RegisterBit represents the value of the bit in a register.
+type RegisterBit struct {
+	Value bool
+	Bit   uint8
+}
+
+func putAny(value any, dst []byte, endian ByteOrder) error {
+	switch vt := value.(type) {
+	case RegisterBit:
+		startByte := 0
+		bit := vt.Bit
+		if bit > 7 {
+			bit -= 8
+			startByte++
+		}
+		if vt.Value {
+			dst[startByte] |= 1 << bit // set bit
+		} else {
+			dst[startByte] &= ^(1 << bit) // clear bit
+		}
+	case bool:
+		if vt {
+			dst[0] = 0x01
+		} else {
+			dst[0] = 0x00
+		}
+	case uint8:
+		dst[0] = vt
+	case int8:
+		dst[0] = byte(vt) // #nosec G115
+	case uint16:
+		binary.BigEndian.PutUint16(dst, vt)
+	case int16:
+		binary.BigEndian.PutUint16(dst, uint16(vt)) // #nosec G115
+	case uint32:
+		if endian&LowWordFirst != 0 {
+			putUint32LowWordFirst(dst, vt)
+		} else {
+			binary.BigEndian.PutUint32(dst, vt)
+		}
+	case int32:
+		if endian&LowWordFirst != 0 {
+			putUint32LowWordFirst(dst, uint32(vt)) // #nosec G115
+		} else {
+			binary.BigEndian.PutUint32(dst, uint32(vt)) // #nosec G115
+		}
+	case uint64:
+		if endian&LowWordFirst != 0 {
+			putUint64LowWordFirst(dst, vt)
+		} else {
+			binary.BigEndian.PutUint64(dst, vt)
+		}
+	case int64:
+		if endian&LowWordFirst != 0 {
+			putUint64LowWordFirst(dst, uint64(vt)) // #nosec G115
+		} else {
+			binary.BigEndian.PutUint64(dst, uint64(vt)) // #nosec G115
+		}
+	case float32:
+		if endian&LowWordFirst != 0 {
+			putUint32LowWordFirst(dst, math.Float32bits(vt))
+		} else {
+			binary.BigEndian.PutUint32(dst, math.Float32bits(vt))
+		}
+	case float64:
+		if endian&LowWordFirst != 0 {
+			putUint64LowWordFirst(dst, math.Float64bits(vt))
+		} else {
+			binary.BigEndian.PutUint64(dst, math.Float64bits(vt))
+		}
+	default:
+		return fmt.Errorf("cannot store %T", value)
+	}
+	return nil
+}
+
+// #nosec G115
+func putUint32LowWordFirst(b []byte, v uint32) {
+	_ = b[3] // bounds check hint
+
+	b[0] = byte(v >> 8)  // low word high byte
+	b[1] = byte(v)       // low word low byte
+	b[2] = byte(v >> 24) // high word high byte
+	b[3] = byte(v >> 16) // high word low byte
+}
+
+// #nosec G115
+func putUint64LowWordFirst(b []byte, v uint64) {
+	_ = b[7] // early bounds check to guarantee safety of writes below
+
+	b[0] = byte(v >> 8) // low word high byte
+	b[1] = byte(v)      // low word low byte
+
+	b[2] = byte(v >> 24)
+	b[3] = byte(v >> 16)
+
+	b[4] = byte(v >> 40)
+	b[5] = byte(v >> 32)
+
+	b[6] = byte(v >> 56) // high word high byte
+	b[7] = byte(v >> 48) // high word low byte
+}
