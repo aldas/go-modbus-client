@@ -131,7 +131,7 @@ func TestField_ExtractFrom(t *testing.T) {
 		whenType          FieldType
 		whenByteOrder     packet.ByteOrder
 		whenInvalid       []byte
-		expect            interface{}
+		expect            any
 		expectErr         string
 	}{
 		{

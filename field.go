@@ -290,7 +290,7 @@ func (f *Field) Validate() error {
 }
 
 // ExtractFrom extracts field value from given registers data
-func (f *Field) ExtractFrom(registers *packet.Registers) (interface{}, error) {
+func (f *Field) ExtractFrom(registers *packet.Registers) (any, error) {
 	if err := f.CheckInvalid(registers); err != nil {
 		return nil, err
 	}

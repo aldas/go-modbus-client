@@ -246,9 +246,9 @@ func (r Registers) Int8(address uint16, fromHighByte bool) (int8, error) {
 		return 0, err
 	}
 	if fromHighByte {
-		return int8(b[0]), nil
+		return int8(b[0]), nil // #nosec G115
 	}
-	return int8(b[1]), nil
+	return int8(b[1]), nil // #nosec G115
 }
 
 // Uint16 returns register data as uint16 from given address. NB: Uint16 size is 1 register (16bits, 2 bytes).

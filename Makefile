@@ -6,16 +6,23 @@ PKG_LIST := $(shell go list ${PKG}/...)
 
 .DEFAULT_GOAL := check
 
-check: lint vet race ## check project
+check: staticcheck revive vet security race ## check project
 
 init:
-	git config core.hooksPath ./scripts/.githooks
-	@go install golang.org/x/lint/golint@latest
+	# installing staticcheck
 	@go install honnef.co/go/tools/cmd/staticcheck@latest
+	# installing revive
+	@go install github.com/mgechev/revive@latest
+	# installing gosec
+	@go install github.com/securego/gosec/v2/cmd/gosec@latest
 
-lint: ## Lint the files
+staticcheck: ## Lint the files with staticcheck
 	@staticcheck ${PKG_LIST}
-	@golint -set_exit_status ${PKG_LIST}
+	@revive ${PKG_LIST}
+
+revive: ## Lint the files with revive
+	@staticcheck ${PKG_LIST}
+	@revive ${PKG_LIST}
 
 vet: ## Vet the files
 	@go vet ${PKG_LIST}
@@ -23,8 +30,12 @@ vet: ## Vet the files
 test: ## Run unittests
 	@go test -short ${PKG_LIST}
 
-goversion ?= "1.25"
-test_version: ## Run tests inside Docker with given version (defaults to 1.25). Example: make test_version goversion=1.24
+# disable `G115 (CWE-190): integer overflow conversion int -> uint16` at the moment
+security: ## Run Gosec static code security analyzer
+	@gosec -quiet -exclude=G115 -exclude-dir=.cache ./...
+
+goversion ?= "1.27"
+test_version: ## Run tests inside Docker with given version (defaults to 1.27). Example: make test_version goversion=1.27
 	@docker run --rm -it -v $(shell pwd):/project golang:$(goversion) /bin/sh -c "cd /project && make init check"
 
 race: ## Run data race detector
