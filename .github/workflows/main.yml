@@ -15,7 +15,12 @@ permissions:
 env:
   # run coverage only with the latest Go version
   LATEST_GO_VERSION: "1.26"
-
+  # https://github.com/actions/checkout/releases/tag/v7.0.1
+  CHECKOUT_ACTION: &checkout_action actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+  # https://github.com/actions/setup-go/releases/tag/v7.0.0
+  SETUP_GO_ACTION: &setup_go_action actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+  # https://github.com/codecov/codecov-action/releases/tag/v7.0.0
+  CODECOV_ACTION: &codecov_action codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
 
 jobs:
   test:
@@ -26,12 +31,12 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install Go
-        uses: actions/setup-go@v6
+        uses: *setup_go_action
         with:
           go-version: ${{ matrix.go-version }}
 
       - name: Checkout code of this branch
-        uses: actions/checkout@v6
+        uses: *checkout_action
 
       - name: Execute Go lint, check, test
         run: |
@@ -41,6 +46,6 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: success() && matrix.go == env.LATEST_GO_VERSION && matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v6
+        uses: *codecov_action
         with:
           fail_ci_if_error: false

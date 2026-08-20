@@ -52,27 +52,27 @@ func marshalFieldTypeUint8(dst []byte, value any, toHighByte bool) error {
 	case uint8: // byte == uint8
 		dst[idx] = v
 	case int8:
-		dst[idx] = byte(v)
+		dst[idx] = byte(v) // #nosec G115
 	case uint16:
-		dst[idx] = byte(limitUnsigned(v, math.MaxUint8))
+		dst[idx] = byte(limitUnsigned(v, math.MaxUint8)) // #nosec G115
 	case int16:
-		dst[idx] = byte(limitSigned(v, math.MaxUint8, 0))
+		dst[idx] = byte(limitSigned(v, math.MaxUint8, 0)) // #nosec G115
 	case uint32:
-		dst[idx] = byte(limitUnsigned(v, math.MaxUint8))
+		dst[idx] = byte(limitUnsigned(v, math.MaxUint8)) // #nosec G115
 	case int32:
-		dst[idx] = byte(limitSigned(v, math.MaxUint8, 0))
+		dst[idx] = byte(limitSigned(v, math.MaxUint8, 0)) // #nosec G115
 	case uint64:
-		dst[idx] = byte(limitUnsigned(v, math.MaxUint8))
+		dst[idx] = byte(limitUnsigned(v, math.MaxUint8)) // #nosec G115
 	case int64:
-		dst[idx] = byte(limitSigned(v, math.MaxUint8, 0))
+		dst[idx] = byte(limitSigned(v, math.MaxUint8, 0)) // #nosec G115
 	case int: // could be 32bit or 64bit
-		dst[idx] = byte(limitSigned(v, math.MaxUint8, 0))
+		dst[idx] = byte(limitSigned(v, math.MaxUint8, 0)) // #nosec G115
 	case uint: // could be 32bit or 64bit
-		dst[idx] = byte(limitUnsigned(v, math.MaxUint8))
+		dst[idx] = byte(limitUnsigned(v, math.MaxUint8)) // #nosec G115
 	case float32:
-		dst[idx] = byte(limitFloat32(v, math.MaxUint8, 0))
+		dst[idx] = byte(limitFloat32(v, math.MaxUint8, 0)) // #nosec G115
 	case float64:
-		dst[idx] = byte(limitFloat64(v, math.MaxUint8, 0))
+		dst[idx] = byte(limitFloat64(v, math.MaxUint8, 0)) // #nosec G115
 	case []byte:
 		dst[idx] = v[0]
 	default: // string
@@ -98,27 +98,27 @@ func marshalFieldTypeInt8(dst []byte, value any, toHighByte bool) error {
 	case uint8:
 		dst[idx] = limitUnsigned(v, math.MaxInt8)
 	case int8:
-		dst[idx] = byte(v)
+		dst[idx] = byte(v) // #nosec G115
 	case uint16:
-		dst[idx] = byte(limitUnsigned(v, math.MaxInt8))
+		dst[idx] = byte(limitUnsigned(v, math.MaxInt8)) // #nosec G115
 	case int16:
-		dst[idx] = byte(limitSigned(v, math.MaxInt8, math.MinInt8))
+		dst[idx] = byte(limitSigned(v, math.MaxInt8, math.MinInt8)) // #nosec G115
 	case uint32:
-		dst[idx] = byte(limitUnsigned(v, math.MaxInt8))
+		dst[idx] = byte(limitUnsigned(v, math.MaxInt8)) // #nosec G115
 	case int32:
-		dst[idx] = byte(limitSigned(v, math.MaxInt8, math.MinInt8))
+		dst[idx] = byte(limitSigned(v, math.MaxInt8, math.MinInt8)) // #nosec G115
 	case uint64:
-		dst[idx] = byte(limitUnsigned(v, math.MaxInt8))
+		dst[idx] = byte(limitUnsigned(v, math.MaxInt8)) // #nosec G115
 	case int64:
-		dst[idx] = byte(limitSigned(v, math.MaxInt8, math.MinInt8))
+		dst[idx] = byte(limitSigned(v, math.MaxInt8, math.MinInt8)) // #nosec G115
 	case int: // could be 32bit or 64bit
-		dst[idx] = byte(limitSigned(v, math.MaxInt8, math.MinInt8))
+		dst[idx] = byte(limitSigned(v, math.MaxInt8, math.MinInt8)) // #nosec G115
 	case uint: // could be 32bit or 64bit
-		dst[idx] = byte(limitUnsigned(v, math.MaxInt8))
+		dst[idx] = byte(limitUnsigned(v, math.MaxInt8)) // #nosec G115
 	case float32:
-		dst[idx] = byte(limitFloat32(v, math.MaxInt8, math.MinInt8))
+		dst[idx] = byte(limitFloat32(v, math.MaxInt8, math.MinInt8)) // #nosec G115
 	case float64:
-		dst[idx] = byte(limitFloat64(v, math.MaxInt8, math.MinInt8))
+		dst[idx] = byte(limitFloat64(v, math.MaxInt8, math.MinInt8)) // #nosec G115
 	default: // including []byte, string
 		return errors.New("marshalFieldTypeInt8: can not marshal unsupported type")
 	}
@@ -136,29 +136,29 @@ func marshalFieldTypeUint16(dst []byte, value any) error {
 			tmp = 1
 		}
 	case uint8:
-		tmp = uint16(v)
+		tmp = uint16(v) // #nosec G115
 	case int8:
-		tmp = uint16(limitToPositive(v))
+		tmp = uint16(limitToPositive(v)) // #nosec G115
 	case uint16:
 		tmp = v
 	case int16:
-		tmp = uint16(limitToPositive(v))
+		tmp = uint16(limitToPositive(v)) // #nosec G115
 	case uint32:
-		tmp = uint16(limitUnsigned(v, math.MaxUint16))
+		tmp = uint16(limitUnsigned(v, math.MaxUint16)) // #nosec G115
 	case int32:
-		tmp = uint16(limitSigned(v, math.MaxInt16, 0))
+		tmp = uint16(limitSigned(v, math.MaxInt16, 0)) // #nosec G115
 	case uint64:
-		tmp = uint16(limitUnsigned(v, math.MaxUint16))
+		tmp = uint16(limitUnsigned(v, math.MaxUint16)) // #nosec G115
 	case int64:
-		tmp = uint16(limitSigned(v, math.MaxInt16, 0))
+		tmp = uint16(limitSigned(v, math.MaxInt16, 0)) // #nosec G115
 	case int: // could be 32bit or 64bit
-		tmp = uint16(limitSigned(v, math.MaxInt16, 0))
+		tmp = uint16(limitSigned(v, math.MaxInt16, 0)) // #nosec G115
 	case uint: // could be 32bit or 64bit
-		tmp = uint16(limitUnsigned(v, math.MaxUint16))
+		tmp = uint16(limitUnsigned(v, math.MaxUint16)) // #nosec G115
 	case float32:
-		tmp = uint16(limitFloat32(v, math.MaxInt16, 0))
+		tmp = uint16(limitFloat32(v, math.MaxInt16, 0)) // #nosec G115
 	case float64:
-		tmp = uint16(limitFloat64(v, math.MaxInt16, 0))
+		tmp = uint16(limitFloat64(v, math.MaxInt16, 0)) // #nosec G115
 	default: // including []byte, string
 		return errors.New("marshalFieldTypeUint16: can not marshal unsupported type")
 	}
@@ -177,25 +177,25 @@ func marshalFieldTypeInt16(dst []byte, value any) error {
 			tmp = 1
 		}
 	case uint8:
-		tmp = int16(v)
+		tmp = int16(v) // #nosec G115
 	case int8:
-		tmp = int16(v)
+		tmp = int16(v) // #nosec G115
 	case uint16:
-		tmp = int16(limitUnsigned(v, math.MaxInt16))
+		tmp = int16(limitUnsigned(v, math.MaxInt16)) // #nosec G115
 	case int16:
 		tmp = v
 	case uint32:
-		tmp = int16(limitUnsigned(v, math.MaxInt16))
+		tmp = int16(limitUnsigned(v, math.MaxInt16)) // #nosec G115
 	case int32:
 		tmp = int16(limitSigned(v, math.MaxInt16, math.MinInt16)) // #nosec G115
 	case uint64:
-		tmp = int16(limitUnsigned(v, math.MaxInt16))
+		tmp = int16(limitUnsigned(v, math.MaxInt16)) // #nosec G115
 	case int64:
 		tmp = int16(limitSigned(v, math.MaxInt16, math.MinInt16)) // #nosec G115
 	case int: // could be 32bit or 64bit
 		tmp = int16(limitSigned(v, math.MaxInt16, math.MinInt16)) // #nosec G115
 	case uint: // could be 32bit or 64bit
-		tmp = int16(limitUnsigned(v, math.MaxInt16))
+		tmp = int16(limitUnsigned(v, math.MaxInt16)) // #nosec G115
 	case float32:
 		tmp = int16(limitFloat32(v, math.MaxInt16, math.MinInt16)) // #nosec G115
 	case float64:
@@ -218,29 +218,29 @@ func marshalFieldTypeUint32(dst []byte, value any) error {
 			tmp = 1
 		}
 	case uint8:
-		tmp = uint32(v)
+		tmp = uint32(v) // #nosec G115
 	case int8:
-		tmp = uint32(limitToPositive(v))
+		tmp = uint32(limitToPositive(v)) // #nosec G115
 	case uint16:
-		tmp = uint32(v)
+		tmp = uint32(v) // #nosec G115
 	case int16:
-		tmp = uint32(limitToPositive(v))
+		tmp = uint32(limitToPositive(v)) // #nosec G115
 	case uint32:
 		tmp = v
 	case int32:
-		tmp = uint32(limitSigned(v, math.MaxInt32, 0))
+		tmp = uint32(limitSigned(v, math.MaxInt32, 0)) // #nosec G115
 	case uint64:
-		tmp = uint32(limitUnsigned(v, math.MaxUint32))
+		tmp = uint32(limitUnsigned(v, math.MaxUint32)) // #nosec G115
 	case int64:
-		tmp = uint32(limitSigned(v, math.MaxInt32, 0))
+		tmp = uint32(limitSigned(v, math.MaxInt32, 0)) // #nosec G115
 	case int: // could be 32bit or 64bit
-		tmp = uint32(limitSigned(v, math.MaxInt32, 0))
+		tmp = uint32(limitSigned(v, math.MaxInt32, 0)) // #nosec G115
 	case uint: // could be 32bit or 64bit
-		tmp = uint32(limitUnsigned(v, math.MaxUint32))
+		tmp = uint32(limitUnsigned(v, math.MaxUint32)) // #nosec G115
 	case float32:
-		tmp = uint32(limitFloat32(v, math.MaxInt32, 0))
+		tmp = uint32(limitFloat32(v, math.MaxInt32, 0)) // #nosec G115
 	case float64:
-		tmp = uint32(limitFloat64(v, math.MaxInt32, 0))
+		tmp = uint32(limitFloat64(v, math.MaxInt32, 0)) // #nosec G115
 	default: // including []byte, string
 		return errors.New("marshalFieldTypeUint32: can not marshal unsupported type")
 	}
@@ -259,29 +259,29 @@ func marshalFieldTypeInt32(dst []byte, value any) error {
 			tmp = 1
 		}
 	case uint8:
-		tmp = int32(v)
+		tmp = int32(v) // #nosec G115
 	case int8:
-		tmp = int32(v)
+		tmp = int32(v) // #nosec G115
 	case uint16:
-		tmp = int32(v)
+		tmp = int32(v) // #nosec G115
 	case int16:
-		tmp = int32(v)
+		tmp = int32(v) // #nosec G115
 	case uint32:
-		tmp = int32(limitUnsigned(v, math.MaxInt32))
+		tmp = int32(limitUnsigned(v, math.MaxInt32)) // #nosec G115
 	case int32:
 		tmp = v
 	case uint64:
-		tmp = int32(limitUnsigned(v, math.MaxInt32))
+		tmp = int32(limitUnsigned(v, math.MaxInt32)) // #nosec G115
 	case int64:
-		tmp = int32(limitSigned(v, math.MaxInt32, math.MinInt32))
+		tmp = int32(limitSigned(v, math.MaxInt32, math.MinInt32)) // #nosec G115
 	case int: // could be 32bit or 64bit
-		tmp = int32(limitSigned(v, math.MaxInt32, math.MinInt32))
+		tmp = int32(limitSigned(v, math.MaxInt32, math.MinInt32)) // #nosec G115
 	case uint: // could be 32bit or 64bit
-		tmp = int32(limitUnsigned(v, math.MaxInt32))
+		tmp = int32(limitUnsigned(v, math.MaxInt32)) // #nosec G115
 	case float32:
-		tmp = int32(v)
+		tmp = int32(v) // #nosec G115
 	case float64:
-		tmp = int32(limitFloat64(v, math.MaxInt32, math.MinInt32))
+		tmp = int32(limitFloat64(v, math.MaxInt32, math.MinInt32)) // #nosec G115
 	default: // including []byte, string
 		return errors.New("marshalFieldTypeInt32: can not marshal unsupported type")
 	}
@@ -300,29 +300,29 @@ func marshalFieldTypeUint64(dst []byte, value any) error {
 			tmp = 1
 		}
 	case uint8:
-		tmp = uint64(v)
+		tmp = uint64(v) // #nosec G115
 	case int8:
-		tmp = uint64(limitToPositive(v))
+		tmp = uint64(limitToPositive(v)) // #nosec G115
 	case uint16:
-		tmp = uint64(v)
+		tmp = uint64(v) // #nosec G115
 	case int16:
-		tmp = uint64(limitToPositive(v))
+		tmp = uint64(limitToPositive(v)) // #nosec G115
 	case uint32:
-		tmp = uint64(v)
+		tmp = uint64(v) // #nosec G115
 	case int32:
-		tmp = uint64(limitToPositive(v))
+		tmp = uint64(limitToPositive(v)) // #nosec G115
 	case uint64:
 		tmp = v
 	case int64:
-		tmp = uint64(limitToPositive(v))
+		tmp = uint64(limitToPositive(v)) // #nosec G115
 	case int: // could be 32bit or 64bit
-		tmp = uint64(limitToPositive(v))
+		tmp = uint64(limitToPositive(v)) // #nosec G115
 	case uint: // could be 32bit or 64bit
-		tmp = uint64(v)
+		tmp = uint64(v) // #nosec G115
 	case float32:
-		tmp = uint64(limitFloat32(v, math.MaxInt32, 0))
+		tmp = uint64(limitFloat32(v, math.MaxInt32, 0)) // #nosec G115
 	case float64:
-		tmp = uint64(limitFloat64(v, math.MaxInt64, 0))
+		tmp = uint64(limitFloat64(v, math.MaxInt64, 0)) // #nosec G115
 	default: // including []byte, string
 		return errors.New("marshalFieldTypeUint64: can not marshal unsupported type")
 	}

@@ -41,6 +41,8 @@ go get github.com/aldas/go-modbus-client
 
 ## Examples
 
+## Readings from Modbus TCP/IP
+
 Higher level API allows you to compose register requests out of arbitrary number of fields and extract those
 field values from response registers with convenience methods
 
@@ -74,6 +76,31 @@ for _, req := range requests {
     assert.Equal(t, uint16(1), fields[0].Value)
     assert.Equal(t, "alarm_do_1", fields[1].Field.Name)
 }
+```
+
+### Write multiple registers to Modbus TCP/IP
+
+```go
+// Registers is a helper to compose payload for write multiple registers request
+registers, _ := packet.NewRegisters(make([]byte, 4), 101) // 4 bytes is 2 registers payload, 101 is start address
+
+_ = registers.WriteValue(packet.WriteValueCmd{ // set first register (101) to uint8 value of 1
+    Value: uint8(1),
+    RegisterAddress: 101,
+})
+_ = registers.WriteValue(packet.WriteValueCmd{ // set second register (102) to int16 value of 258
+    Value: int16(258),
+    RegisterAddress: 102,
+})
+
+req, _ := packet.NewWriteMultipleRegistersRequestTCP(1, 101, registers.Data())
+
+client := modbus.NewTCPClient()
+if err := client.Connect(context.Background(), "tcp://localhost:5020"); err != nil {
+    return
+}
+defer client.Close()
+resp, _ := client.Do(context.Background(), req)
 ```
 
 ### Polling values with long-running process

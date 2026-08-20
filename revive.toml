@@ -1,0 +1,7 @@
+enable-default-rules = true
+
+[rule.package-comments]
+disabled = true
+
+[rule.exported]
+exclude = ["TEST"]
