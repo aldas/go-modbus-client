@@ -17,14 +17,15 @@ init:
 	@go install github.com/securego/gosec/v2/cmd/gosec@latest
 
 staticcheck: ## Lint the files with staticcheck
+	# running staticcheck
 	@staticcheck ${PKG_LIST}
-	@revive ${PKG_LIST}
 
 revive: ## Lint the files with revive
-	@staticcheck ${PKG_LIST}
-	@revive ${PKG_LIST}
+	# running revive
+	@revive -config revive.toml ./...
 
 vet: ## Vet the files
+	# running go vet
 	@go vet ${PKG_LIST}
 
 test: ## Run unittests
@@ -32,6 +33,7 @@ test: ## Run unittests
 
 # disable `G115 (CWE-190): integer overflow conversion int -> uint16` at the moment
 security: ## Run Gosec static code security analyzer
+	# running gosec
 	@gosec -quiet -exclude=G115 -exclude-dir=.cache ./...
 
 goversion ?= "1.27"
