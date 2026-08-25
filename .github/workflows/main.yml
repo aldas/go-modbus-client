@@ -14,7 +14,7 @@ permissions:
 
 env:
   # run coverage only with the latest Go version
-  LATEST_GO_VERSION: "1.26"
+  LATEST_GO_VERSION: "1.27"
   # https://github.com/actions/checkout/releases/tag/v7.0.1
   CHECKOUT_ACTION: &checkout_action actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
   # https://github.com/actions/setup-go/releases/tag/v7.0.0
@@ -26,26 +26,30 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: ["1.25", "1.26"]
-        platform: [ ubuntu-latest ]
+        go: ["1.25", "1.26", "1.27"]
+        platform: [ "ubuntu-latest" ]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install Go
         uses: *setup_go_action
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: ${{ matrix.go }}
 
       - name: Checkout code of this branch
         uses: *checkout_action
 
-      - name: Execute Go lint, check, test
+      - name: Run tests
         run: |
-          make init
-          make check
           go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
 
+      - name: Run analysis
+        if: matrix.go == env.LATEST_GO_VERSION
+        run: |
+          make init
+          make staticcheck revive vet security
+
       - name: Upload coverage to Codecov
-        if: success() && matrix.go == env.LATEST_GO_VERSION && matrix.os == 'ubuntu-latest'
+        if: success() && matrix.go == env.LATEST_GO_VERSION
         uses: *codecov_action
         with:
           fail_ci_if_error: false
